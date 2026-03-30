@@ -323,10 +323,16 @@ def financeiro(request):
 
     ajustes_mes = AjusteMorador.objects.filter(mes_referencia=mes_referencia)
 
+    total_peso_ativos = sum((m.peso_quarto or Decimal('0.00')) for m in moradores_ativos) or Decimal('0.00')
+
     rateio_moradores = []
     for morador in moradores_ativos:
-        if morador.peso_quarto:
-            aluguel_share = (valor_aluguel * (morador.peso_quarto / Decimal('100.00'))).quantize(Decimal('0.01'))
+        if total_peso_ativos > 0:
+            aluguel_share = (
+                valor_aluguel * (morador.peso_quarto / total_peso_ativos)
+            ).quantize(Decimal('0.01'))
+        elif total_moradores_ativos > 0:
+            aluguel_share = (valor_aluguel / total_moradores_ativos).quantize(Decimal('0.01'))
         else:
             aluguel_share = Decimal('0.00')
         ajustes_morador = ajustes_mes.filter(morador=morador)
@@ -524,9 +530,15 @@ def exportar_financeiro_csv(request):
 
     writer.writerow(['Aluguel do Mes'])
     writer.writerow(['Morador', 'Aluguel', 'Contas fixas', 'Caixinha', 'Parcelas', 'Desconto', 'Total'])
+    total_peso_ativos = sum((m.peso_quarto or Decimal('0.00')) for m in moradores_ativos) or Decimal('0.00')
+
     for morador in moradores_ativos:
-        if morador.peso_quarto:
-            aluguel_share = (valor_aluguel * (morador.peso_quarto / Decimal('100.00'))).quantize(Decimal('0.01'))
+        if total_peso_ativos > 0:
+            aluguel_share = (
+                valor_aluguel * (morador.peso_quarto / total_peso_ativos)
+            ).quantize(Decimal('0.01'))
+        elif total_moradores_ativos > 0:
+            aluguel_share = (valor_aluguel / total_moradores_ativos).quantize(Decimal('0.01'))
         else:
             aluguel_share = Decimal('0.00')
         parcelas_por_morador = Decimal('0.00')
