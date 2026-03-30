@@ -29,12 +29,12 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
 allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS')
 if allowed_hosts_env:
-ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
 elif DEBUG:
     # Em desenvolvimento, permite acesso pela rede local.
     ALLOWED_HOSTS = ['*']
 else:
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
