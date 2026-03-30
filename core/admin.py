@@ -19,18 +19,30 @@ class MoradorAdmin(admin.ModelAdmin):
         'codigo_quarto',
         'peso_quarto',
         'ativo',
-        'acesso_financeiro',
-        'acesso_compras',
-        'acesso_estoque',
-        'acesso_manutencao'
+        'acesso_financeiro_visualizar',
+        'acesso_financeiro_editar',
+        'acesso_compras_visualizar',
+        'acesso_compras_editar',
+        'acesso_estoque_visualizar',
+        'acesso_estoque_editar',
+        'acesso_manutencao_visualizar',
+        'acesso_manutencao_editar',
+        'acesso_rock_visualizar',
+        'acesso_rock_editar',
     )
 
     list_filter = (
         'ativo',
-        'acesso_financeiro',
-        'acesso_compras',
-        'acesso_estoque',
-        'acesso_manutencao'
+        'acesso_financeiro_visualizar',
+        'acesso_financeiro_editar',
+        'acesso_compras_visualizar',
+        'acesso_compras_editar',
+        'acesso_estoque_visualizar',
+        'acesso_estoque_editar',
+        'acesso_manutencao_visualizar',
+        'acesso_manutencao_editar',
+        'acesso_rock_visualizar',
+        'acesso_rock_editar',
     )
 
     search_fields = ('nome', 'apelido', 'email')
@@ -50,10 +62,16 @@ class MoradorAdmin(admin.ModelAdmin):
         }),
         ('Permissões de Acesso', {
             'fields': (
-                'acesso_financeiro',
-                'acesso_compras',
-                'acesso_estoque',
-                'acesso_manutencao'
+                'acesso_financeiro_visualizar',
+                'acesso_financeiro_editar',
+                'acesso_compras_visualizar',
+                'acesso_compras_editar',
+                'acesso_estoque_visualizar',
+                'acesso_estoque_editar',
+                'acesso_manutencao_visualizar',
+                'acesso_manutencao_editar',
+                'acesso_rock_visualizar',
+                'acesso_rock_editar',
             )
         }),
     )
