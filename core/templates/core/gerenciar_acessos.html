@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Acessos</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:1240px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        h1 { margin:0; }
+        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); }
+        .table-wrap { overflow:auto; }
+        table { width:100%; min-width:880px; border-collapse:collapse; }
+        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; }
+        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
+        .muted { color:var(--muted); font-size:.85rem; }
+        .center { text-align:center; }
+        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn{width:100%; text-align:center;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Gerenciar acessos</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+
+    <section class="card">
+        <p class="muted">Somente superusuario pode editar estes acessos.</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ formset.management_form }}
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Morador</th>
+                        <th>Usuario</th>
+                        <th class="center">Financeiro V</th>
+                        <th class="center">Financeiro E</th>
+                        <th class="center">Compras V</th>
+                        <th class="center">Compras E</th>
+                        <th class="center">Estoque V</th>
+                        <th class="center">Estoque E</th>
+                        <th class="center">Manutencao V</th>
+                        <th class="center">Manutencao E</th>
+                        <th class="center">Rock V</th>
+                        <th class="center">Rock E</th>
+                    </tr>
+                    {% for form in formset %}
+                    <tr>
+                        <td>
+                            {{ form.instance.apelido|default:form.instance.nome }}
+                            {{ form.id }}
+                        </td>
+                        <td>{{ form.instance.user.username|default:"-" }}</td>
+                        <td class="center">{{ form.acesso_financeiro_visualizar }}</td>
+                        <td class="center">{{ form.acesso_financeiro_editar }}</td>
+                        <td class="center">{{ form.acesso_compras_visualizar }}</td>
+                        <td class="center">{{ form.acesso_compras_editar }}</td>
+                        <td class="center">{{ form.acesso_estoque_visualizar }}</td>
+                        <td class="center">{{ form.acesso_estoque_editar }}</td>
+                        <td class="center">{{ form.acesso_manutencao_visualizar }}</td>
+                        <td class="center">{{ form.acesso_manutencao_editar }}</td>
+                        <td class="center">{{ form.acesso_rock_visualizar }}</td>
+                        <td class="center">{{ form.acesso_rock_editar }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="12" class="center">Nenhum morador cadastrado.</td></tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn" type="submit">Salvar acessos</button>
+            </div>
+        </form>
+    </section>
+</div>
+</body>
+</html>

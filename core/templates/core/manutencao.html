@@ -34,6 +34,7 @@
 
     <section class="panel">
         <h2>Nova ordem de servico</h2>
+        {% if can_edit_manutencao %}
         <form method="post">
             {% csrf_token %}
 
@@ -42,6 +43,9 @@
 
             <button type="submit">Criar OS</button>
         </form>
+        {% else %}
+        <p>Somente visualizacao. Para criar OS, solicite acesso de edicao.</p>
+        {% endif %}
     </section>
 
     <section class="panel">
@@ -71,7 +75,13 @@
                     <td>{{ os.get_status_display }}</td>
                     <td>{{ os.data_inicio }}</td>
                     <td>{{ os.data_fim }}</td>
-                    <td class="actions"><a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a></td>
+                    <td class="actions">
+                        {% if can_edit_manutencao %}
+                        <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="9" class="empty">Nenhuma OS registrada.</td></tr>

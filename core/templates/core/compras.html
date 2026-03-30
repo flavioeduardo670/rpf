@@ -41,11 +41,15 @@
     <div class="grid">
         <section class="card">
             <h2>Nova nota fiscal</h2>
+            {% if can_edit_compras %}
             <form method="post">
                 {% csrf_token %}
                 {{ form.as_p }}
                 <button type="submit" class="btn">Salvar nota</button>
             </form>
+            {% else %}
+            <p>Somente visualizacao. Para editar, solicite acesso de edicao.</p>
+            {% endif %}
         </section>
     </div>
 
@@ -131,7 +135,13 @@
                         <span class="badge">Pendente</span>
                         {% endif %}
                     </td>
-                    <td><a class="btn" href="{% url 'editar_nota_compra' nota.id %}">Editar</a></td>
+                    <td>
+                        {% if can_edit_compras %}
+                        <a class="btn" href="{% url 'editar_nota_compra' nota.id %}">Editar</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="14" class="empty">Nenhuma nota cadastrada.</td></tr>

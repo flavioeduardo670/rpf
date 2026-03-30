@@ -95,6 +95,7 @@
 
     <section class="config-wrap">
         <h2>Aluguel</h2>
+        {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
             {{ configuracao_form.non_field_errors }}
@@ -107,10 +108,14 @@
             </div>
             <button type="submit" class="btn">Salvar aluguel</button>
         </form>
+        {% else %}
+        <p>Visualizacao apenas. Valor atual: <strong>R$ {{ valor_aluguel|floatformat:2 }}</strong></p>
+        {% endif %}
     </section>
 
     <section class="config-wrap">
         <h2>Contas fixas</h2>
+        {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
@@ -130,6 +135,22 @@
             </div>
             <button type="submit" name="fixas_submit" class="btn">Salvar contas</button>
         </form>
+        {% else %}
+        <div class="table-wrap">
+            <table>
+                <tr><th>Nome</th><th>Valor</th><th>Ativo</th></tr>
+                {% for conta in contas_fixas %}
+                <tr>
+                    <td>{{ conta.nome }}</td>
+                    <td>R$ {{ conta.valor|floatformat:2 }}</td>
+                    <td>{% if conta.ativo %}Sim{% else %}Nao{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="empty">Nenhuma conta fixa cadastrada.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
     </section>
 
     <section class="cards">
@@ -146,6 +167,7 @@
     <h2 class="section-title">Aluguel do Mês {{ mes_referencia|date:"m/Y" }}</h2>
     <section class="config-wrap">
         <h2>Desconto do mês</h2>
+        {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
@@ -153,10 +175,14 @@
             {{ desconto_form.valor_total }}
             <button type="submit" name="desconto_submit" class="btn">Salvar desconto</button>
         </form>
+        {% else %}
+        <p>Desconto atual: <strong>R$ {{ desconto_total_mes|floatformat:2 }}</strong></p>
+        {% endif %}
     </section>
 
     <section class="config-wrap">
         <h2>Pendência do mês</h2>
+        {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
@@ -164,16 +190,23 @@
             {{ pendencia_form.valor_total }}
             <button type="submit" name="pendencia_submit" class="btn">Salvar pendência</button>
         </form>
+        {% else %}
+        <p>Pendencia atual: <strong>R$ {{ pendencia_total_mes|floatformat:2 }}</strong></p>
+        {% endif %}
     </section>
 
     <section class="config-wrap">
         <h2>Ajuste individual</h2>
+        {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
             {{ ajuste_form.as_p }}
             <button type="submit" name="ajuste_submit" class="btn">Salvar ajuste</button>
         </form>
+        {% else %}
+        <p>Somente visualizacao para ajustes individuais.</p>
+        {% endif %}
     </section>
 
     <div class="table-wrap">

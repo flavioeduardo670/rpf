@@ -31,10 +31,16 @@ class Morador(models.Model):
     ativo = models.BooleanField(default=True)
 
     # Permissões internas do sistema
-    acesso_financeiro = models.BooleanField(default=False)
-    acesso_compras = models.BooleanField(default=False)
-    acesso_estoque = models.BooleanField(default=False)
-    acesso_manutencao = models.BooleanField(default=False)
+    acesso_financeiro_visualizar = models.BooleanField(default=False)
+    acesso_financeiro_editar = models.BooleanField(default=False)
+    acesso_compras_visualizar = models.BooleanField(default=False)
+    acesso_compras_editar = models.BooleanField(default=False)
+    acesso_estoque_visualizar = models.BooleanField(default=False)
+    acesso_estoque_editar = models.BooleanField(default=False)
+    acesso_manutencao_visualizar = models.BooleanField(default=False)
+    acesso_manutencao_editar = models.BooleanField(default=False)
+    acesso_rock_visualizar = models.BooleanField(default=False)
+    acesso_rock_editar = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['ordem_hierarquia', 'nome']

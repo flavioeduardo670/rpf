@@ -319,3 +319,20 @@ class CadastroForm(UserCreationForm):
             if commit:
                 morador.save(update_fields=['user'])
         return user
+
+
+class AcessoMoradorForm(forms.ModelForm):
+    class Meta:
+        model = Morador
+        fields = [
+            'acesso_financeiro_visualizar',
+            'acesso_financeiro_editar',
+            'acesso_compras_visualizar',
+            'acesso_compras_editar',
+            'acesso_estoque_visualizar',
+            'acesso_estoque_editar',
+            'acesso_manutencao_visualizar',
+            'acesso_manutencao_editar',
+            'acesso_rock_visualizar',
+            'acesso_rock_editar',
+        ]

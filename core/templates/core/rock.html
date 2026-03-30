@@ -33,6 +33,7 @@
 
     <section class="panel">
         <h2>Novo rock (festa)</h2>
+        {% if can_edit_rock %}
         <form method="post">
             {% csrf_token %}
             <h3>Dados da festa</h3>
@@ -40,6 +41,9 @@
 
             <button type="submit">Salvar rock</button>
         </form>
+        {% else %}
+        <p>Somente visualizacao. Para cadastrar rock, solicite acesso de edicao.</p>
+        {% endif %}
     </section>
 
     <section class="panel">

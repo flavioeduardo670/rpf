@@ -98,20 +98,44 @@
                 </p>
             </div>
             <div class="item">
-                <p class="label">Acesso financeiro</p>
-                <p class="value">{% if morador.acesso_financeiro %}Sim{% else %}Nao{% endif %}</p>
+                <p class="label">Acesso financeiro (V/E)</p>
+                <p class="value">
+                    {% if morador.acesso_financeiro_visualizar %}V{% else %}-{% endif %}
+                    /
+                    {% if morador.acesso_financeiro_editar %}E{% else %}-{% endif %}
+                </p>
             </div>
             <div class="item">
-                <p class="label">Acesso compras</p>
-                <p class="value">{% if morador.acesso_compras %}Sim{% else %}Nao{% endif %}</p>
+                <p class="label">Acesso compras (V/E)</p>
+                <p class="value">
+                    {% if morador.acesso_compras_visualizar %}V{% else %}-{% endif %}
+                    /
+                    {% if morador.acesso_compras_editar %}E{% else %}-{% endif %}
+                </p>
             </div>
             <div class="item">
-                <p class="label">Acesso estoque</p>
-                <p class="value">{% if morador.acesso_estoque %}Sim{% else %}Nao{% endif %}</p>
+                <p class="label">Acesso estoque (V/E)</p>
+                <p class="value">
+                    {% if morador.acesso_estoque_visualizar %}V{% else %}-{% endif %}
+                    /
+                    {% if morador.acesso_estoque_editar %}E{% else %}-{% endif %}
+                </p>
             </div>
             <div class="item">
-                <p class="label">Acesso manutencao</p>
-                <p class="value">{% if morador.acesso_manutencao %}Sim{% else %}Nao{% endif %}</p>
+                <p class="label">Acesso manutencao (V/E)</p>
+                <p class="value">
+                    {% if morador.acesso_manutencao_visualizar %}V{% else %}-{% endif %}
+                    /
+                    {% if morador.acesso_manutencao_editar %}E{% else %}-{% endif %}
+                </p>
+            </div>
+            <div class="item">
+                <p class="label">Acesso rock (V/E)</p>
+                <p class="value">
+                    {% if morador.acesso_rock_visualizar %}V{% else %}-{% endif %}
+                    /
+                    {% if morador.acesso_rock_editar %}E{% else %}-{% endif %}
+                </p>
             </div>
         </div>
         {% else %}

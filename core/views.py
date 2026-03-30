@@ -28,6 +28,7 @@ from .forms import (
     AjusteMoradorForm,
     ContaFixaForm,
     CadastroForm,
+    AcessoMoradorForm,
 )
 from .models import (
     ConfiguracaoFinanceira,
@@ -64,9 +65,15 @@ ContaFixaFormSet = modelformset_factory(
     can_delete=True,
 )
 
+AcessoMoradorFormSet = modelformset_factory(
+    Morador,
+    form=AcessoMoradorForm,
+    extra=0,
+)
 
 
-def setor_required(group_name=None, morador_attr=None):
+
+def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, morador_edit_attr=None):
     def decorator(view_func):
         @login_required
         @wraps(view_func)
@@ -80,14 +87,37 @@ def setor_required(group_name=None, morador_attr=None):
                 return view_func(request, *args, **kwargs)
 
             morador = getattr(user, 'morador', None)
-            if morador_attr and morador and getattr(morador, morador_attr, False):
-                return view_func(request, *args, **kwargs)
+            can_view = False
+            can_edit = False
+
+            if morador:
+                if morador_attr:
+                    can_view = getattr(morador, morador_attr, False)
+                    can_edit = can_view
+                if morador_view_attr:
+                    can_view = can_view or getattr(morador, morador_view_attr, False)
+                if morador_edit_attr:
+                    can_edit = can_edit or getattr(morador, morador_edit_attr, False)
+
+            if request.method in ('GET', 'HEAD', 'OPTIONS'):
+                if can_view or can_edit:
+                    return view_func(request, *args, **kwargs)
+            else:
+                if can_edit:
+                    return view_func(request, *args, **kwargs)
 
             raise PermissionDenied('Voce nao tem permissao para acessar este modulo.')
 
         return _wrapped
 
     return decorator
+
+
+def _can_edit(request, attr_name):
+    if request.user.is_superuser:
+        return True
+    morador = getattr(request.user, 'morador', None)
+    return bool(morador and getattr(morador, attr_name, False))
 
 
 @login_required
@@ -109,6 +139,23 @@ def cadastro(request):
         form = CadastroForm()
 
     return render(request, 'core/cadastro.html', {'form': form})
+
+
+@login_required
+def gerenciar_acessos(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied('Voce nao tem permissao para acessar este modulo.')
+
+    moradores_qs = Morador.objects.order_by('ordem_hierarquia', 'nome')
+    if request.method == 'POST':
+        formset = AcessoMoradorFormSet(request.POST, queryset=moradores_qs)
+        if formset.is_valid():
+            formset.save()
+            return redirect('gerenciar_acessos')
+    else:
+        formset = AcessoMoradorFormSet(queryset=moradores_qs)
+
+    return render(request, 'core/gerenciar_acessos.html', {'formset': formset})
 
 
 @login_required
@@ -139,8 +186,13 @@ def moradores(request):
     return render(request, 'core/moradores.html', {'moradores': moradores_qs})
 
 
-@setor_required(group_name='Financeiro', morador_attr='acesso_financeiro')
+@setor_required(
+    group_name='Financeiro',
+    morador_view_attr='acesso_financeiro_visualizar',
+    morador_edit_attr='acesso_financeiro_editar',
+)
 def financeiro(request):
+    can_edit_financeiro = _can_edit(request, 'acesso_financeiro_editar')
     configuracao = ConfiguracaoFinanceira.objects.order_by('-id').first()
     configuracao_form = None
     if request.method == 'POST':
@@ -366,11 +418,16 @@ def financeiro(request):
         'caixinha_por_morador': caixinha_por_morador,
         'total_caixinha_mes': total_caixinha_mes,
         'pendencia_total_mes': pendencia_total_mes,
+        'can_edit_financeiro': can_edit_financeiro,
     }
     return render(request, 'core/financeiro.html', context)
 
 
-@setor_required(group_name='Financeiro', morador_attr='acesso_financeiro')
+@setor_required(
+    group_name='Financeiro',
+    morador_view_attr='acesso_financeiro_visualizar',
+    morador_edit_attr='acesso_financeiro_editar',
+)
 def exportar_financeiro_csv(request):
     total_recebido = (
         Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
@@ -535,7 +592,10 @@ def exportar_financeiro_csv(request):
 
 
 @require_POST
-@setor_required(group_name='Financeiro', morador_attr='acesso_financeiro')
+@setor_required(
+    group_name='Financeiro',
+    morador_edit_attr='acesso_financeiro_editar',
+)
 def pagar_nota(request, nota_id):
     nota = get_object_or_404(NotaFiscal, id=nota_id)
     if nota.status != 'pago':
@@ -546,7 +606,10 @@ def pagar_nota(request, nota_id):
 
 
 @require_POST
-@setor_required(group_name='Financeiro', morador_attr='acesso_financeiro')
+@setor_required(
+    group_name='Financeiro',
+    morador_edit_attr='acesso_financeiro_editar',
+)
 def pagar_parcela(request, parcela_id):
     parcela = get_object_or_404(NotaParcela, id=parcela_id)
     if parcela.status != 'pago':
@@ -555,7 +618,10 @@ def pagar_parcela(request, parcela_id):
     return redirect('financeiro')
 
 
-@setor_required(group_name='Financeiro', morador_attr='acesso_financeiro')
+@setor_required(
+    group_name='Financeiro',
+    morador_edit_attr='acesso_financeiro_editar',
+)
 def editar_parcela(request, parcela_id):
     parcela = get_object_or_404(NotaParcela, id=parcela_id)
     if request.method == 'POST':
@@ -648,8 +714,13 @@ class ParcelaForm(forms.ModelForm):
         }
 
 
-@setor_required(group_name='Compras', morador_attr='acesso_compras')
+@setor_required(
+    group_name='Compras',
+    morador_view_attr='acesso_compras_visualizar',
+    morador_edit_attr='acesso_compras_editar',
+)
 def compras(request):
+    can_edit_compras = _can_edit(request, 'acesso_compras_editar')
     setores_base = ['Infraestrutura', 'Hotelaria', 'Rock']
     locais_base = [
         'Mala de ferramenta',
@@ -707,7 +778,15 @@ def compras(request):
         ),
         mes_cobranca=Subquery(mes_cobranca_sub),
     ).order_by('-data_emissao')
-    return render(request, 'core/compras.html', {'form': form, 'notas': notas})
+    return render(
+        request,
+        'core/compras.html',
+        {
+            'form': form,
+            'notas': notas,
+            'can_edit_compras': can_edit_compras,
+        },
+    )
 
 
 def _primeiro_vencimento(data_emissao):
@@ -747,7 +826,10 @@ def criar_parcelas_nota(nota):
         vencimento = mes_ref.replace(day=5)
 
 
-@setor_required(group_name='Compras', morador_attr='acesso_compras')
+@setor_required(
+    group_name='Compras',
+    morador_view_attr='acesso_compras_visualizar',
+)
 def exportar_compras_csv(request):
     notas = NotaFiscal.objects.filter(setor='compras').annotate(
         total_valor=ExpressionWrapper(
@@ -804,7 +886,10 @@ def exportar_compras_csv(request):
     return response
 
 
-@setor_required(group_name='Compras', morador_attr='acesso_compras')
+@setor_required(
+    group_name='Compras',
+    morador_edit_attr='acesso_compras_editar',
+)
 def editar_nota_compra(request, nota_id):
     nota = get_object_or_404(NotaFiscal, id=nota_id, setor='compras')
     if request.method == 'POST' and 'excluir_submit' in request.POST:
@@ -824,8 +909,13 @@ def editar_nota_compra(request, nota_id):
     return render(request, 'core/editar_nota.html', {'form': form, 'nota': nota})
 
 
-@login_required
+@setor_required(
+    group_name='Rock',
+    morador_view_attr='acesso_rock_visualizar',
+    morador_edit_attr='acesso_rock_editar',
+)
 def rock(request):
+    can_edit_rock = _can_edit(request, 'acesso_rock_editar')
     if request.method == 'POST':
         evento_form = RockEventoForm(request.POST)
         if evento_form.is_valid():
@@ -847,12 +937,18 @@ def rock(request):
             'evento_form': evento_form,
             'eventos': eventos,
             'consumos_rock': consumos_rock,
+            'can_edit_rock': can_edit_rock,
         },
     )
 
 
-@setor_required(group_name='Estoque', morador_attr='acesso_estoque')
+@setor_required(
+    group_name='Estoque',
+    morador_view_attr='acesso_estoque_visualizar',
+    morador_edit_attr='acesso_estoque_editar',
+)
 def almoxarifado(request):
+    can_edit_estoque = _can_edit(request, 'acesso_estoque_editar')
     setores_base = ['Infraestrutura', 'Hotelaria', 'Rock']
     locais_base = [
         'Mala de ferramenta',
@@ -882,11 +978,15 @@ def almoxarifado(request):
     context = {
         'produtos': produtos,
         'produto_form': produto_form,
+        'can_edit_estoque': can_edit_estoque,
     }
     return render(request, 'core/almoxarifado.html', context)
 
 
-@setor_required(group_name='Estoque', morador_attr='acesso_estoque')
+@setor_required(
+    group_name='Estoque',
+    morador_edit_attr='acesso_estoque_editar',
+)
 def editar_produto(request, produto_id):
     produto = get_object_or_404(Produto, id=produto_id)
     if request.method == 'POST' and 'excluir_submit' in request.POST:
@@ -904,7 +1004,10 @@ def editar_produto(request, produto_id):
     return render(request, 'core/editar_produto.html', {'form': form, 'produto': produto})
 
 
-@setor_required(group_name='Estoque', morador_attr='acesso_estoque')
+@setor_required(
+    group_name='Estoque',
+    morador_edit_attr='acesso_estoque_editar',
+)
 def registrar_consumo(request):
     if request.method == 'POST':
         form = ConsumoForm(request.POST)
@@ -929,13 +1032,19 @@ def registrar_consumo(request):
     return render(request, 'core/registrar_consumo.html', {'form': form})
 
 
-@setor_required(group_name='Estoque', morador_attr='acesso_estoque')
+@setor_required(
+    group_name='Estoque',
+    morador_view_attr='acesso_estoque_visualizar',
+)
 def consumo_historico(request):
     consumos = ConsumoEstoque.objects.select_related('morador', 'produto').order_by('-data', '-id')
     return render(request, 'core/consumo_historico.html', {'consumos': consumos})
 
 
-@setor_required(group_name='Estoque', morador_attr='acesso_estoque')
+@setor_required(
+    group_name='Estoque',
+    morador_view_attr='acesso_estoque_visualizar',
+)
 def exportar_consumo_csv(request):
     consumos = ConsumoEstoque.objects.select_related('morador', 'produto').order_by('-data', '-id')
     timestamp = timezone.localtime().strftime('%Y%m%d_%H%M%S')
@@ -960,7 +1069,10 @@ def exportar_consumo_csv(request):
     return response
 
 
-@setor_required(group_name='Estoque', morador_attr='acesso_estoque')
+@setor_required(
+    group_name='Estoque',
+    morador_view_attr='acesso_estoque_visualizar',
+)
 def exportar_estoque_csv(request):
     produtos = Produto.objects.select_related('setor', 'local').order_by('nome')
     timestamp = timezone.localtime().strftime('%Y%m%d_%H%M%S')
@@ -998,8 +1110,13 @@ def exportar_estoque_csv(request):
     return response
 
 
-@setor_required(group_name='Manutencao', morador_attr='acesso_manutencao')
+@setor_required(
+    group_name='Manutencao',
+    morador_view_attr='acesso_manutencao_visualizar',
+    morador_edit_attr='acesso_manutencao_editar',
+)
 def manutencao(request):
+    can_edit_manutencao = _can_edit(request, 'acesso_manutencao_editar')
     if request.method == 'POST':
         os_form = OrdemServicoForm(request.POST)
         if os_form.is_valid():
@@ -1013,17 +1130,24 @@ def manutencao(request):
     context = {
         'os_form': os_form,
         'ordens': OrdemServico.objects.all().order_by('-numero'),
+        'can_edit_manutencao': can_edit_manutencao,
     }
     return render(request, 'core/manutencao.html', context)
 
 
-@setor_required(group_name='Manutencao', morador_attr='acesso_manutencao')
+@setor_required(
+    group_name='Manutencao',
+    morador_view_attr='acesso_manutencao_visualizar',
+)
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('-numero')
     return render(request, 'core/lista_os.html', {'ordens': ordens})
 
 
-@setor_required(group_name='Manutencao', morador_attr='acesso_manutencao')
+@setor_required(
+    group_name='Manutencao',
+    morador_edit_attr='acesso_manutencao_editar',
+)
 def editar_os(request, numero):
     os_obj = get_object_or_404(OrdemServico, numero=numero)
 

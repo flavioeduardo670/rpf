@@ -40,7 +40,9 @@
         <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
     <div class="top">
+        {% if can_edit_estoque %}
         <a class="btn" href="{% url 'registrar_consumo' %}">Registrar consumo</a>
+        {% endif %}
         <a class="btn" href="{% url 'consumo_historico' %}">Historico de consumo</a>
     </div>
 
@@ -48,6 +50,7 @@
         <div class="section-top">
             <h2>Adicionar ao estoque</h2>
         </div>
+        {% if can_edit_estoque %}
         <form method="post">
             {% csrf_token %}
             <div class="table-wrap">
@@ -78,6 +81,9 @@
                 <button type="submit" name="produto_submit" class="btn">Salvar produto</button>
             </div>
         </form>
+        {% else %}
+        <p>Somente visualizacao. Para editar o estoque, solicite acesso de edicao.</p>
+        {% endif %}
     </section>
 
     <section class="card">
@@ -125,7 +131,11 @@
                     <td><strong>{{ produto.quantidade }}</strong></td>
                     <td>{{ produto.estoque_minimo }}</td>
                     <td>
+                        {% if can_edit_estoque %}
                         <a class="btn" href="{% url 'editar_produto' produto.id %}">Editar</a>
+                        {% else %}
+                        -
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}
