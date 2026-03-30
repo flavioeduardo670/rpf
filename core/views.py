@@ -12,6 +12,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
 from .forms import (
@@ -26,6 +27,7 @@ from .forms import (
     PendenciaMensalForm,
     AjusteMoradorForm,
     ContaFixaForm,
+    CadastroForm,
 )
 from .models import (
     ConfiguracaoFinanceira,
@@ -91,6 +93,22 @@ def setor_required(group_name=None, morador_attr=None):
 @login_required
 def home(request):
     return render(request, 'core/home.html')
+
+
+def cadastro(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = CadastroForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('home')
+    else:
+        form = CadastroForm()
+
+    return render(request, 'core/cadastro.html', {'form': form})
 
 
 @login_required

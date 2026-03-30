@@ -16,6 +16,8 @@ class MoradorAdmin(admin.ModelAdmin):
         'nome',
         'apelido',
         'quarto',
+        'codigo_quarto',
+        'peso_quarto',
         'ativo',
         'acesso_financeiro',
         'acesso_compras',
@@ -35,7 +37,16 @@ class MoradorAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Dados Pessoais', {
-            'fields': ('ordem_hierarquia', 'nome', 'apelido', 'email', 'quarto', 'ativo')
+            'fields': (
+                'ordem_hierarquia',
+                'nome',
+                'apelido',
+                'email',
+                'quarto',
+                'codigo_quarto',
+                'peso_quarto',
+                'ativo',
+            )
         }),
         ('Permissões de Acesso', {
             'fields': (

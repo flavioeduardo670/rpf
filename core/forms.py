@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 from django.db.models import Case, IntegerField, When
 from .models import (
@@ -287,3 +289,33 @@ class ContaFixaForm(forms.ModelForm):
     class Meta:
         model = ContaFixa
         fields = ['nome', 'valor', 'ativo']
+
+
+class CadastroForm(UserCreationForm):
+    morador = forms.ModelChoiceField(
+        queryset=Morador.objects.none(),
+        required=True,
+        label='Morador',
+    )
+    email = forms.EmailField(required=False, label='Email')
+
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ['username', 'email', 'morador', 'password1', 'password2']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['morador'].queryset = Morador.objects.filter(
+            ativo=True,
+            user__isnull=True,
+        ).order_by('ordem_hierarquia', 'nome')
+        self.fields['morador'].label_from_instance = lambda m: (m.apelido or m.nome)
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        morador = self.cleaned_data.get('morador')
+        if morador:
+            morador.user = user
+            if commit:
+                morador.save(update_fields=['user'])
+        return user
