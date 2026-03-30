@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Almoxarifado</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:1240px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        h1 { margin:0; }
+        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px; }
+        .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); }
+        .card h2 { margin-top:0; }
+        form p { margin:0 0 12px; }
+        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
+        .table-wrap { overflow:auto; }
+        table { width:100%; min-width:560px; border-collapse:collapse; }
+        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; }
+        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
+        .empty { color:var(--muted); text-align:center; }
+        .section-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+        .section-top h2 { margin:0; }
+        .form-table th { white-space:nowrap; }
+        .form-actions { display:flex; justify-content:flex-end; margin-top:12px; }
+        .th-title { display:block; font-size:.74rem; text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+        .filter-input { width:100%; border:1px solid #d0d0d0; border-radius:8px; padding:6px 8px; font-size:.82rem; background:#fff; }
+        .stock-table th { vertical-align:bottom; }
+        .stock-table .th-title { margin-bottom:8px; }
+        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Almoxarifado</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+    <div class="top">
+        <a class="btn" href="{% url 'registrar_consumo' %}">Registrar consumo</a>
+        <a class="btn" href="{% url 'consumo_historico' %}">Historico de consumo</a>
+    </div>
+
+    <section class="card">
+        <div class="section-top">
+            <h2>Adicionar ao estoque</h2>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="table-wrap">
+                <table class="form-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Setor</th>
+                            <th>Local</th>
+                            <th>Quantidade</th>
+                            <th>Estoque minimo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ produto_form.nome }}</td>
+                            <td>{{ produto_form.descricao }}</td>
+                            <td>{{ produto_form.setor }}</td>
+                            <td>{{ produto_form.local }}</td>
+                            <td>{{ produto_form.quantidade }}</td>
+                            <td>{{ produto_form.estoque_minimo }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions">
+                <button type="submit" name="produto_submit" class="btn">Salvar produto</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <div class="section-top">
+            <h2>Estoque atual</h2>
+            <a class="btn" href="{% url 'exportar_estoque_csv' %}">Gerar planilha</a>
+        </div>
+        <div class="table-wrap">
+            <table class="stock-table">
+                <tr>
+                    <th>
+                        <span class="th-title">Nome</span>
+                        <input class="filter-input" type="text" placeholder="Filtrar nome">
+                    </th>
+                    <th>
+                        <span class="th-title">Tipo</span>
+                        <input class="filter-input" type="text" placeholder="Filtrar tipo">
+                    </th>
+                    <th>
+                        <span class="th-title">Setor</span>
+                        <input class="filter-input" type="text" placeholder="Filtrar setor">
+                    </th>
+                    <th>
+                        <span class="th-title">Local</span>
+                        <input class="filter-input" type="text" placeholder="Filtrar local">
+                    </th>
+                    <th>
+                        <span class="th-title">Quantidade</span>
+                        <input class="filter-input" type="text" placeholder="Filtrar quantidade">
+                    </th>
+                    <th>
+                        <span class="th-title">Estoque minimo</span>
+                        <input class="filter-input" type="text" placeholder="Filtrar minimo">
+                    </th>
+                    <th>
+                        <span class="th-title">Acoes</span>
+                    </th>
+                </tr>
+                {% for produto in produtos %}
+                <tr>
+                    <td>{{ produto.nome }}</td>
+                    <td>{{ produto.descricao }}</td>
+                    <td>{{ produto.setor.nome }}</td>
+                    <td>{{ produto.local.nome|default:"-" }}</td>
+                    <td><strong>{{ produto.quantidade }}</strong></td>
+                    <td>{{ produto.estoque_minimo }}</td>
+                    <td>
+                        <a class="btn" href="{% url 'editar_produto' produto.id %}">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="empty">Nenhum produto cadastrado.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>

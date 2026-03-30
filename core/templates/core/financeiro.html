@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financeiro</title>
+    <style>
+        :root {
+            --bg: #f3f3f3;
+            --panel: #ffffff;
+            --ink: #101010;
+            --muted: #616161;
+            --line: #d6d6d6;
+            --light: #f6f6f6;
+            --dark: #0e0e0e;
+            --radius: 12px;
+            --shadow: 0 10px 20px rgba(0,0,0,.06);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: linear-gradient(165deg, #f7f7f7, #ededed);
+            color: var(--ink);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            padding: 26px;
+        }
+        .wrap { max-width: 1240px; margin: 0 auto; }
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+            background: linear-gradient(130deg, #111111, #2b2b2b);
+            color: #f4f4f4;
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: var(--shadow);
+        }
+        .hero h1 { margin: 0; font-size: 1.85rem; }
+        .hero p { margin: 8px 0 0; color: #cfcfcf; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid #111; background: var(--dark); color: #fafafa; padding: 9px 14px; border-radius: 999px; font-weight: 700; font-size: .86rem; }
+        .btn-invert { background: #fafafa; color: #111; }
+        .hero-actions { display: flex; gap: 8px; }
+        .config-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 16px; }
+        .config-wrap h2 { margin: 0 0 10px; font-size: 1rem; }
+        .config-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+        .config-field label { display: block; margin-bottom: 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 700; }
+        .config-field input { width: 100%; border: 1px solid #cfcfcf; border-radius: 8px; padding: 8px; background: #fff; color: #111; }
+        .errorlist { margin: 0 0 8px; padding-left: 18px; color: #111; font-size: .82rem; }
+        .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+        .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+        .label { margin: 0 0 7px; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; }
+        .value { margin: 0; font-size: 1.4rem; font-weight: 800; }
+        .section-title { margin: 0 0 8px; font-size: 1.1rem; }
+        .table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; box-shadow: var(--shadow); margin-bottom: 18px; }
+        table { width: 100%; min-width: 760px; border-collapse: collapse; }
+        th, td { padding: 11px 12px; border-bottom: 1px solid #e8e8e8; text-align: left; }
+        th { background: var(--light); font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid #cfcfcf; font-size: .75rem; font-weight: 700; }
+        .empty { color: var(--muted); text-align: center; }
+        form { margin: 0; }
+        @media (max-width: 1080px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 760px) {
+            body { padding: 14px; }
+            .hero { flex-direction: column; align-items: flex-start; }
+            .config-grid { grid-template-columns: 1fr; }
+            .cards { grid-template-columns: 1fr; }
+            .hero-actions { width: 100%; flex-direction: column; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="hero">
+        <div>
+            <h1>Financeiro</h1>
+            <p>Resumo, rateio e acompanhamento de notas fiscais.</p>
+        </div>
+        <div class="hero-actions">
+            <a href="{% url 'home' %}" class="btn">Voltar ao inicio</a>
+            <a href="{% url 'exportar_financeiro_csv' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-invert">Exportar planilha</a>
+        </div>
+    </header>
+
+    <section class="config-wrap">
+        <h2>Mes de referencia</h2>
+        <div class="hero-actions">
+            <a href="{% url 'financeiro' %}?mes={{ mes_anterior|date:'Y-m' }}" class="btn btn-invert">Mes anterior</a>
+            <span style="font-weight:700;">{{ mes_referencia|date:"m/Y" }}</span>
+            <a href="{% url 'financeiro' %}?mes={{ mes_proximo|date:'Y-m' }}" class="btn btn-invert">Mes seguinte</a>
+        </div>
+    </section>
+
+    <section class="config-wrap">
+        <h2>Aluguel</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ configuracao_form.non_field_errors }}
+            <div class="config-grid">
+                <div class="config-field">
+                    {{ configuracao_form.valor_aluguel.label_tag }}
+                    {{ configuracao_form.valor_aluguel }}
+                    {{ configuracao_form.valor_aluguel.errors }}
+                </div>
+            </div>
+            <button type="submit" class="btn">Salvar aluguel</button>
+        </form>
+    </section>
+
+    <section class="config-wrap">
+        <h2>Contas fixas</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
+            {{ fixas_formset.management_form }}
+            <div class="table-wrap">
+                <table>
+                    <tr><th>Nome</th><th>Valor</th><th>Ativo</th><th>Excluir</th></tr>
+                    {% for form in fixas_formset %}
+                    <tr>
+                        <td>{{ form.nome }}{{ form.id }}</td>
+                        <td>{{ form.valor }}</td>
+                        <td>{{ form.ativo }}</td>
+                        <td>{{ form.DELETE }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <button type="submit" name="fixas_submit" class="btn">Salvar contas</button>
+        </form>
+    </section>
+
+    <section class="cards">
+        <article class="card"><p class="label">Valor do aluguel</p><p class="value">R$ {{ valor_aluguel|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Contas fixas</p><p class="value">R$ {{ valor_fixas_total|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total recebido</p><p class="value">R$ {{ total_recebido|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total da caixinha</p><p class="value">R$ {{ total_caixinha_mes|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Saldo atual</p><p class="value">R$ {{ saldo|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total para rateio</p><p class="value">R$ {{ total_rateio|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Moradores ativos</p><p class="value">{{ total_moradores_ativos }}</p></article>
+        <article class="card"><p class="label">Valor medio por morador</p><p class="value">R$ {{ valor_por_morador|floatformat:2 }}</p></article>
+    </section>
+
+    <h2 class="section-title">Aluguel do Mês {{ mes_referencia|date:"m/Y" }}</h2>
+    <section class="config-wrap">
+        <h2>Desconto do mês</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
+            {{ desconto_form.valor_total.label_tag }}
+            {{ desconto_form.valor_total }}
+            <button type="submit" name="desconto_submit" class="btn">Salvar desconto</button>
+        </form>
+    </section>
+
+    <section class="config-wrap">
+        <h2>Pendência do mês</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
+            {{ pendencia_form.valor_total.label_tag }}
+            {{ pendencia_form.valor_total }}
+            <button type="submit" name="pendencia_submit" class="btn">Salvar pendência</button>
+        </form>
+    </section>
+
+    <section class="config-wrap">
+        <h2>Ajuste individual</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
+            {{ ajuste_form.as_p }}
+            <button type="submit" name="ajuste_submit" class="btn">Salvar ajuste</button>
+        </form>
+    </section>
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Morador</th>
+                <th>Aluguel</th>
+                {% for conta in contas_fixas %}
+                <th>{{ conta.nome }}</th>
+                {% endfor %}
+                <th>Caixinha</th>
+                <th>Parcelas do mês</th>
+                <th>Desconto</th>
+                <th>Extra</th>
+                <th>Total</th>
+            </tr>
+            {% for item in rateio_moradores %}
+            <tr>
+                <td>{{ item.morador.apelido|default:item.morador.nome }}</td>
+                <td>R$ {{ item.aluguel|floatformat:2 }}</td>
+                {% for valor in item.fixas_detalhe %}
+                <td>R$ {{ valor|floatformat:2 }}</td>
+                {% endfor %}
+                <td>R$ {{ item.caixinha|floatformat:2 }}</td>
+                <td>R$ {{ item.parcelas|floatformat:2 }}</td>
+                <td>R$ {{ item.desconto|floatformat:2 }}</td>
+                <td>R$ {{ item.extra|floatformat:2 }}</td>
+                <td>R$ {{ item.valor|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="{{ rateio_colspan }}" class="empty">Nenhum morador ativo cadastrado.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <h2 class="section-title">Notas fiscais</h2>
+    <div class="table-wrap">
+        <table>
+            <tr><th>Descricao</th><th>Fornecedor</th><th>Valor unitario</th><th>Total</th><th>Vencimento</th></tr>
+            {% for nota in notas %}
+            <tr>
+                <td>{{ nota.descricao }}</td>
+                <td>{{ nota.fornecedor }}</td>
+                <td>R$ {{ nota.valor|floatformat:2 }}</td>
+                <td>R$ {{ nota.total_valor|floatformat:2 }}</td>
+                <td>{{ nota.data_vencimento }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+</body>
+</html>

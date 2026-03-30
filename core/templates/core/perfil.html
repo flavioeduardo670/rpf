@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil pessoal</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing: border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:980px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        h1 { margin:0; }
+        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
+        .panel h2 { margin:0 0 10px; font-size:1.05rem; }
+        .perfil-header { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
+        .avatar { width:84px; height:84px; border-radius:50%; object-fit:cover; border:2px solid #111; background:#e9e9e9; }
+        .avatar-fallback { width:84px; height:84px; border-radius:50%; border:2px solid #111; display:grid; place-items:center; font-weight:700; background:#f2f2f2; }
+        .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+        .item { border:1px solid #e6e6e6; border-radius:10px; background:#fbfbfb; padding:10px; }
+        .label { margin:0 0 4px; font-size:.75rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); }
+        .value { margin:0; font-weight:700; }
+        .status { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #cfcfcf; font-size:.75rem; font-weight:700; background:#f4f4f4; }
+        .muted { color:var(--muted); }
+        form p { margin:0 0 10px; }
+        input[type="file"] { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
+        .errorlist { margin:0 0 8px; padding-left:18px; font-size:.82rem; }
+        @media (max-width:760px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Perfil pessoal</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+
+    <section class="panel">
+        <h2>Conta de acesso</h2>
+        <div class="perfil-header">
+            {% if morador and morador.foto_perfil %}
+            <img src="{{ morador.foto_perfil.url }}" alt="Foto de perfil" class="avatar">
+            {% else %}
+            <div class="avatar-fallback">Sem foto</div>
+            {% endif %}
+        </div>
+        <div class="grid">
+            <div class="item">
+                <p class="label">Usuario</p>
+                <p class="value">{{ usuario.username }}</p>
+            </div>
+            <div class="item">
+                <p class="label">E-mail</p>
+                <p class="value">{{ usuario.email|default:"-" }}</p>
+            </div>
+            <div class="item">
+                <p class="label">Nome</p>
+                <p class="value">{{ usuario.first_name|default:"-" }}</p>
+            </div>
+            <div class="item">
+                <p class="label">Sobrenome</p>
+                <p class="value">{{ usuario.last_name|default:"-" }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Vinculo com morador</h2>
+        {% if morador %}
+        <form method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
+            {% csrf_token %}
+            {{ foto_form.non_field_errors }}
+            {{ foto_form.as_p }}
+            <button type="submit" class="btn">Salvar foto</button>
+        </form>
+        <div class="grid">
+            <div class="item">
+                <p class="label">Nome</p>
+                <p class="value">{{ morador.nome }}</p>
+            </div>
+            <div class="item">
+                <p class="label">Apelido</p>
+                <p class="value">{{ morador.apelido|default:"-" }}</p>
+            </div>
+            <div class="item">
+                <p class="label">Quarto</p>
+                <p class="value">{{ morador.quarto|default:"-" }}</p>
+            </div>
+            <div class="item">
+                <p class="label">Status</p>
+                <p class="value">
+                    {% if morador.ativo %}
+                    <span class="status">Ativo</span>
+                    {% else %}
+                    <span class="status">Inativo</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="item">
+                <p class="label">Acesso financeiro</p>
+                <p class="value">{% if morador.acesso_financeiro %}Sim{% else %}Nao{% endif %}</p>
+            </div>
+            <div class="item">
+                <p class="label">Acesso compras</p>
+                <p class="value">{% if morador.acesso_compras %}Sim{% else %}Nao{% endif %}</p>
+            </div>
+            <div class="item">
+                <p class="label">Acesso estoque</p>
+                <p class="value">{% if morador.acesso_estoque %}Sim{% else %}Nao{% endif %}</p>
+            </div>
+            <div class="item">
+                <p class="label">Acesso manutencao</p>
+                <p class="value">{% if morador.acesso_manutencao %}Sim{% else %}Nao{% endif %}</p>
+            </div>
+        </div>
+        {% else %}
+        <p class="muted">Seu usuario ainda nao esta vinculado a um morador.</p>
+        {% endif %}
+    </section>
+</div>
+</body>
+</html>

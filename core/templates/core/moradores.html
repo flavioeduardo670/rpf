@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moradores</title>
+    <style>
+        :root {
+            --bg: #f3f3f3;
+            --panel: #fff;
+            --ink: #121212;
+            --muted: #666;
+            --line: #d8d8d8;
+            --dark: #0f0f0f;
+            --light: #f7f7f7;
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: linear-gradient(165deg, #f7f7f7, #ededed); font-family: "Trebuchet MS", "Segoe UI", sans-serif; color: var(--ink); padding: 26px; }
+        .wrap { max-width: 1120px; margin: 0 auto; }
+        .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+        h1 { margin: 0; font-size: 1.9rem; }
+        .btn { text-decoration: none; border: 1px solid #111; background: var(--dark); color: #fafafa; padding: 9px 14px; border-radius: 999px; font-weight: 700; font-size: .86rem; }
+        .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; box-shadow: 0 10px 20px rgba(0,0,0,.05); }
+        table { width: 100%; min-width: 760px; border-collapse: collapse; }
+        th, td { padding: 11px 12px; border-bottom: 1px solid #e7e7e7; text-align: left; }
+        th { background: var(--light); font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; }
+        .status { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid #cfcfcf; font-size: .75rem; font-weight: 700; }
+        .active { background: #f4f4f4; }
+        .inactive { background: #ececec; color: #4b4b4b; }
+        .empty { color: var(--muted); text-align: center; }
+        @media (max-width: 760px) { body { padding: 14px; } .top { flex-direction: column; align-items: flex-start; } .btn { width: 100%; text-align: center; } }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Moradores</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+
+    <div class="panel">
+        <table>
+            <tr>
+                <th>Ordem</th>
+                <th>Nome</th>
+                <th>Apelido</th>
+                <th>Email</th>
+                <th>Codigo</th>
+                <th>Quarto</th>
+                <th>Peso</th>
+                <th>Status</th>
+            </tr>
+            {% for morador in moradores %}
+            <tr>
+                <td>{{ morador.ordem_hierarquia }}</td>
+                <td>{{ morador.nome }}</td>
+                <td>{{ morador.apelido|default:"-" }}</td>
+                <td>{{ morador.email|default:"-" }}</td>
+                <td>{{ morador.codigo_quarto|default:"-" }}</td>
+                <td>{{ morador.quarto|default:"-" }}</td>
+                <td>{{ morador.peso_quarto|default:"0" }}%</td>
+                <td>
+                    {% if morador.ativo %}
+                        <span class="status active">Ativo</span>
+                    {% else %}
+                        <span class="status inactive">Inativo</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="empty">Nenhum morador cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+</body>
+</html>

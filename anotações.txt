@@ -1,0 +1,17 @@
+python manage.py makemigrations
+python manage.py migrate
+
+python manage.py runserver 0.0.0.0:8000
+
+python manage.py shell
+
+Endereço IPv4. . . . . . . .  . . . . . . . : 192.168.56.1
+
+Flavyo321..123
+
+Flavio Eduardo Ribeiro Correa de Almeida
+
+from django.contrib.auth.models import User
+user = User.objects.get(username='Panda')
+user.set_password('Bilada123..')
+user.save()

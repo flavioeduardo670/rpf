@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema RPF</title>
+    <style>
+        :root {
+            --bg: #f3f3f3;
+            --panel: #ffffff;
+            --ink: #101010;
+            --muted: #616161;
+            --line: #d7d7d7;
+            --line-strong: #b8b8b8;
+            --invert: #0d0d0d;
+            --invert-ink: #f7f7f7;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 0 0, #ffffff 0%, transparent 28%),
+                radial-gradient(circle at 100% 0, #ebebeb 0%, transparent 22%),
+                linear-gradient(165deg, #f6f6f6, #eeeeee);
+            color: var(--ink);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        }
+
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.1fr .9fr;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .hero-main {
+            padding: 28px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(125deg, #0b0b0b, #2b2b2b);
+            color: var(--invert-ink);
+            box-shadow: var(--shadow);
+        }
+
+        .hero-main h1 {
+            margin: 0;
+            font-size: clamp(1.7rem, 2.7vw, 2.3rem);
+            letter-spacing: .3px;
+        }
+
+        .hero-main p {
+            margin: 10px 0 0;
+            color: #cecece;
+            line-height: 1.5;
+            max-width: 56ch;
+        }
+
+        .hero-side {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,.06);
+        }
+
+        .hero-side h3 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+        }
+
+        .hero-side p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.45;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            box-shadow: 0 10px 18px rgba(0,0,0,.06);
+        }
+
+        .chip {
+            display: inline-block;
+            margin-bottom: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--line-strong);
+            font-size: .74rem;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #2f2f2f;
+            background: #f7f7f7;
+        }
+
+        .card h2 {
+            margin: 0 0 8px;
+            font-size: 1.2rem;
+        }
+
+        .card p {
+            margin: 0 0 16px;
+            color: var(--muted);
+            line-height: 1.45;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            border: 1px solid #111;
+            border-radius: 999px;
+            background: var(--invert);
+            color: var(--invert-ink);
+            font-weight: 700;
+            font-size: .86rem;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: transform .15s ease, background .2s ease;
+        }
+
+        .btn:hover { transform: translateY(-1px); background: #1b1b1b; }
+
+        @media (max-width: 920px) {
+            .wrap { padding: 16px; }
+            .hero { grid-template-columns: 1fr; }
+            .grid { grid-template-columns: 1fr; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <main class="wrap">
+        <section class="hero">
+            <div class="hero-main">
+                <h1>Sistema de Gestao RPF</h1>
+                <p>Painel central dos setores da republica com identidade visual em preto e branco.</p>
+            </div>
+            <aside class="hero-side">
+                <h3>Menu rapido</h3>
+                <p>Escolha um modulo para acessar operacoes de cadastro, financeiro, manutencao, compras e estoque.</p>
+            </aside>
+        </section>
+
+        <section class="grid">
+            <article class="card">
+                <span class="chip">Minha conta</span>
+                <h2>Perfil pessoal</h2>
+                <p>Consulte seus dados de usuario e vinculo com morador.</p>
+                <a href="{% url 'perfil' %}" class="btn">Acessar perfil</a>
+            </article>
+
+            <article class="card">
+                <span class="chip">Cadastro</span>
+                <h2>Moradores</h2>
+                <p>Gerencie moradores, quartos e status de atividade.</p>
+                <a href="{% url 'moradores' %}" class="btn">Acessar modulo</a>
+            </article>
+
+            <article class="card">
+                <span class="chip">Financeiro</span>
+                <h2>Financeiro</h2>
+                <p>Acompanhe recebimentos, despesas, rateio e exportacao de planilha.</p>
+                <a href="{% url 'financeiro' %}" class="btn">Acessar modulo</a>
+            </article>
+
+            <article class="card">
+                <span class="chip">Operacoes</span>
+                <h2>Manutencao</h2>
+                <p>Registre ordens de servico e acompanhe materiais aplicados.</p>
+                <a href="{% url 'manutencao' %}" class="btn">Acessar modulo</a>
+            </article>
+
+            <article class="card">
+                <span class="chip">Eventos</span>
+                <h2>Rocks</h2>
+                <p>Registre festas, arrecadacao e gastos do setor de rock.</p>
+                <a href="{% url 'rock' %}" class="btn">Acessar modulo</a>
+            </article>
+
+            <article class="card">
+                <span class="chip">Suprimentos</span>
+                <h2>Compras</h2>
+                <p>Cadastre notas fiscais do setor de compras.</p>
+                <a href="{% url 'compras' %}" class="btn">Acessar modulo</a>
+            </article>
+
+            <article class="card">
+                <span class="chip">Estoque</span>
+                <h2>Almoxarifado</h2>
+                <p>Controle produtos e movimentacoes de entrada e saida.</p>
+                <a href="{% url 'almoxarifado' %}" class="btn">Acessar modulo</a>
+            </article>
+        </section>
+    </main>
+</body>
+</html>

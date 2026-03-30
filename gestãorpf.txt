@@ -1,0 +1,28 @@
+Setores:
+
+Case - financeiro, patrimonio, infraestrutura 
+Panda - compras, patrimonio, infraestrutura, festas, jurídico 
+Milsen - compras, patrimonio, festas 
+Mibs - almoxarifado, marketing, festas, jurídico 
+MK - marketing 
+Moedas - almoxarifado, festas 
+
+
+compras - fazer orçamentos (Milsen, Panda,
+
+patrimonio - cuidar das propriedades da associação, inckuindo a aquisição de novas (Panda, Case, Milsen
+
+financeiro -  realizar o pagamento das contas da casa e da associação, cuidar da saúde financeira da associação e prestar contas aos moradores (Case, 
+
+almoxarifado - cuidar do fluxo de ensumos da casa (Moedas, Mibs
+
+infraestrutura - cuidar da manutenção da casa (Panda, Case
+
+marketing - cuidar da identidade visual e do marketing digital da casa (MK, Mibs
+
+festas - propor rocks, negociar locação e executar rocks, organizar sociais, ir em reuniões de parcerias (Panda, Milsen, Moedas, Mibs
+
+jurídico - resolver problemas de natureza jurídica (isso inclui assinar BO) (Panda, Mibs
+
+
+

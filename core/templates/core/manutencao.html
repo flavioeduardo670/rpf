@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manutencao - Ordem de Servico</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:1280px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        h1 { margin:0; }
+        .btn, button { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
+        .panel h2, .panel h3 { margin-top:0; }
+        form p { margin:0 0 12px; }
+        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
+        .table-wrap { overflow:auto; }
+        table { width:100%; min-width:860px; border-collapse:collapse; }
+        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:top; }
+        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
+        .empty { color:var(--muted); text-align:center; }
+        .actions a { text-decoration:none; }
+        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Manutencao - Ordem de servico</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+
+    <section class="panel">
+        <h2>Nova ordem de servico</h2>
+        <form method="post">
+            {% csrf_token %}
+
+            <h3>Dados da OS</h3>
+            {{ os_form.as_p }}
+
+            <button type="submit">Criar OS</button>
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>Ordens registradas</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Numero</th>
+                    <th>Descricao</th>
+                    <th>Executado por</th>
+                    <th>Consumos</th>
+                    <th>Valor total</th>
+                    <th>Status</th>
+                    <th>Inicio</th>
+                    <th>Fim</th>
+                    <th>Acoes</th>
+                </tr>
+                {% for os in ordens %}
+                <tr>
+                    <td>{{ os.numero }}</td>
+                    <td>{{ os.descricao }}</td>
+                    <td>{{ os.executado_por }}</td>
+                    <td>
+                        -
+                    </td>
+                    <td>R$ {{ os.valor_total|default:"0.00" }}</td>
+                    <td>{{ os.get_status_display }}</td>
+                    <td>{{ os.data_inicio }}</td>
+                    <td>{{ os.data_fim }}</td>
+                    <td class="actions"><a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="empty">Nenhuma OS registrada.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>

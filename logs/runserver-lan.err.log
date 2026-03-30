@@ -1,0 +1,11 @@
+[16/Mar/2026 21:41:52] "GET / HTTP/1.1" 302 0
+[16/Mar/2026 21:41:52] "GET /login/?next=/ HTTP/1.1" 200 2035
+[16/Mar/2026 21:41:54] "GET / HTTP/1.1" 302 0
+[16/Mar/2026 21:41:54] "GET /login/?next=/ HTTP/1.1" 200 2035
+[16/Mar/2026 21:41:54,767] - Broken pipe from ('10.0.0.108', 22768)
+[16/Mar/2026 21:41:54,767] - Broken pipe from ('127.0.0.1', 22766)
+[16/Mar/2026 21:47:37] "GET / HTTP/1.1" 200 6618
+Not Found: /favicon.ico
+[16/Mar/2026 21:47:37] "GET /favicon.ico HTTP/1.1" 404 5575
+[16/Mar/2026 21:47:50,920] - Broken pipe from ('10.0.0.106', 48620)
+[16/Mar/2026 21:47:50,920] - Broken pipe from ('10.0.0.106', 48616)
