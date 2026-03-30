@@ -15,3 +15,5 @@ from django.contrib.auth.models import User
 user = User.objects.get(username='Panda')
 user.set_password('Bilada123..')
 user.save()
+
+postgresql://rpf_db_user:klpddw2eMwL5qB51OLXCvu4sN2tYQT6g@dpg-d74tr3oule4c73f9kn5g-a/rpf_db
