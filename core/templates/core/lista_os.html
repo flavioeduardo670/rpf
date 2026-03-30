@@ -33,18 +33,20 @@
 
     <div class="panel">
         <table>
-            <tr><th>Numero</th><th>Descricao</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
+            <tr><th>Numero</th><th>Setor</th><th>Descricao</th><th>Observacao</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
             {% for os in ordens %}
             <tr>
                 <td>{{ os.numero }}</td>
+                <td>{{ os.get_setor_display }}</td>
                 <td>{{ os.descricao }}</td>
+                <td>{{ os.observacao|default:"-" }}</td>
                 <td>{{ os.get_status_display }}</td>
                 <td>{{ os.data_inicio }}</td>
                 <td>{{ os.data_fim|default:"-" }}</td>
                 <td><a class="btn" href="{% url 'editar_os' os.numero %}">Editar</a></td>
             </tr>
             {% empty %}
-            <tr><td colspan="6" class="empty">Nenhuma OS registrada.</td></tr>
+            <tr><td colspan="8" class="empty">Nenhuma OS registrada.</td></tr>
             {% endfor %}
         </table>
     </div>

@@ -1141,7 +1141,7 @@ def manutencao(request):
 
     context = {
         'os_form': os_form,
-        'ordens': OrdemServico.objects.all().order_by('-numero'),
+        'ordens': OrdemServico.objects.all().order_by('setor', '-numero'),
         'can_edit_manutencao': can_edit_manutencao,
     }
     return render(request, 'core/manutencao.html', context)
@@ -1152,7 +1152,7 @@ def manutencao(request):
     morador_view_attr='acesso_manutencao_visualizar',
 )
 def lista_os(request):
-    ordens = OrdemServico.objects.all().order_by('-numero')
+    ordens = OrdemServico.objects.all().order_by('setor', '-numero')
     return render(request, 'core/lista_os.html', {'ordens': ordens})
 
 

@@ -143,6 +143,7 @@ class OrdemServicoForm(forms.ModelForm):
     class Meta:
         model = OrdemServico
         fields = [
+            'setor',
             'descricao',
             'observacao',
             'data_inicio',

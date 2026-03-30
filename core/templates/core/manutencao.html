@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manutencao - Ordem de Servico</title>
+    <title>Registro de OS</title>
     <style>
         :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
         * { box-sizing:border-box; }
@@ -28,7 +28,7 @@
 <body>
 <div class="wrap">
     <div class="top">
-        <h1>Manutencao - Ordem de servico</h1>
+        <h1>Registro de OS</h1>
         <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
 
@@ -54,10 +54,10 @@
             <table>
                 <tr>
                     <th>Numero</th>
+                    <th>Setor</th>
                     <th>Descricao</th>
+                    <th>Observacao</th>
                     <th>Executado por</th>
-                    <th>Consumos</th>
-                    <th>Valor total</th>
                     <th>Status</th>
                     <th>Inicio</th>
                     <th>Fim</th>
@@ -66,12 +66,10 @@
                 {% for os in ordens %}
                 <tr>
                     <td>{{ os.numero }}</td>
+                    <td>{{ os.get_setor_display }}</td>
                     <td>{{ os.descricao }}</td>
+                    <td>{{ os.observacao|default:"-" }}</td>
                     <td>{{ os.executado_por }}</td>
-                    <td>
-                        -
-                    </td>
-                    <td>R$ {{ os.valor_total|default:"0.00" }}</td>
                     <td>{{ os.get_status_display }}</td>
                     <td>{{ os.data_inicio }}</td>
                     <td>{{ os.data_fim }}</td>

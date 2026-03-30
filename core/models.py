@@ -341,6 +341,14 @@ class OrdemServico(models.Model):
     Representa uma Ordem de Serviço (OS).
     """
 
+    SETOR_CHOICES = [
+        ('manutencao', 'Manutencao'),
+        ('infraestrutura', 'Infraestrutura'),
+        ('hotelaria', 'Hotelaria'),
+        ('rock', 'Rock'),
+        ('outros', 'Outros'),
+    ]
+
     STATUS_CHOICES = [
         ('aberta', 'Aberta'),
         ('andamento', 'Em Andamento'),
@@ -348,6 +356,7 @@ class OrdemServico(models.Model):
     ]
 
     numero = models.AutoField(primary_key=True)
+    setor = models.CharField(max_length=20, choices=SETOR_CHOICES, default='manutencao')
     descricao = models.TextField()
     observacao = models.TextField(blank=True, null=True)
 
