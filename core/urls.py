@@ -24,7 +24,7 @@ urlpatterns = [
     path('almoxarifado/consumo/', views.registrar_consumo, name='registrar_consumo'),
     path('almoxarifado/consumo/historico/', views.consumo_historico, name='consumo_historico'),
     path('almoxarifado/consumo/exportar/', views.exportar_consumo_csv, name='exportar_consumo_csv'),
-    path('manutencao/', views.manutencao, name='manutencao'),
-    path('manutencao/lista/', views.lista_os, name='lista_os'),
-    path('manutencao/editar/<int:numero>/', views.editar_os, name='editar_os'),
+    path('os/', views.manutencao, name='manutencao'),
+    path('os/lista/', views.lista_os, name='lista_os'),
+    path('os/editar/<int:numero>/', views.editar_os, name='editar_os'),
 ]
