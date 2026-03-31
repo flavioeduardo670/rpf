@@ -26,6 +26,8 @@ class Morador(models.Model):
     quarto = models.CharField(max_length=100, null=True, blank=True)
     codigo_quarto = models.CharField(max_length=10, null=True, blank=True)
     peso_quarto = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    curso = models.CharField(max_length=120, blank=True, null=True)
+    funcoes = models.TextField(blank=True, null=True)
     foto_perfil = models.FileField(upload_to='perfil_fotos/', null=True, blank=True)
     ordem_hierarquia = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField(default=True)
@@ -437,7 +439,6 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
 
 
 

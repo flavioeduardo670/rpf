@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
-from .forms import (
+from ..forms import (
     ConfiguracaoFinanceiraForm,
     ConsumoForm,
     MaterialUtilizadoForm,
@@ -29,8 +29,10 @@ from .forms import (
     ContaFixaForm,
     CadastroForm,
     AcessoMoradorForm,
+    MoradorEdicaoForm,
 )
-from .models import (
+from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
+from ..models import (
     ConfiguracaoFinanceira,
     ConsumoEstoque,
     MaterialUtilizado,
@@ -68,6 +70,12 @@ ContaFixaFormSet = modelformset_factory(
 AcessoMoradorFormSet = modelformset_factory(
     Morador,
     form=AcessoMoradorForm,
+    extra=0,
+)
+
+MoradorEdicaoFormSet = modelformset_factory(
+    Morador,
+    form=MoradorEdicaoForm,
     extra=0,
 )
 
@@ -183,7 +191,14 @@ def perfil(request):
 @login_required
 def moradores(request):
     moradores_qs = Morador.objects.select_related('user').all().order_by('ordem_hierarquia', 'nome')
-    return render(request, 'core/moradores.html', {'moradores': moradores_qs})
+    if request.method == 'POST':
+        formset = MoradorEdicaoFormSet(request.POST, queryset=moradores_qs)
+        if formset.is_valid():
+            formset.save()
+            return redirect('moradores')
+    else:
+        formset = MoradorEdicaoFormSet(queryset=moradores_qs)
+    return render(request, 'core/moradores.html', {'formset': formset})
 
 
 @setor_required(
@@ -255,15 +270,7 @@ def financeiro(request):
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
 
-    mes_param = request.GET.get('mes')
-    if mes_param:
-        try:
-            ano, mes = [int(x) for x in mes_param.split('-')]
-            mes_referencia = date(ano, mes, 1)
-        except ValueError:
-            mes_referencia = timezone.localdate().replace(day=1)
-    else:
-        mes_referencia = timezone.localdate().replace(day=1)
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
 
     desconto_obj = DescontoMensal.objects.filter(mes_referencia=mes_referencia).first()
     pendencia_obj = PendenciaMensal.objects.filter(mes_referencia=mes_referencia).first()
@@ -272,116 +279,20 @@ def financeiro(request):
     ajuste_form = AjusteMoradorForm()
     fixas_formset = ContaFixaFormSet(queryset=ContaFixa.objects.all())
 
-    parcelas_mes = NotaParcela.objects.filter(
-        mes_referencia=mes_referencia,
-        nota__setor='compras',
-    ).select_related('nota')
-    parcelas_consumo = parcelas_mes.filter(nota__tipo_item='Bem de Consumo').exclude(nota__categoria_compra='rock')
-    parcelas_material = parcelas_mes.filter(nota__tipo_item='Bem Material').exclude(nota__categoria_compra='rock')
-    parcelas_rateio = parcelas_mes.filter(
-        nota__tipo_item__in=['Bem de Consumo', 'Bem Material']
-    ).exclude(nota__categoria_compra='rock')
-    total_caixinha_mes = parcelas_consumo.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    total_parcelas_material = parcelas_material.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    total_parcelas_mes_rateio = (total_caixinha_mes + total_parcelas_material).quantize(Decimal('0.01'))
-    total_despesas = (
-        parcelas_rateio.filter(status='pago').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    )
-
-    total_pendente = (
-        parcelas_rateio.filter(status='pendente').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    )
-
-    valor_aluguel = configuracao.valor_aluguel if configuracao else Decimal('0.00')
-    contas_fixas = list(ContaFixa.objects.filter(ativo=True).order_by('nome'))
-    valor_fixas_total = sum((conta.valor for conta in contas_fixas), Decimal('0.00'))
-    desconto_total_mes = desconto_obj.valor_total if desconto_obj else Decimal('0.00')
-    pendencia_total_mes = pendencia_obj.valor_total if pendencia_obj else Decimal('0.00')
-    total_rateio = valor_aluguel + valor_fixas_total + total_parcelas_mes_rateio - desconto_total_mes + pendencia_total_mes
-
-    moradores_ativos = Morador.objects.filter(ativo=True).order_by('ordem_hierarquia', 'nome')
-    total_moradores_ativos = moradores_ativos.count()
-    valor_por_morador = Decimal('0.00')
-    if total_moradores_ativos > 0:
-        valor_por_morador = (total_rateio / total_moradores_ativos).quantize(Decimal('0.01'))
-
-    valor_variavel = valor_fixas_total
-    valor_variavel_por_morador = Decimal('0.00')
-    if total_moradores_ativos > 0:
-        valor_variavel_por_morador = (valor_variavel / total_moradores_ativos).quantize(Decimal('0.01'))
-
-    parcelas_por_morador = Decimal('0.00')
-    caixinha_por_morador = Decimal('0.00')
-    if total_moradores_ativos > 0:
-        parcelas_por_morador = (total_parcelas_material / total_moradores_ativos).quantize(Decimal('0.01'))
-        caixinha_por_morador = (total_caixinha_mes / total_moradores_ativos).quantize(Decimal('0.01'))
-    desconto_por_morador = Decimal('0.00')
-    pendencia_por_morador = Decimal('0.00')
-    if total_moradores_ativos > 0:
-        desconto_por_morador = (desconto_total_mes / total_moradores_ativos).quantize(Decimal('0.01'))
-        pendencia_por_morador = (pendencia_total_mes / total_moradores_ativos).quantize(Decimal('0.01'))
-
-    ajustes_mes = AjusteMorador.objects.filter(mes_referencia=mes_referencia)
-
-    total_peso_ativos = sum((m.peso_quarto or Decimal('0.00')) for m in moradores_ativos) or Decimal('0.00')
-
-    rateio_moradores = []
-    for morador in moradores_ativos:
-        if total_peso_ativos > 0:
-            aluguel_share = (
-                valor_aluguel * (morador.peso_quarto / total_peso_ativos)
-            ).quantize(Decimal('0.01'))
-        elif total_moradores_ativos > 0:
-            aluguel_share = (valor_aluguel / total_moradores_ativos).quantize(Decimal('0.01'))
-        else:
-            aluguel_share = Decimal('0.00')
-        ajustes_morador = ajustes_mes.filter(morador=morador)
-        extra_total = (
-            ajustes_morador.filter(tipo='extra').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        )
-        desconto_individual = (
-            ajustes_morador.filter(tipo='desconto').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        )
-        desconto_total = (desconto_por_morador + desconto_individual).quantize(Decimal('0.01'))
-        extras_total = (extra_total + pendencia_por_morador).quantize(Decimal('0.01'))
-        total_devido = (
-            aluguel_share
-            + valor_variavel_por_morador
-            + caixinha_por_morador
-            + parcelas_por_morador
-            + pendencia_por_morador
-            - desconto_por_morador
-            - desconto_individual
-            + extra_total
-        ).quantize(Decimal('0.01'))
-        fixed_shares = []
-        for conta in contas_fixas:
-            if total_moradores_ativos > 0:
-                fixed_shares.append((conta.valor / total_moradores_ativos).quantize(Decimal('0.01')))
-            else:
-                fixed_shares.append(Decimal('0.00'))
-        rateio_moradores.append(
-            {
-                'morador': morador,
-                'aluguel': aluguel_share,
-                'fixas': valor_variavel_por_morador,
-                'fixas_detalhe': fixed_shares,
-                'caixinha': caixinha_por_morador,
-                'parcelas': parcelas_por_morador,
-                'desconto': desconto_total,
-                'extra': extras_total,
-                'valor': (
-                    aluguel_share
-                    + valor_variavel_por_morador
-                    + caixinha_por_morador
-                    + parcelas_por_morador
-                    + pendencia_por_morador
-                    - desconto_por_morador
-                    - desconto_individual
-                    + extra_total
-                ).quantize(Decimal('0.01')),
-            }
-        )
+    resumo_rateio = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    total_despesas = resumo_rateio['total_despesas']
+    total_pendente = resumo_rateio['total_pendente']
+    valor_aluguel = resumo_rateio['valor_aluguel']
+    valor_fixas_total = resumo_rateio['valor_fixas_total']
+    total_rateio = resumo_rateio['total_rateio']
+    total_moradores_ativos = resumo_rateio['total_moradores_ativos']
+    valor_por_morador = resumo_rateio['valor_por_morador']
+    rateio_moradores = resumo_rateio['rateio_moradores']
+    contas_fixas = resumo_rateio['contas_fixas']
+    parcelas_rateio = resumo_rateio['parcelas_rateio']
+    total_caixinha_mes = resumo_rateio['total_caixinha_mes']
+    desconto_total_mes = resumo_rateio['desconto_total_mes']
+    pendencia_total_mes = resumo_rateio['pendencia_total_mes']
 
     saldo = total_recebido - total_despesas
     notas = (
@@ -447,54 +358,20 @@ def exportar_financeiro_csv(request):
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
 
-    mes_param = request.GET.get('mes')
-    if mes_param:
-        try:
-            ano, mes = [int(x) for x in mes_param.split('-')]
-            mes_referencia = date(ano, mes, 1)
-        except ValueError:
-            mes_referencia = timezone.localdate().replace(day=1)
-    else:
-        mes_referencia = timezone.localdate().replace(day=1)
-
-    parcelas_mes = NotaParcela.objects.filter(
-        mes_referencia=mes_referencia,
-        nota__setor='compras',
-    ).select_related('nota')
-    parcelas_consumo = parcelas_mes.filter(nota__tipo_item='Bem de Consumo').exclude(nota__categoria_compra='rock')
-    parcelas_material = parcelas_mes.filter(nota__tipo_item='Bem Material').exclude(nota__categoria_compra='rock')
-    parcelas_rateio = parcelas_mes.filter(
-        nota__tipo_item__in=['Bem de Consumo', 'Bem Material']
-    ).exclude(nota__categoria_compra='rock')
-    total_caixinha_mes = parcelas_consumo.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    total_parcelas_material = parcelas_material.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    total_parcelas_mes_rateio = (total_caixinha_mes + total_parcelas_material).quantize(Decimal('0.01'))
-    total_despesas = (
-        parcelas_rateio.filter(status='pago').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    )
-    total_pendente = (
-        parcelas_rateio.filter(status='pendente').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    )
-
-    configuracao = ConfiguracaoFinanceira.objects.order_by('-id').first()
-    valor_aluguel = configuracao.valor_aluguel if configuracao else Decimal('0.00')
-    valor_fixas_total = (
-        ContaFixa.objects.filter(ativo=True).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    )
-    desconto_obj = DescontoMensal.objects.filter(mes_referencia=mes_referencia).first()
-    desconto_total_mes = desconto_obj.valor_total if desconto_obj else Decimal('0.00')
-    total_rateio = valor_aluguel + valor_fixas_total + total_parcelas_mes_rateio - desconto_total_mes
-
-    moradores_ativos = Morador.objects.filter(ativo=True).order_by('ordem_hierarquia', 'nome')
-    total_moradores_ativos = moradores_ativos.count()
-    valor_por_morador = Decimal('0.00')
-    if total_moradores_ativos > 0:
-        valor_por_morador = (total_rateio / total_moradores_ativos).quantize(Decimal('0.01'))
-
-    valor_variavel = valor_fixas_total
-    valor_variavel_por_morador = Decimal('0.00')
-    if total_moradores_ativos > 0:
-        valor_variavel_por_morador = (valor_variavel / total_moradores_ativos).quantize(Decimal('0.01'))
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo_rateio = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=False)
+    total_despesas = resumo_rateio['total_despesas']
+    total_pendente = resumo_rateio['total_pendente']
+    valor_aluguel = resumo_rateio['valor_aluguel']
+    valor_fixas_total = resumo_rateio['valor_fixas_total']
+    desconto_total_mes = resumo_rateio['desconto_total_mes']
+    total_rateio = resumo_rateio['total_rateio']
+    moradores_ativos = resumo_rateio['moradores_ativos']
+    total_moradores_ativos = resumo_rateio['total_moradores_ativos']
+    valor_por_morador = resumo_rateio['valor_por_morador']
+    valor_variavel_por_morador = resumo_rateio['valor_variavel_por_morador']
+    total_caixinha_mes = resumo_rateio['total_caixinha_mes']
+    total_parcelas_material = resumo_rateio['total_parcelas_material']
 
     notas = (
         NotaFiscal.objects.filter(
