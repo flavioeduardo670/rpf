@@ -39,7 +39,9 @@
         <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
 
-    <div class="panel">
+    <form method="post" class="panel">
+        {% csrf_token %}
+        {{ formset.management_form }}
         <table>
             <tr>
                 <th>Ordem</th>
@@ -48,33 +50,33 @@
                 <th>Email</th>
                 <th>Codigo</th>
                 <th>Quarto</th>
-                <th>Peso</th>
+                <th>Curso</th>
+                <th>Funções</th>
                 <th>Status</th>
             </tr>
-            {% for morador in moradores %}
+            {% for form in formset %}
             <tr>
-                <td>{{ morador.ordem_hierarquia }}</td>
-                <td>{{ morador.nome }}</td>
-                <td>{{ morador.apelido|default:"-" }}</td>
-                <td>{{ morador.email|default:"-" }}</td>
-                <td>{{ morador.codigo_quarto|default:"-" }}</td>
-                <td>{{ morador.quarto|default:"-" }}</td>
-                <td>{{ morador.peso_quarto|default:"0" }}%</td>
-                <td>
-                    {% if morador.ativo %}
-                        <span class="status active">Ativo</span>
-                    {% else %}
-                        <span class="status inactive">Inativo</span>
-                    {% endif %}
-                </td>
+                {{ form.id }}
+                <td>{{ form.ordem_hierarquia }}</td>
+                <td>{{ form.nome }}</td>
+                <td>{{ form.apelido }}</td>
+                <td>{{ form.email }}</td>
+                <td>{{ form.codigo_quarto }}</td>
+                <td>{{ form.quarto }}</td>
+                <td>{{ form.curso }}</td>
+                <td>{{ form.funcoes }}</td>
+                <td>{{ form.ativo }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" class="empty">Nenhum morador cadastrado.</td>
+                <td colspan="9" class="empty">Nenhum morador cadastrado.</td>
             </tr>
             {% endfor %}
         </table>
-    </div>
+        <div style="padding: 14px;">
+            <button class="btn" type="submit">Salvar alterações</button>
+        </div>
+    </form>
 </div>
 </body>
 </html>

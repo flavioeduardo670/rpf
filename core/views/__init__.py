@@ -1,0 +1,24 @@
+from .financeiro import editar_parcela, exportar_financeiro_csv, financeiro, pagar_nota, pagar_parcela
+from .estoque import (
+    almoxarifado,
+    consumo_historico,
+    editar_produto,
+    exportar_consumo_csv,
+    exportar_estoque_csv,
+    registrar_consumo,
+)
+from .legacy import (
+    cadastro,
+    compras,
+    editar_nota_compra,
+    editar_os,
+    gerenciar_acessos,
+    home,
+    lista_os,
+    manutencao,
+    moradores,
+    perfil,
+    rock,
+    exportar_compras_csv,
+)
+

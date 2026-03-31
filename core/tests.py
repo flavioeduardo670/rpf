@@ -163,6 +163,53 @@ class FinanceiroRateioTests(TestCase):
         self.assertEqual(len(response.context['rateio_moradores']), 2)
 
 
+class MoradoresEdicaoTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='moradores_editor', password='123456')
+        self.morador = Morador.objects.create(
+            nome='Morador Teste',
+            apelido='MT',
+            email='morador@teste.com',
+            codigo_quarto='Q1',
+            quarto='1',
+            ativo=True,
+        )
+
+    def test_moradores_renderiza_colunas_novas_sem_peso(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('moradores'))
+        self.assertContains(response, 'Curso')
+        self.assertContains(response, 'Funções')
+        self.assertNotContains(response, 'Peso')
+
+    def test_moradores_salva_curso_e_funcoes(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('moradores'),
+            {
+                'form-TOTAL_FORMS': '1',
+                'form-INITIAL_FORMS': '1',
+                'form-MIN_NUM_FORMS': '0',
+                'form-MAX_NUM_FORMS': '1000',
+                'form-0-id': str(self.morador.id),
+                'form-0-ordem_hierarquia': '0',
+                'form-0-nome': 'Morador Teste',
+                'form-0-apelido': 'MT',
+                'form-0-email': 'morador@teste.com',
+                'form-0-codigo_quarto': 'Q1',
+                'form-0-quarto': '1',
+                'form-0-curso': 'Engenharia',
+                'form-0-funcoes': 'Compras e Infraestrutura',
+                'form-0-ativo': 'on',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('moradores'))
+        self.morador.refresh_from_db()
+        self.assertEqual(self.morador.curso, 'Engenharia')
+        self.assertEqual(self.morador.funcoes, 'Compras e Infraestrutura')
+
+
 class EstoqueTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='estoque', password='123456')
