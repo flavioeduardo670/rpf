@@ -20,5 +20,5 @@ from .legacy import (
     perfil,
     rock,
     exportar_compras_csv,
-    exportar_moradores_csv,
 )
+

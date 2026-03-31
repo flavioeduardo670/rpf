@@ -353,6 +353,3 @@ class MoradorEdicaoForm(forms.ModelForm):
             'funcoes',
             'ativo',
         ]
-        widgets = {
-            'funcoes': forms.TextInput(attrs={'placeholder': 'Ex.: Compras, Infraestrutura'}),
-        }

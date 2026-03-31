@@ -209,16 +209,6 @@ class MoradoresEdicaoTests(TestCase):
         self.assertEqual(self.morador.curso, 'Engenharia')
         self.assertEqual(self.morador.funcoes, 'Compras e Infraestrutura')
 
-    def test_exportar_moradores_csv(self):
-        self.client.force_login(self.user)
-        response = self.client.get(reverse('exportar_moradores_csv'))
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('text/csv', response['Content-Type'])
-        self.assertIn('attachment; filename="moradores.csv"', response['Content-Disposition'])
-        content = response.content.decode('utf-8-sig')
-        self.assertIn('Curso', content)
-        self.assertIn('Funcoes', content)
-
 
 class EstoqueTests(TestCase):
     def setUp(self):
