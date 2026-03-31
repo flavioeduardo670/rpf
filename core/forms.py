@@ -337,3 +337,22 @@ class AcessoMoradorForm(forms.ModelForm):
             'acesso_rock_visualizar',
             'acesso_rock_editar',
         ]
+
+
+class MoradorEdicaoForm(forms.ModelForm):
+    class Meta:
+        model = Morador
+        fields = [
+            'ordem_hierarquia',
+            'nome',
+            'apelido',
+            'email',
+            'codigo_quarto',
+            'quarto',
+            'curso',
+            'funcoes',
+            'ativo',
+        ]
+        widgets = {
+            'funcoes': forms.TextInput(attrs={'placeholder': 'Ex.: Compras, Infraestrutura'}),
+        }

@@ -17,29 +17,100 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; background: linear-gradient(165deg, #f7f7f7, #ededed); font-family: "Trebuchet MS", "Segoe UI", sans-serif; color: var(--ink); padding: 26px; }
-        .wrap { max-width: 1120px; margin: 0 auto; }
+        .wrap { max-width: 1380px; margin: 0 auto; }
         .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         h1 { margin: 0; font-size: 1.9rem; }
         .btn { text-decoration: none; border: 1px solid #111; background: var(--dark); color: #fafafa; padding: 9px 14px; border-radius: 999px; font-weight: 700; font-size: .86rem; }
         .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; box-shadow: 0 10px 20px rgba(0,0,0,.05); }
-        table { width: 100%; min-width: 760px; border-collapse: collapse; }
-        th, td { padding: 11px 12px; border-bottom: 1px solid #e7e7e7; text-align: left; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 11px 12px; border-bottom: 1px solid #e7e7e7; text-align: left; vertical-align: top; }
         th { background: var(--light); font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; }
+        tr:nth-child(even) td { background: #fcfcfc; }
+        td { min-height: 48px; }
+        td > input,
+        td > select,
+        td > textarea {
+            width: 100%;
+            min-height: 34px;
+            padding: 6px 8px;
+            border: 1px solid #cfcfcf;
+            border-radius: 8px;
+            background: #fff;
+            color: #171717;
+            font-size: .82rem;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        td > textarea { min-height: 34px; max-height: 34px; resize: none; overflow: hidden; line-height: 1.2; }
+        td > input:focus,
+        td > select:focus,
+        td > textarea:focus {
+            border-color: #777;
+            box-shadow: 0 0 0 3px rgba(0,0,0,.08);
+        }
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #111;
+            margin-top: 8px;
+        }
+        th:nth-child(1), td:nth-child(1) { width: 5%; }
+        th:nth-child(2), td:nth-child(2) { width: 14%; }
+        th:nth-child(3), td:nth-child(3) { width: 12%; }
+        th:nth-child(4), td:nth-child(4) { width: 17%; }
+        th:nth-child(5), td:nth-child(5) { width: 8%; }
+        th:nth-child(6), td:nth-child(6) { width: 11%; }
+        th:nth-child(7), td:nth-child(7) { width: 12%; }
+        th:nth-child(8), td:nth-child(8) { width: 16%; }
+        th:nth-child(9), td:nth-child(9) { width: 5%; text-align: center; }
+        td:nth-child(9) { padding-top: 12px; }
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px;
+            background: #fff;
+            position: sticky;
+            bottom: 0;
+            border-top: 1px solid #ececec;
+        }
+        .btn-save {
+            border: 1px solid #111;
+            background: #111;
+            color: #fafafa;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: .9rem;
+            cursor: pointer;
+        }
+        .btn-save:hover { filter: brightness(1.06); }
         .status { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid #cfcfcf; font-size: .75rem; font-weight: 700; }
         .active { background: #f4f4f4; }
         .inactive { background: #ececec; color: #4b4b4b; }
         .empty { color: var(--muted); text-align: center; }
-        @media (max-width: 760px) { body { padding: 14px; } .top { flex-direction: column; align-items: flex-start; } .btn { width: 100%; text-align: center; } }
+        @media (max-width: 760px) {
+            body { padding: 14px; }
+            .top { flex-direction: column; align-items: flex-start; }
+            .top-actions, .btn { width: 100%; }
+            .btn { text-align: center; }
+        }
     </style>
 </head>
 <body>
 <div class="wrap">
     <div class="top">
         <h1>Moradores</h1>
-        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+        <div class="top-actions">
+            <a class="btn" href="{% url 'exportar_moradores_csv' %}">Exportar planilha</a>
+            <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+        </div>
     </div>
 
-    <div class="panel">
+    <form method="post" class="panel">
+        {% csrf_token %}
+        {{ formset.management_form }}
         <table>
             <tr>
                 <th>Ordem</th>
@@ -48,33 +119,33 @@
                 <th>Email</th>
                 <th>Codigo</th>
                 <th>Quarto</th>
-                <th>Peso</th>
+                <th>Curso</th>
+                <th>Funções</th>
                 <th>Status</th>
             </tr>
-            {% for morador in moradores %}
+            {% for form in formset %}
             <tr>
-                <td>{{ morador.ordem_hierarquia }}</td>
-                <td>{{ morador.nome }}</td>
-                <td>{{ morador.apelido|default:"-" }}</td>
-                <td>{{ morador.email|default:"-" }}</td>
-                <td>{{ morador.codigo_quarto|default:"-" }}</td>
-                <td>{{ morador.quarto|default:"-" }}</td>
-                <td>{{ morador.peso_quarto|default:"0" }}%</td>
-                <td>
-                    {% if morador.ativo %}
-                        <span class="status active">Ativo</span>
-                    {% else %}
-                        <span class="status inactive">Inativo</span>
-                    {% endif %}
-                </td>
+                {{ form.id }}
+                <td>{{ form.ordem_hierarquia }}</td>
+                <td>{{ form.nome }}</td>
+                <td>{{ form.apelido }}</td>
+                <td>{{ form.email }}</td>
+                <td>{{ form.codigo_quarto }}</td>
+                <td>{{ form.quarto }}</td>
+                <td>{{ form.curso }}</td>
+                <td>{{ form.funcoes }}</td>
+                <td>{{ form.ativo }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" class="empty">Nenhum morador cadastrado.</td>
+                <td colspan="9" class="empty">Nenhum morador cadastrado.</td>
             </tr>
             {% endfor %}
         </table>
-    </div>
+        <div class="actions">
+            <button class="btn-save" type="submit">Salvar alterações</button>
+        </div>
+    </form>
 </div>
 </body>
 </html>
