@@ -18,6 +18,8 @@ class MoradorAdmin(admin.ModelAdmin):
         'quarto',
         'codigo_quarto',
         'peso_quarto',
+        'curso',
+        'funcoes',
         'ativo',
         'acesso_financeiro_visualizar',
         'acesso_financeiro_editar',
@@ -57,6 +59,8 @@ class MoradorAdmin(admin.ModelAdmin):
                 'quarto',
                 'codigo_quarto',
                 'peso_quarto',
+                'curso',
+                'funcoes',
                 'ativo',
             )
         }),
@@ -91,5 +95,4 @@ admin.site.register(ConfiguracaoFinanceira)
 
 # Remove User padrão e oculta cadastro de usuários no admin
 admin.site.unregister(User)
-
 

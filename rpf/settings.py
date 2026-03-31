@@ -22,10 +22,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-8!+%=%o#+8$t+^u#ur(s)&1@s)p98l2k9-%(xh6am_%x)e2c4@')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
+
+if not SECRET_KEY:
+    if DEBUG:
+        # Chave apenas para ambiente local de desenvolvimento.
+        SECRET_KEY = 'dev-only-change-me'
+    else:
+        raise ValueError('Defina DJANGO_SECRET_KEY no ambiente para executar em produção.')
 
 allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS')
 if allowed_hosts_env:
