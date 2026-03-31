@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
-from .forms import (
+from ..forms import (
     ConfiguracaoFinanceiraForm,
     ConsumoForm,
     MaterialUtilizadoForm,
@@ -32,7 +32,7 @@ from .forms import (
     MoradorEdicaoForm,
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
-from .models import (
+from ..models import (
     ConfiguracaoFinanceira,
     ConsumoEstoque,
     MaterialUtilizado,
