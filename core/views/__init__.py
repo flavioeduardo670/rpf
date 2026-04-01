@@ -3,10 +3,14 @@ from .api import (
     api_compras,
     api_estoque,
     api_financeiro,
+    api_financeiro_rateio,
     api_manutencao,
     api_moradores,
     api_rock,
+    api_root,
     api_setores,
+    api_status,
+    api_auth_check,
 )
 from .estoque import (
     almoxarifado,

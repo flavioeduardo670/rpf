@@ -1,15 +1,54 @@
-from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.urls import path
+
 from . import views
 
 urlpatterns = [
+    # API read-only com autenticação por API key
+    path('api/', views.api_root, name='api_root'),
+    path('api/status/', views.api_status, name='api_status'),
+    path('api/auth-check/', views.api_auth_check, name='api_auth_check'),
     path('api/setores/', views.api_setores, name='api_setores'),
     path('api/setores/moradores/', views.api_moradores, name='api_moradores'),
     path('api/setores/financeiro/', views.api_financeiro, name='api_financeiro'),
+    path('api/setores/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio'),
     path('api/setores/compras/', views.api_compras, name='api_compras'),
     path('api/setores/estoque/', views.api_estoque, name='api_estoque'),
     path('api/setores/manutencao/', views.api_manutencao, name='api_manutencao'),
     path('api/setores/rock/', views.api_rock, name='api_rock'),
+
+    # aliases sem trailing slash (Apps Script/integrações antigas)
+    path('api', views.api_root),
+    path('api/status', views.api_status),
+    path('api/auth-check', views.api_auth_check),
+    path('api/setores', views.api_setores),
+    path('api/setores/moradores', views.api_moradores),
+    path('api/setores/financeiro', views.api_financeiro),
+    path('api/setores/financeiro/rateio', views.api_financeiro_rateio),
+    path('api/setores/compras', views.api_compras),
+    path('api/setores/estoque', views.api_estoque),
+    path('api/setores/manutencao', views.api_manutencao),
+    path('api/setores/rock', views.api_rock),
+
+    # aliases legados de financeiro (sem /setores)
+    path('api/financeiro/', views.api_financeiro, name='api_financeiro_legacy'),
+    path('api/financeiro', views.api_financeiro),
+
+    # alias com typo comum (finnaceiro) para evitar quebra de integração
+    path('api/finnaceiro/', views.api_financeiro, name='api_finnaceiro_typo'),
+    path('api/finnaceiro', views.api_financeiro),
+
+    # aliases legados de rateio
+    path('api/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio_legacy'),
+    path('api/financeiro/rateio', views.api_financeiro_rateio),
+
+    # alias com typo comum (finnaceiro/rateio) para evitar quebra de integração
+    path('api/finnaceiro/rateio/', views.api_financeiro_rateio, name='api_finnaceiro_rateio_typo'),
+    path('api/finnaceiro/rateio', views.api_financeiro_rateio),
+
+    path('api/rateio/', views.api_financeiro_rateio, name='api_rateio_legacy'),
+    path('api/rateio', views.api_financeiro_rateio),
+
     path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
     path('cadastro/', views.cadastro, name='cadastro'),
     path('acessos/', views.gerenciar_acessos, name='gerenciar_acessos'),
