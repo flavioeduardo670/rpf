@@ -9,6 +9,8 @@ from .api import (
     api_rock,
     api_root,
     api_setores,
+    api_status,
+    api_auth_check,
 )
 from .estoque import (
     almoxarifado,
