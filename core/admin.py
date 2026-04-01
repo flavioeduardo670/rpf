@@ -19,6 +19,7 @@ class MoradorAdmin(admin.ModelAdmin):
         'codigo_quarto',
         'peso_quarto',
         'curso',
+        'data_aniversario',
         'funcoes',
         'ativo',
         'acesso_financeiro_visualizar',
@@ -60,6 +61,7 @@ class MoradorAdmin(admin.ModelAdmin):
                 'codigo_quarto',
                 'peso_quarto',
                 'curso',
+                'data_aniversario',
                 'funcoes',
                 'ativo',
             )

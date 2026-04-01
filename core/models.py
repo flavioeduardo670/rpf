@@ -27,6 +27,7 @@ class Morador(models.Model):
     codigo_quarto = models.CharField(max_length=10, null=True, blank=True)
     peso_quarto = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     curso = models.CharField(max_length=120, blank=True, null=True)
+    data_aniversario = models.DateField(blank=True, null=True)
     funcoes = models.TextField(blank=True, null=True)
     foto_perfil = models.FileField(upload_to='perfil_fotos/', null=True, blank=True)
     ordem_hierarquia = models.PositiveIntegerField(default=0)

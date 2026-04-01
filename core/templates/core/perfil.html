@@ -5,35 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfil pessoal</title>
     <style>
-        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
-        * { box-sizing: border-box; }
-        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        body { margin:0; padding:24px; background:#f5f7fb; font-family:Inter,Segoe UI,Arial,sans-serif; color:#111827; }
         .wrap { max-width:980px; margin:0 auto; }
-        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
-        h1 { margin:0; }
-        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; }
-        .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
-        .panel h2 { margin:0 0 10px; font-size:1.05rem; }
-        .perfil-header { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
-        .avatar { width:84px; height:84px; border-radius:50%; object-fit:cover; border:2px solid #111; background:#e9e9e9; }
-        .avatar-fallback { width:84px; height:84px; border-radius:50%; border:2px solid #111; display:grid; place-items:center; font-weight:700; background:#f2f2f2; }
-        .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
-        .item { border:1px solid #e6e6e6; border-radius:10px; background:#fbfbfb; padding:10px; }
-        .label { margin:0 0 4px; font-size:.75rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); }
+        .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px; }
+        .btn { text-decoration:none; border:1px solid #111827; background:#111827; color:#fff; padding:9px 12px; border-radius:10px; font-weight:700; font-size:.85rem; cursor:pointer; }
+        .panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:12px; box-shadow:0 10px 20px rgba(17,24,39,.05); }
+        .panel h2 { margin:0 0 10px; }
+        .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+        .item { border:1px solid #eef1f5; background:#fafafa; border-radius:10px; padding:10px; }
+        .label { margin:0 0 4px; color:#6b7280; text-transform:uppercase; font-size:.72rem; }
         .value { margin:0; font-weight:700; }
-        .status { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #cfcfcf; font-size:.75rem; font-weight:700; background:#f4f4f4; }
-        .muted { color:var(--muted); }
+        .avatar { width:84px; height:84px; border-radius:50%; object-fit:cover; border:2px solid #111827; background:#e5e7eb; }
+        .avatar-fallback { width:84px; height:84px; border-radius:50%; display:grid; place-items:center; border:2px solid #111827; background:#f3f4f6; font-weight:700; }
+        .perfil-header { display:flex; gap:14px; align-items:center; margin-bottom:12px; }
         form p { margin:0 0 10px; }
-        input[type="file"] { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
-        .errorlist { margin:0 0 8px; padding-left:18px; font-size:.82rem; }
-        @media (max-width:760px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
+        input, select, textarea { width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px; }
+        .status { display:inline-block; padding:4px 10px; border-radius:999px; font-size:.75rem; font-weight:700; }
+        .on { background:#dcfce7; color:#166534; }
+        .off { background:#fee2e2; color:#7f1d1d; }
+        .muted { color:#6b7280; }
+        @media (max-width:760px){ body{padding:12px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
 <body>
 <div class="wrap">
     <div class="top">
         <h1>Perfil pessoal</h1>
-        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+        <a class="btn" href="{% url 'home' %}">Voltar ao início</a>
     </div>
 
     <section class="panel">
@@ -46,100 +44,51 @@
             {% endif %}
         </div>
         <div class="grid">
-            <div class="item">
-                <p class="label">Usuario</p>
-                <p class="value">{{ usuario.username }}</p>
-            </div>
-            <div class="item">
-                <p class="label">E-mail</p>
-                <p class="value">{{ usuario.email|default:"-" }}</p>
-            </div>
-            <div class="item">
-                <p class="label">Nome</p>
-                <p class="value">{{ usuario.first_name|default:"-" }}</p>
-            </div>
-            <div class="item">
-                <p class="label">Sobrenome</p>
-                <p class="value">{{ usuario.last_name|default:"-" }}</p>
-            </div>
+            <div class="item"><p class="label">Usuário</p><p class="value">{{ usuario.username }}</p></div>
+            <div class="item"><p class="label">E-mail</p><p class="value">{{ usuario.email|default:"-" }}</p></div>
+            <div class="item"><p class="label">Nome</p><p class="value">{{ usuario.first_name|default:"-" }}</p></div>
+            <div class="item"><p class="label">Sobrenome</p><p class="value">{{ usuario.last_name|default:"-" }}</p></div>
         </div>
     </section>
 
     <section class="panel">
-        <h2>Vinculo com morador</h2>
+        <h2>Editar meus dados cadastrais</h2>
         {% if morador %}
-        <form method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
+        <form method="post" style="margin-bottom:0;">
+            {% csrf_token %}
+            {{ dados_form.non_field_errors }}
+            {{ dados_form.as_p }}
+            <button type="submit" name="salvar_dados" class="btn">Salvar dados cadastrais</button>
+        </form>
+        {% else %}
+        <p class="muted">Seu usuário ainda não está vinculado a um morador.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Foto de perfil</h2>
+        {% if morador %}
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ foto_form.non_field_errors }}
             {{ foto_form.as_p }}
-            <button type="submit" class="btn">Salvar foto</button>
+            <button type="submit" name="salvar_foto" class="btn">Salvar foto</button>
         </form>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Vínculo com morador</h2>
+        {% if morador %}
         <div class="grid">
-            <div class="item">
-                <p class="label">Nome</p>
-                <p class="value">{{ morador.nome }}</p>
-            </div>
-            <div class="item">
-                <p class="label">Apelido</p>
-                <p class="value">{{ morador.apelido|default:"-" }}</p>
-            </div>
-            <div class="item">
-                <p class="label">Quarto</p>
-                <p class="value">{{ morador.quarto|default:"-" }}</p>
-            </div>
-            <div class="item">
-                <p class="label">Status</p>
-                <p class="value">
-                    {% if morador.ativo %}
-                    <span class="status">Ativo</span>
-                    {% else %}
-                    <span class="status">Inativo</span>
-                    {% endif %}
-                </p>
-            </div>
-            <div class="item">
-                <p class="label">Acesso financeiro (V/E)</p>
-                <p class="value">
-                    {% if morador.acesso_financeiro_visualizar %}V{% else %}-{% endif %}
-                    /
-                    {% if morador.acesso_financeiro_editar %}E{% else %}-{% endif %}
-                </p>
-            </div>
-            <div class="item">
-                <p class="label">Acesso compras (V/E)</p>
-                <p class="value">
-                    {% if morador.acesso_compras_visualizar %}V{% else %}-{% endif %}
-                    /
-                    {% if morador.acesso_compras_editar %}E{% else %}-{% endif %}
-                </p>
-            </div>
-            <div class="item">
-                <p class="label">Acesso estoque (V/E)</p>
-                <p class="value">
-                    {% if morador.acesso_estoque_visualizar %}V{% else %}-{% endif %}
-                    /
-                    {% if morador.acesso_estoque_editar %}E{% else %}-{% endif %}
-                </p>
-            </div>
-            <div class="item">
-                <p class="label">Acesso manutencao (V/E)</p>
-                <p class="value">
-                    {% if morador.acesso_manutencao_visualizar %}V{% else %}-{% endif %}
-                    /
-                    {% if morador.acesso_manutencao_editar %}E{% else %}-{% endif %}
-                </p>
-            </div>
-            <div class="item">
-                <p class="label">Acesso rock (V/E)</p>
-                <p class="value">
-                    {% if morador.acesso_rock_visualizar %}V{% else %}-{% endif %}
-                    /
-                    {% if morador.acesso_rock_editar %}E{% else %}-{% endif %}
-                </p>
-            </div>
+            <div class="item"><p class="label">Nome</p><p class="value">{{ morador.nome }}</p></div>
+            <div class="item"><p class="label">Apelido</p><p class="value">{{ morador.apelido|default:"-" }}</p></div>
+            <div class="item"><p class="label">Curso</p><p class="value">{{ morador.curso|default:"-" }}</p></div>
+            <div class="item"><p class="label">Aniversário</p><p class="value">{% if morador.data_aniversario %}{{ morador.data_aniversario|date:"d/m/Y" }}{% else %}-{% endif %}</p></div>
+            <div class="item"><p class="label">Status</p><p class="value">{% if morador.ativo %}<span class="status on">Ativo</span>{% else %}<span class="status off">Inativo</span>{% endif %}</p></div>
         </div>
         {% else %}
-        <p class="muted">Seu usuario ainda nao esta vinculado a um morador.</p>
+        <p class="muted">Seu usuário ainda não está vinculado a um morador.</p>
         {% endif %}
     </section>
 </div>
