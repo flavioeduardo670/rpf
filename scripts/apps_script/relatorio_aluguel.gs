@@ -14,7 +14,26 @@ const ERP_CONFIG = {
 };
 
 function enviarRelatorioAluguelPorEmail() {
-  const payload = consultarApi_();
+  const mesParam = ERP_CONFIG.MES_REFERENCIA
+    ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA)
+    : '';
+  const endpoint = ERP_CONFIG.BASE_URL + '/api/setores/financeiro/rateio/' + mesParam;
+
+  const response = UrlFetchApp.fetch(endpoint, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      'X-API-Key': ERP_CONFIG.API_KEY,
+      'Accept': 'application/json',
+    },
+  });
+
+  const status = response.getResponseCode();
+  if (status !== 200) {
+    throw new Error('Erro ao consultar API do ERP. HTTP ' + status + ' | ' + response.getContentText());
+  }
+
+  const payload = JSON.parse(response.getContentText());
   const mesReferencia = payload.mes_referencia || (ERP_CONFIG.MES_REFERENCIA + '-01');
   const moradores = payload.moradores || [];
 
@@ -34,44 +53,6 @@ function enviarRelatorioAluguelPorEmail() {
       htmlBody: corpoHtml,
     });
   });
-}
-
-function consultarApi_() {
-  const mesParam = ERP_CONFIG.MES_REFERENCIA
-    ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA)
-    : '';
-  const baseUrl = ERP_CONFIG.BASE_URL.replace(/\/+$/, '');
-  const endpoints = [
-    '/api/setores/financeiro/rateio/',
-    '/api/financeiro/rateio/',
-    '/api/setores/financeiro/rateio',
-    '/api/financeiro/rateio',
-  ];
-
-  let ultimoErro = 'Nenhuma resposta da API.';
-  for (let i = 0; i < endpoints.length; i++) {
-    const endpoint = baseUrl + endpoints[i] + mesParam;
-    const response = UrlFetchApp.fetch(endpoint, {
-      method: 'get',
-      muteHttpExceptions: true,
-      followRedirects: true,
-      headers: {
-        'X-API-Key': ERP_CONFIG.API_KEY,
-        'Accept': 'application/json',
-      },
-    });
-
-    const status = response.getResponseCode();
-    const body = response.getContentText();
-
-    if (status === 200) {
-      return JSON.parse(body);
-    }
-
-    ultimoErro = 'Erro HTTP ' + status + ' em ' + endpoint + ' | ' + body;
-  }
-
-  throw new Error(ultimoErro);
 }
 
 function montarRelatorioTexto(nome, item, mesReferencia) {
