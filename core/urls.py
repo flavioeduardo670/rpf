@@ -3,6 +3,24 @@ from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
+    path('api/setores/', views.api_setores, name='api_setores'),
+    path('api/setores/moradores/', views.api_moradores, name='api_moradores'),
+    path('api/setores/financeiro/', views.api_financeiro, name='api_financeiro'),
+    path('api/setores/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio'),
+    path('api/setores/financeiro/rateio', views.api_financeiro_rateio, name='api_financeiro_rateio_sem_barra'),
+    # aliases para integrações externas legadas (Apps Script)
+    path('api/moradores/', views.api_moradores, name='api_moradores_legacy'),
+    path('api/financeiro/', views.api_financeiro, name='api_financeiro_legacy'),
+    path('api/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio_legacy'),
+    path('api/financeiro/rateio', views.api_financeiro_rateio, name='api_financeiro_rateio_legacy_sem_barra'),
+    path('api/compras/', views.api_compras, name='api_compras_legacy'),
+    path('api/estoque/', views.api_estoque, name='api_estoque_legacy'),
+    path('api/manutencao/', views.api_manutencao, name='api_manutencao_legacy'),
+    path('api/rock/', views.api_rock, name='api_rock_legacy'),
+    path('api/setores/compras/', views.api_compras, name='api_compras'),
+    path('api/setores/estoque/', views.api_estoque, name='api_estoque'),
+    path('api/setores/manutencao/', views.api_manutencao, name='api_manutencao'),
+    path('api/setores/rock/', views.api_rock, name='api_rock'),
     path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
     path('cadastro/', views.cadastro, name='cadastro'),
     path('acessos/', views.gerenciar_acessos, name='gerenciar_acessos'),
