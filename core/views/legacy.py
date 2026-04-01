@@ -201,6 +201,52 @@ def moradores(request):
     return render(request, 'core/moradores.html', {'formset': formset})
 
 
+@login_required
+def exportar_moradores_csv(request):
+    moradores_qs = Morador.objects.select_related('user').order_by('ordem_hierarquia', 'nome')
+    timestamp = timezone.localtime().strftime('%Y%m%d_%H%M%S')
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="moradores_{timestamp}.csv"'
+
+    response.write('\ufeff')
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Moradores'])
+    writer.writerow(
+        [
+            'Ordem',
+            'Nome',
+            'Apelido',
+            'Email',
+            'Codigo do quarto',
+            'Quarto',
+            'Peso do quarto',
+            'Curso',
+            'Funcoes',
+            'Ativo',
+            'Usuario',
+        ]
+    )
+
+    for morador in moradores_qs:
+        writer.writerow(
+            [
+                morador.ordem_hierarquia,
+                morador.nome,
+                morador.apelido or '-',
+                morador.email or '-',
+                morador.codigo_quarto or '-',
+                morador.quarto or '-',
+                morador.peso_quarto,
+                morador.curso or '-',
+                morador.funcoes or '-',
+                'Sim' if morador.ativo else 'Nao',
+                morador.user.username if morador.user else '-',
+            ]
+        )
+
+    return response
+
+
 @setor_required(
     group_name='Financeiro',
     morador_view_attr='acesso_financeiro_visualizar',
