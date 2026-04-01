@@ -36,38 +36,18 @@ def _json(data, status=200):
 def _build_api_endpoints():
     return {
         'root': '/api/',
-        'status': '/api/status/',
-        'auth_check': '/api/auth-check/',
         'setores': '/api/setores/',
         'moradores': '/api/setores/moradores/',
         'financeiro': '/api/setores/financeiro/',
         'financeiro_rateio': '/api/setores/financeiro/rateio/',
-        'financeiro_rateio_via_financeiro': '/api/financeiro/?tipo=rateio',
         'compras': '/api/setores/compras/',
         'estoque': '/api/setores/estoque/',
         'manutencao': '/api/setores/manutencao/',
         'rock': '/api/setores/rock/',
         # aliases legados
-        'legacy_financeiro': '/api/financeiro/',
         'legacy_financeiro_rateio': '/api/financeiro/rateio/',
-        'legacy_finnaceiro': '/api/finnaceiro/',
-        'legacy_finnaceiro_rateio': '/api/finnaceiro/rateio/',
         'legacy_rateio': '/api/rateio/',
     }
-
-
-
-@require_GET
-def api_status(request):
-    return _json({'status': 'ok', 'api': 'rpf-readonly'})
-
-
-@require_GET
-def api_auth_check(request):
-    unauthorized = _check_api_key(request)
-    if unauthorized:
-        return unauthorized
-    return _json({'auth': 'ok'})
 
 
 @require_GET
@@ -227,7 +207,54 @@ def api_financeiro_rateio(request):
     if unauthorized:
         return unauthorized
 
-    return _json(_payload_rateio_financeiro(request))
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+
+    moradores = [
+        {
+            'id': item['morador'].id,
+            'nome': item['morador'].nome,
+            'apelido': item['morador'].apelido,
+            'email': item['morador'].email,
+            'codigo_quarto': item['morador'].codigo_quarto,
+            'quarto': item['morador'].quarto,
+            'peso_quarto': item['morador'].peso_quarto,
+            'aluguel': item['aluguel'],
+            'fixas': item['fixas'],
+            'fixas_detalhe': item['fixas_detalhe'],
+            'caixinha': item['caixinha'],
+            'parcelas': item['parcelas'],
+            'desconto': item['desconto'],
+            'extra': item['extra'],
+            'valor_total': item['valor'],
+        }
+        for item in resumo['rateio_moradores']
+    ]
+
+    return _json(
+        {
+            'setor': 'financeiro',
+            'tipo': 'rateio',
+            'mes_referencia': mes_referencia,
+            'resumo': {
+                'valor_aluguel': resumo['valor_aluguel'],
+                'valor_fixas_total': resumo['valor_fixas_total'],
+                'total_caixinha_mes': resumo['total_caixinha_mes'],
+                'total_parcelas_material': resumo['total_parcelas_material'],
+                'desconto_total_mes': resumo['desconto_total_mes'],
+                'pendencia_total_mes': resumo['pendencia_total_mes'],
+                'total_rateio': resumo['total_rateio'],
+                'total_moradores_ativos': resumo['total_moradores_ativos'],
+                'valor_por_morador': resumo['valor_por_morador'],
+                'caixinha_por_morador': resumo['caixinha_por_morador'],
+            },
+            'contas_fixas': [
+                {'nome': conta.nome, 'valor': conta.valor}
+                for conta in resumo['contas_fixas']
+            ],
+            'moradores': moradores,
+        }
+    )
 
 
 @require_GET
