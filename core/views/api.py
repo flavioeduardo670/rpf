@@ -36,8 +36,6 @@ def _json(data, status=200):
 def _build_api_endpoints():
     return {
         'root': '/api/',
-        'status': '/api/status/',
-        'auth_check': '/api/auth-check/',
         'setores': '/api/setores/',
         'moradores': '/api/setores/moradores/',
         'financeiro': '/api/setores/financeiro/',
@@ -47,26 +45,9 @@ def _build_api_endpoints():
         'manutencao': '/api/setores/manutencao/',
         'rock': '/api/setores/rock/',
         # aliases legados
-        'legacy_financeiro': '/api/financeiro/',
         'legacy_financeiro_rateio': '/api/financeiro/rateio/',
-        'legacy_finnaceiro': '/api/finnaceiro/',
-        'legacy_finnaceiro_rateio': '/api/finnaceiro/rateio/',
         'legacy_rateio': '/api/rateio/',
     }
-
-
-
-@require_GET
-def api_status(request):
-    return _json({'status': 'ok', 'api': 'rpf-readonly'})
-
-
-@require_GET
-def api_auth_check(request):
-    unauthorized = _check_api_key(request)
-    if unauthorized:
-        return unauthorized
-    return _json({'auth': 'ok'})
 
 
 @require_GET

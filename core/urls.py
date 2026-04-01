@@ -6,8 +6,6 @@ from . import views
 urlpatterns = [
     # API read-only com autenticação por API key
     path('api/', views.api_root, name='api_root'),
-    path('api/status/', views.api_status, name='api_status'),
-    path('api/auth-check/', views.api_auth_check, name='api_auth_check'),
     path('api/setores/', views.api_setores, name='api_setores'),
     path('api/setores/moradores/', views.api_moradores, name='api_moradores'),
     path('api/setores/financeiro/', views.api_financeiro, name='api_financeiro'),
@@ -19,8 +17,6 @@ urlpatterns = [
 
     # aliases sem trailing slash (Apps Script/integrações antigas)
     path('api', views.api_root),
-    path('api/status', views.api_status),
-    path('api/auth-check', views.api_auth_check),
     path('api/setores', views.api_setores),
     path('api/setores/moradores', views.api_moradores),
     path('api/setores/financeiro', views.api_financeiro),
@@ -30,22 +26,9 @@ urlpatterns = [
     path('api/setores/manutencao', views.api_manutencao),
     path('api/setores/rock', views.api_rock),
 
-    # aliases legados de financeiro (sem /setores)
-    path('api/financeiro/', views.api_financeiro, name='api_financeiro_legacy'),
-    path('api/financeiro', views.api_financeiro),
-
-    # alias com typo comum (finnaceiro) para evitar quebra de integração
-    path('api/finnaceiro/', views.api_financeiro, name='api_finnaceiro_typo'),
-    path('api/finnaceiro', views.api_financeiro),
-
     # aliases legados de rateio
     path('api/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio_legacy'),
     path('api/financeiro/rateio', views.api_financeiro_rateio),
-
-    # alias com typo comum (finnaceiro/rateio) para evitar quebra de integração
-    path('api/finnaceiro/rateio/', views.api_financeiro_rateio, name='api_finnaceiro_rateio_typo'),
-    path('api/finnaceiro/rateio', views.api_financeiro_rateio),
-
     path('api/rateio/', views.api_financeiro_rateio, name='api_rateio_legacy'),
     path('api/rateio', views.api_financeiro_rateio),
 
