@@ -8,15 +8,32 @@
  */
 const ERP_CONFIG = {
   BASE_URL: 'https://SEU-ERP.onrender.com',
-  // IMPORTANTE: aqui vai o VALOR da chave, não o texto "X-API-Key".
   API_KEY: 'SUA_ERP_API_KEY',
   // Formato: YYYY-MM. Exemplo: '2026-04'. Se vazio, usa mês atual do ERP.
   MES_REFERENCIA: '',
 };
 
 function enviarRelatorioAluguelPorEmail() {
-  validarConfiguracao_();
-  const payload = consultarApi_();
+  const mesParam = ERP_CONFIG.MES_REFERENCIA
+    ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA)
+    : '';
+  const endpoint = ERP_CONFIG.BASE_URL + '/api/setores/financeiro/rateio/' + mesParam;
+
+  const response = UrlFetchApp.fetch(endpoint, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      'X-API-Key': ERP_CONFIG.API_KEY,
+      'Accept': 'application/json',
+    },
+  });
+
+  const status = response.getResponseCode();
+  if (status !== 200) {
+    throw new Error('Erro ao consultar API do ERP. HTTP ' + status + ' | ' + response.getContentText());
+  }
+
+  const payload = JSON.parse(response.getContentText());
   const mesReferencia = payload.mes_referencia || (ERP_CONFIG.MES_REFERENCIA + '-01');
   const moradores = payload.moradores || [];
 
@@ -36,55 +53,6 @@ function enviarRelatorioAluguelPorEmail() {
       htmlBody: corpoHtml,
     });
   });
-}
-
-function validarConfiguracao_() {
-  if (!ERP_CONFIG.BASE_URL || ERP_CONFIG.BASE_URL.indexOf('SEU-ERP') !== -1) {
-    throw new Error('Configure ERP_CONFIG.BASE_URL com a URL real do seu ERP.');
-  }
-  if (!ERP_CONFIG.API_KEY || ERP_CONFIG.API_KEY === 'X-API-Key' || ERP_CONFIG.API_KEY.indexOf('SUA_') === 0) {
-    throw new Error('Configure ERP_CONFIG.API_KEY com o valor real de ERP_API_KEY (não o nome do header).');
-  }
-}
-
-function consultarApi_() {
-  const mesParam = ERP_CONFIG.MES_REFERENCIA
-    ? '&mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA)
-    : '';
-  const baseUrl = ERP_CONFIG.BASE_URL.replace(/\/+$/, '');
-  const endpoints = [
-    '/api/setores/financeiro?rateio=1' + mesParam,
-    '/api/financeiro?rateio=1' + mesParam,
-    '/api/setores/financeiro/rateio/' + (ERP_CONFIG.MES_REFERENCIA ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA) : ''),
-    '/api/financeiro/rateio/' + (ERP_CONFIG.MES_REFERENCIA ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA) : ''),
-    '/api/setores/financeiro/rateio' + (ERP_CONFIG.MES_REFERENCIA ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA) : ''),
-    '/api/financeiro/rateio' + (ERP_CONFIG.MES_REFERENCIA ? '?mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA) : ''),
-  ];
-
-  let ultimoErro = 'Nenhuma resposta da API.';
-  for (let i = 0; i < endpoints.length; i++) {
-    const endpoint = baseUrl + endpoints[i];
-    const response = UrlFetchApp.fetch(endpoint, {
-      method: 'get',
-      muteHttpExceptions: true,
-      followRedirects: true,
-      headers: {
-        'X-API-Key': ERP_CONFIG.API_KEY,
-        'Accept': 'application/json',
-      },
-    });
-
-    const status = response.getResponseCode();
-    const body = response.getContentText();
-
-    if (status === 200) {
-      return JSON.parse(body);
-    }
-
-    ultimoErro = 'Erro HTTP ' + status + ' em ' + endpoint + ' | ' + body;
-  }
-
-  throw new Error(ultimoErro);
 }
 
 function montarRelatorioTexto(nome, item, mesReferencia) {
