@@ -6,7 +6,6 @@ urlpatterns = [
     path('api/setores/', views.api_setores, name='api_setores'),
     path('api/setores/moradores/', views.api_moradores, name='api_moradores'),
     path('api/setores/financeiro/', views.api_financeiro, name='api_financeiro'),
-    path('api/setores/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio'),
     path('api/setores/compras/', views.api_compras, name='api_compras'),
     path('api/setores/estoque/', views.api_estoque, name='api_estoque'),
     path('api/setores/manutencao/', views.api_manutencao, name='api_manutencao'),

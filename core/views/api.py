@@ -4,7 +4,6 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
 from core.models import ConsumoEstoque, Morador, NotaFiscal, OrdemServico, Produto, RockEvento
-from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
 
 
 def _parse_limit(request, default=100, maximum=500):
@@ -52,7 +51,6 @@ def api_setores(request):
             'endpoints': {
                 'moradores': '/api/setores/moradores/',
                 'financeiro': '/api/setores/financeiro/',
-                'financeiro_rateio': '/api/setores/financeiro/rateio/',
                 'compras': '/api/setores/compras/',
                 'estoque': '/api/setores/estoque/',
                 'manutencao': '/api/setores/manutencao/',
@@ -232,43 +230,3 @@ def api_rock(request):
         for evento in eventos
     ]
     return _json({'setor': 'rock', 'count': len(data), 'results': data})
-
-
-@require_GET
-def api_financeiro_rateio(request):
-    unauthorized = _check_api_key(request)
-    if unauthorized:
-        return unauthorized
-
-    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
-    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
-    moradores = []
-
-    for item in resumo['rateio_moradores']:
-        morador = item['morador']
-        moradores.append(
-            {
-                'morador_id': morador.id,
-                'nome': morador.nome,
-                'apelido': morador.apelido,
-                'email': morador.email,
-                'aluguel': item['aluguel'],
-                'fixas': item['fixas'],
-                'caixinha': item['caixinha'],
-                'parcelas': item['parcelas'],
-                'desconto': item['desconto'],
-                'extra': item['extra'],
-                'valor_total': item['valor'],
-            }
-        )
-
-    return _json(
-        {
-            'setor': 'financeiro_rateio',
-            'mes_referencia': mes_referencia,
-            'total_moradores_ativos': resumo['total_moradores_ativos'],
-            'valor_aluguel_total': resumo['valor_aluguel'],
-            'valor_por_morador': resumo['valor_por_morador'],
-            'moradores': moradores,
-        }
-    )
