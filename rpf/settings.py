@@ -149,3 +149,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
+
+# API key para integração externa (ex.: Google Apps Script).
+ERP_API_KEY = os.getenv('ERP_API_KEY', '')
