@@ -15,18 +15,9 @@ const ERP_CONFIG = {
   // Opcional: recebe alertas quando houver erro crítico.
   EMAIL_ALERTA: '',
   REQUEST_TIMEOUT_SECONDS: 30,
-  // Prefixos opcionais para deploys com subpath (ex.: '/rpf').
-  BASE_PATHS: ['', '/rpf', '/core'],
 };
 
 const ERP_ENDPOINTS_RATEIO = [
-  // Caminho simplificado: reaproveita endpoint /api/financeiro que já costuma existir.
-  '/api/financeiro/?tipo=rateio',
-  '/api/financeiro?tipo=rateio',
-  '/api/setores/financeiro/?tipo=rateio',
-  '/api/setores/financeiro?tipo=rateio',
-
-  // Caminhos dedicados de rateio
   '/api/setores/financeiro/rateio/',
   '/api/setores/financeiro/rateio',
   '/api/financeiro/rateio/',
@@ -39,7 +30,6 @@ function enviarRelatorioAluguelPorEmail() {
   validarConfiguracao();
 
   try {
-    executarDiagnosticoBasico();
     const payload = buscarRateioMensal();
     const mesReferencia = obterMesReferencia(payload);
     const moradores = payload.moradores || [];
@@ -82,30 +72,6 @@ function enviarRelatorioAluguelPorEmail() {
     throw error;
   }
 }
-
-
-function executarDiagnosticoBasico() {
-  const baseUrl = normalizarBaseUrl(ERP_CONFIG.BASE_URL);
-  const basePaths = (ERP_CONFIG.BASE_PATHS || ['']).map(normalizarPrefixoBasePath);
-
-  // Endpoints de diagnóstico são opcionais para manter compatibilidade com deploys antigos.
-  basePaths.forEach(function (prefixo) {
-    const statusResp = requestJson(juntarUrl(baseUrl, prefixo + '/api/status/'));
-    if (statusResp.status !== 200 && statusResp.status !== 404) {
-      Logger.log('Aviso: ' + prefixo + '/api/status/ respondeu HTTP ' + statusResp.status);
-    }
-
-    const authResp = requestJson(juntarUrl(baseUrl, prefixo + '/api/auth-check/'));
-    if (authResp.status === 401 || authResp.status === 403) {
-      throw new Error('API key inválida ou ausente no servidor (' + prefixo + '/api/auth-check/). HTTP ' + authResp.status);
-    }
-
-    if (authResp.status !== 200 && authResp.status !== 404) {
-      Logger.log('Aviso: ' + prefixo + '/api/auth-check/ respondeu HTTP ' + authResp.status);
-    }
-  });
-}
-
 
 function testarConexaoERP() {
   validarConfiguracao();
@@ -161,19 +127,12 @@ function montarTentativasEndpoint() {
     ? 'mes=' + encodeURIComponent(ERP_CONFIG.MES_REFERENCIA)
     : '';
 
-  const basePaths = (ERP_CONFIG.BASE_PATHS || ['']).map(normalizarPrefixoBasePath);
-  const tentativas = [];
-
-  basePaths.forEach(function (prefixo) {
-    ERP_ENDPOINTS_RATEIO.forEach(function (path) {
-      const urlBase = juntarUrl(baseUrl, prefixo + path);
-      const join = urlBase.indexOf('?') >= 0 ? '&' : '?';
-      const url = mesParam ? urlBase + join + mesParam : urlBase;
-      tentativas.push({ path: prefixo + path, url: url });
-    });
+  return ERP_ENDPOINTS_RATEIO.map(function (path) {
+    const urlBase = baseUrl + path;
+    const join = urlBase.indexOf('?') >= 0 ? '&' : '?';
+    const url = mesParam ? urlBase + join + mesParam : urlBase;
+    return { path: path, url: url };
   });
-
-  return tentativas;
 }
 
 function requestJson(url) {
@@ -315,14 +274,4 @@ function registrarErroCritico(error) {
     subject: 'Erro no envio de relatório de aluguel',
     body: mensagem,
   });
-}
-
-function normalizarPrefixoBasePath(prefixo) {
-  const valor = String(prefixo || '').trim();
-  if (!valor) return '';
-  return '/' + valor.replace(/^\/+/, '').replace(/\/+$/, '');
-}
-
-function juntarUrl(baseUrl, caminho) {
-  return normalizarBaseUrl(baseUrl) + '/' + String(caminho || '').replace(/^\/+/, '');
 }

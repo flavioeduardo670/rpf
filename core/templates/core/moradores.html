@@ -5,23 +5,172 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moradores</title>
     <style>
-        body { margin:0; padding:24px; font-family:Inter,Segoe UI,Arial,sans-serif; background:#f5f7fb; color:#111827; }
-        .wrap { max-width:1200px; margin:0 auto; }
-        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
-        h1 { margin:0; }
-        .muted { color:#6b7280; margin:4px 0 0; }
-        .btn { text-decoration:none; border:1px solid #111827; background:#111827; color:#fff; padding:9px 12px; border-radius:10px; font-weight:700; font-size:.86rem; }
-        .actions { display:flex; gap:8px; flex-wrap:wrap; }
-        .panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:auto; box-shadow:0 10px 24px rgba(17,24,39,.06); }
-        table { width:100%; min-width:980px; border-collapse:collapse; }
-        th, td { padding:11px 12px; border-bottom:1px solid #eef1f5; text-align:left; }
-        th { background:#f8fafc; text-transform:uppercase; letter-spacing:.05em; font-size:.75rem; color:#374151; }
-        tr:hover td { background:#fafafa; }
-        .pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:.72rem; font-weight:700; }
-        .on { background:#dcfce7; color:#166534; }
-        .off { background:#fee2e2; color:#7f1d1d; }
-        .empty { text-align:center; color:#6b7280; }
-        @media (max-width:780px){ body{padding:12px;} .top{flex-direction:column; align-items:flex-start;} .btn{width:100%; text-align:center;} }
+        :root {
+            --bg: #f5f7fb;
+            --panel: #ffffff;
+            --ink: #111827;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --brand: #111827;
+            --brand-soft: #f3f4f6;
+            --ok: #166534;
+            --ok-bg: #dcfce7;
+            --off: #7f1d1d;
+            --off-bg: #fee2e2;
+            --radius: 14px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #e9edf6 0%, var(--bg) 45%);
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+            color: var(--ink);
+            padding: 24px;
+        }
+        .wrap { max-width: 1440px; margin: 0 auto; }
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        h1 { margin: 0; font-size: 2rem; letter-spacing: -.02em; }
+        .subtitle { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+        .top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            text-decoration: none;
+            border: 1px solid var(--ink);
+            background: var(--brand);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: .85rem;
+            transition: transform .12s ease, box-shadow .12s ease;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(17,24,39,.15); }
+
+        .toolbar {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 14px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+        .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+        .chip {
+            border: 1px solid var(--line);
+            background: var(--brand-soft);
+            color: #111;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: .82rem;
+            font-weight: 700;
+        }
+        .search {
+            width: min(340px, 100%);
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: .9rem;
+            outline: none;
+        }
+        .search:focus { border-color: #6b7280; box-shadow: 0 0 0 3px rgba(17,24,39,.08); }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 12px 24px rgba(17,24,39,.06);
+        }
+        .table-wrap { overflow: auto; max-height: calc(100vh - 280px); }
+        table { width: 100%; min-width: 1120px; border-collapse: collapse; table-layout: fixed; }
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--line);
+            font-size: .76rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #374151;
+        }
+        th, td { padding: 10px 11px; border-bottom: 1px solid #f0f2f5; text-align: left; vertical-align: top; }
+        tbody tr:hover td { background: #fafafa; }
+
+        td > input,
+        td > select,
+        td > textarea {
+            width: 100%;
+            min-height: 36px;
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 9px;
+            background: #fff;
+            color: #111827;
+            font-size: .9rem;
+            transition: border-color .14s ease, box-shadow .14s ease;
+        }
+        td > textarea { min-height: 72px; resize: vertical; line-height: 1.35; }
+        td > input:focus,
+        td > select:focus,
+        td > textarea:focus {
+            border-color: #6b7280;
+            box-shadow: 0 0 0 3px rgba(17,24,39,.08);
+            outline: none;
+        }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: #111827; }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 82px;
+            border-radius: 999px;
+            font-size: .72rem;
+            font-weight: 800;
+            padding: 5px 10px;
+            border: 1px solid transparent;
+            margin-bottom: 8px;
+        }
+        .status-on { color: var(--ok); background: var(--ok-bg); border-color: #86efac; }
+        .status-off { color: var(--off); background: var(--off-bg); border-color: #fecaca; }
+
+        th:nth-child(1), td:nth-child(1) { width: 90px; }
+        th:nth-child(2), td:nth-child(2) { width: 190px; }
+        th:nth-child(3), td:nth-child(3) { width: 160px; }
+        th:nth-child(4), td:nth-child(4) { width: 250px; }
+        th:nth-child(5), td:nth-child(5) { width: 120px; }
+        th:nth-child(6), td:nth-child(6) { width: 120px; }
+        th:nth-child(7), td:nth-child(7) { width: 200px; }
+        th:nth-child(8), td:nth-child(8) { width: 340px; }
+        th:nth-child(9), td:nth-child(9) { width: 108px; }
+
+        .actions {
+            padding: 12px 14px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: flex-end;
+            background: #fff;
+            position: sticky;
+            bottom: 0;
+        }
+
+        .empty { color: var(--muted); text-align: center; padding: 20px; }
+
+        @media (max-width: 900px) {
+            body { padding: 12px; }
+            .top { flex-direction: column; align-items: flex-start; }
+            .toolbar { grid-template-columns: 1fr; }
+            .search { width: 100%; }
+            .btn { width: 100%; text-align: center; }
+        }
     </style>
 </head>
 <body>
@@ -29,52 +178,89 @@
     <div class="top">
         <div>
             <h1>Moradores</h1>
-            <p class="muted">Visualização dos dados cadastrais. Edição disponível no perfil pessoal e no admin.</p>
+            <p class="subtitle">Gerencie dados cadastrais, contato e status de atividade.</p>
         </div>
-        <div class="actions">
+        <div class="top-actions">
             <a class="btn" href="{% url 'exportar_moradores_csv' %}">Exportar CSV</a>
             <a class="btn" href="{% url 'home' %}">Voltar ao início</a>
         </div>
     </div>
 
-    <div class="panel">
-        <table>
-            <thead>
-                <tr>
-                    <th>Ordem</th>
-                    <th>Nome</th>
-                    <th>Sobrenome</th>
-                    <th>Apelido</th>
-                    <th>Curso</th>
-                    <th>Aniversário</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for morador in moradores %}
-                <tr>
-                    <td>{{ morador.ordem_hierarquia }}</td>
-                    <td>{{ morador.nome }}</td>
-                    <td>{% if morador.user %}{{ morador.user.last_name|default:'-' }}{% else %}-{% endif %}</td>
-                    <td>{{ morador.apelido|default:'-' }}</td>
-                    <td>{{ morador.curso|default:'-' }}</td>
-                    <td>{% if morador.data_aniversario %}{{ morador.data_aniversario|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-                    <td>{{ morador.email|default:'-' }}</td>
-                    <td>
-                        {% if morador.ativo %}
-                        <span class="pill on">Ativo</span>
-                        {% else %}
-                        <span class="pill off">Inativo</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="8" class="empty">Nenhum morador cadastrado.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="toolbar">
+        <div class="stats">
+            <span class="chip">Total: {{ formset|length }}</span>
+            <span class="chip">Use a busca para filtrar rapidamente</span>
+        </div>
+        <input id="filtroMorador" class="search" type="search" placeholder="Buscar por nome, apelido, email, curso..." />
     </div>
+
+    <form method="post" class="panel">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ordem</th>
+                        <th>Nome</th>
+                        <th>Apelido</th>
+                        <th>Email</th>
+                        <th>Código</th>
+                        <th>Quarto</th>
+                        <th>Curso</th>
+                        <th>Funções</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaMoradores">
+                    {% for form in formset %}
+                    <tr>
+                        {{ form.id }}
+                        <td>{{ form.ordem_hierarquia }}</td>
+                        <td>{{ form.nome }}</td>
+                        <td>{{ form.apelido }}</td>
+                        <td>{{ form.email }}</td>
+                        <td>{{ form.codigo_quarto }}</td>
+                        <td>{{ form.quarto }}</td>
+                        <td>{{ form.curso }}</td>
+                        <td>{{ form.funcoes }}</td>
+                        <td>
+                            <span class="status-pill {% if form.instance.ativo %}status-on{% else %}status-off{% endif %}">
+                                {% if form.instance.ativo %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                            {{ form.ativo }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty">Nenhum morador cadastrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="actions">
+            <button class="btn" type="submit">Salvar alterações</button>
+        </div>
+    </form>
 </div>
+
+<script>
+(function () {
+    const input = document.getElementById('filtroMorador');
+    const linhas = Array.from(document.querySelectorAll('#tabelaMoradores tr'));
+    if (!input || !linhas.length) return;
+
+    input.addEventListener('input', function () {
+        const termo = (input.value || '').toLowerCase().trim();
+        linhas.forEach(function (linha) {
+            const texto = (linha.textContent || '').toLowerCase();
+            linha.style.display = !termo || texto.includes(termo) ? '' : 'none';
+        });
+    });
+})();
+</script>
 </body>
 </html>
