@@ -22,8 +22,6 @@ const ERP_ENDPOINTS_RATEIO = [
   '/api/setores/financeiro/rateio',
   '/api/financeiro/rateio/',
   '/api/financeiro/rateio',
-  '/api/finnaceiro/rateio/', // typo comum
-  '/api/finnaceiro/rateio',
   '/api/rateio/',
   '/api/rateio',
 ];
@@ -32,7 +30,6 @@ function enviarRelatorioAluguelPorEmail() {
   validarConfiguracao();
 
   try {
-    executarDiagnosticoBasico();
     const payload = buscarRateioMensal();
     const mesReferencia = obterMesReferencia(payload);
     const moradores = payload.moradores || [];
@@ -75,21 +72,6 @@ function enviarRelatorioAluguelPorEmail() {
     throw error;
   }
 }
-
-
-function executarDiagnosticoBasico() {
-  const baseUrl = normalizarBaseUrl(ERP_CONFIG.BASE_URL);
-  const statusResp = requestJson(baseUrl + '/api/status/');
-  if (statusResp.status !== 200) {
-    throw new Error('Deploy não respondeu /api/status/. Verifique se a versão nova foi publicada. HTTP ' + statusResp.status);
-  }
-
-  const authResp = requestJson(baseUrl + '/api/auth-check/');
-  if (authResp.status !== 200) {
-    throw new Error('API key inválida ou ausente no servidor (/api/auth-check/). HTTP ' + authResp.status);
-  }
-}
-
 
 function testarConexaoERP() {
   validarConfiguracao();
