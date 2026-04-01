@@ -287,6 +287,7 @@ def financeiro(request):
     total_rateio = resumo_rateio['total_rateio']
     total_moradores_ativos = resumo_rateio['total_moradores_ativos']
     valor_por_morador = resumo_rateio['valor_por_morador']
+    caixinha_por_morador = resumo_rateio['caixinha_por_morador']
     rateio_moradores = resumo_rateio['rateio_moradores']
     contas_fixas = resumo_rateio['contas_fixas']
     parcelas_rateio = resumo_rateio['parcelas_rateio']
