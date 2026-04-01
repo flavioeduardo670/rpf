@@ -1,4 +1,13 @@
 from .financeiro import editar_parcela, exportar_financeiro_csv, financeiro, pagar_nota, pagar_parcela
+from .api import (
+    api_compras,
+    api_estoque,
+    api_financeiro,
+    api_manutencao,
+    api_moradores,
+    api_rock,
+    api_setores,
+)
 from .estoque import (
     almoxarifado,
     consumo_historico,
