@@ -238,6 +238,48 @@ class ConfiguracaoFinanceiraForm(forms.ModelForm):
         }
 
 
+
+
+class PerfilDadosForm(forms.Form):
+    nome = forms.CharField(max_length=100, label='Nome')
+    sobrenome = forms.CharField(max_length=150, required=False, label='Sobrenome')
+    apelido = forms.CharField(max_length=50, required=False, label='Apelido')
+    curso = forms.CharField(max_length=120, required=False, label='Curso')
+    data_aniversario = forms.DateField(
+        required=False,
+        label='Data de aniversário',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+
+    def __init__(self, *args, usuario=None, morador=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usuario = usuario
+        self.morador = morador
+
+        if morador and not self.is_bound:
+            self.fields['nome'].initial = morador.nome
+            self.fields['apelido'].initial = morador.apelido
+            self.fields['curso'].initial = morador.curso
+            self.fields['data_aniversario'].initial = morador.data_aniversario
+
+        if usuario and not self.is_bound:
+            self.fields['sobrenome'].initial = usuario.last_name
+
+    def save(self):
+        if not self.morador:
+            return
+
+        self.morador.nome = self.cleaned_data['nome']
+        self.morador.apelido = self.cleaned_data['apelido']
+        self.morador.curso = self.cleaned_data['curso']
+        self.morador.data_aniversario = self.cleaned_data['data_aniversario']
+        self.morador.save(update_fields=['nome', 'apelido', 'curso', 'data_aniversario'])
+
+        if self.usuario:
+            self.usuario.first_name = self.cleaned_data['nome']
+            self.usuario.last_name = self.cleaned_data['sobrenome']
+            self.usuario.save(update_fields=['first_name', 'last_name'])
+
 class PerfilFotoForm(forms.ModelForm):
     class Meta:
         model = Morador

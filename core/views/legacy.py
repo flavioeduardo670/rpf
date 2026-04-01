@@ -21,6 +21,7 @@ from ..forms import (
     MaterialUtilizadoForm,
     OrdemServicoForm,
     PerfilFotoForm,
+    PerfilDadosForm,
     ProdutoForm,
     RockEventoForm,
     DescontoMensalForm,
@@ -29,7 +30,6 @@ from ..forms import (
     ContaFixaForm,
     CadastroForm,
     AcessoMoradorForm,
-    MoradorEdicaoForm,
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
 from ..models import (
@@ -72,13 +72,6 @@ AcessoMoradorFormSet = modelformset_factory(
     form=AcessoMoradorForm,
     extra=0,
 )
-
-MoradorEdicaoFormSet = modelformset_factory(
-    Morador,
-    form=MoradorEdicaoForm,
-    extra=0,
-)
-
 
 
 def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, morador_edit_attr=None):
@@ -169,13 +162,21 @@ def gerenciar_acessos(request):
 @login_required
 def perfil(request):
     morador = getattr(request.user, 'morador', None)
+
+    foto_form = PerfilFotoForm(instance=morador)
+    dados_form = PerfilDadosForm(usuario=request.user, morador=morador)
+
     if request.method == 'POST' and morador:
-        foto_form = PerfilFotoForm(request.POST, request.FILES, instance=morador)
-        if foto_form.is_valid():
-            foto_form.save()
-            return redirect('perfil')
-    else:
-        foto_form = PerfilFotoForm(instance=morador)
+        if 'salvar_foto' in request.POST:
+            foto_form = PerfilFotoForm(request.POST, request.FILES, instance=morador)
+            if foto_form.is_valid():
+                foto_form.save()
+                return redirect('perfil')
+        elif 'salvar_dados' in request.POST:
+            dados_form = PerfilDadosForm(request.POST, usuario=request.user, morador=morador)
+            if dados_form.is_valid():
+                dados_form.save()
+                return redirect('perfil')
 
     return render(
         request,
@@ -184,21 +185,15 @@ def perfil(request):
             'usuario': request.user,
             'morador': morador,
             'foto_form': foto_form,
+            'dados_form': dados_form,
         },
     )
 
 
 @login_required
 def moradores(request):
-    moradores_qs = Morador.objects.select_related('user').all().order_by('ordem_hierarquia', 'nome')
-    if request.method == 'POST':
-        formset = MoradorEdicaoFormSet(request.POST, queryset=moradores_qs)
-        if formset.is_valid():
-            formset.save()
-            return redirect('moradores')
-    else:
-        formset = MoradorEdicaoFormSet(queryset=moradores_qs)
-    return render(request, 'core/moradores.html', {'formset': formset})
+    moradores_qs = Morador.objects.select_related('user').order_by('ordem_hierarquia', 'nome')
+    return render(request, 'core/moradores.html', {'moradores': moradores_qs})
 
 
 @login_required
@@ -215,12 +210,14 @@ def exportar_moradores_csv(request):
         [
             'Ordem',
             'Nome',
+            'Sobrenome',
             'Apelido',
             'Email',
             'Codigo do quarto',
             'Quarto',
             'Peso do quarto',
             'Curso',
+            'Data aniversario',
             'Funcoes',
             'Ativo',
             'Usuario',
@@ -232,12 +229,14 @@ def exportar_moradores_csv(request):
             [
                 morador.ordem_hierarquia,
                 morador.nome,
+                morador.user.last_name if morador.user and morador.user.last_name else '-',
                 morador.apelido or '-',
                 morador.email or '-',
                 morador.codigo_quarto or '-',
                 morador.quarto or '-',
                 morador.peso_quarto,
                 morador.curso or '-',
+                morador.data_aniversario.strftime('%d/%m/%Y') if morador.data_aniversario else '-',
                 morador.funcoes or '-',
                 'Sim' if morador.ativo else 'Nao',
                 morador.user.username if morador.user else '-',
