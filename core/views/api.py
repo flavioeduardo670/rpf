@@ -120,11 +120,64 @@ def api_moradores(request):
     return _json({'setor': 'moradores', 'count': len(data), 'results': data})
 
 
+
+def _payload_rateio_financeiro(request):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+
+    moradores = [
+        {
+            'id': item['morador'].id,
+            'nome': item['morador'].nome,
+            'apelido': item['morador'].apelido,
+            'email': item['morador'].email,
+            'codigo_quarto': item['morador'].codigo_quarto,
+            'quarto': item['morador'].quarto,
+            'peso_quarto': item['morador'].peso_quarto,
+            'aluguel': item['aluguel'],
+            'fixas': item['fixas'],
+            'fixas_detalhe': item['fixas_detalhe'],
+            'caixinha': item['caixinha'],
+            'parcelas': item['parcelas'],
+            'desconto': item['desconto'],
+            'extra': item['extra'],
+            'valor_total': item['valor'],
+        }
+        for item in resumo['rateio_moradores']
+    ]
+
+    return {
+        'setor': 'financeiro',
+        'tipo': 'rateio',
+        'mes_referencia': mes_referencia,
+        'resumo': {
+            'valor_aluguel': resumo['valor_aluguel'],
+            'valor_fixas_total': resumo['valor_fixas_total'],
+            'total_caixinha_mes': resumo['total_caixinha_mes'],
+            'total_parcelas_material': resumo['total_parcelas_material'],
+            'desconto_total_mes': resumo['desconto_total_mes'],
+            'pendencia_total_mes': resumo['pendencia_total_mes'],
+            'total_rateio': resumo['total_rateio'],
+            'total_moradores_ativos': resumo['total_moradores_ativos'],
+            'valor_por_morador': resumo['valor_por_morador'],
+            'caixinha_por_morador': resumo['caixinha_por_morador'],
+        },
+        'contas_fixas': [
+            {'nome': conta.nome, 'valor': conta.valor}
+            for conta in resumo['contas_fixas']
+        ],
+        'moradores': moradores,
+    }
+
+
 @require_GET
 def api_financeiro(request):
     unauthorized = _check_api_key(request)
     if unauthorized:
         return unauthorized
+
+    if request.GET.get('tipo') == 'rateio' or request.GET.get('rateio') == '1':
+        return _json(_payload_rateio_financeiro(request))
 
     limit = _parse_limit(request)
     notas = NotaFiscal.objects.filter(setor__in=['compras', 'manutencao', 'outros']).order_by('-id')[:limit]
