@@ -91,8 +91,26 @@ function montarRelatorioHtml(nome, item, mesReferencia) {
 }
 
 function formatarMesAno(dataIso) {
-  const data = new Date(dataIso);
-  return Utilities.formatDate(data, Session.getScriptTimeZone(), 'MM/yyyy');
+  const valor = String(dataIso || '').trim();
+  const partes = valor.split('-');
+
+  if (partes.length >= 2) {
+    const ano = Number(partes[0]);
+    const mes = Number(partes[1]);
+    const dia = partes.length >= 3 ? Number(partes[2]) : 1;
+
+    if (!isNaN(ano) && !isNaN(mes) && !isNaN(dia)) {
+      const dataLocal = new Date(ano, mes - 1, dia);
+      return Utilities.formatDate(dataLocal, Session.getScriptTimeZone(), 'MM/yyyy');
+    }
+  }
+
+  const dataFallback = new Date(valor);
+  if (!isNaN(dataFallback.getTime())) {
+    return Utilities.formatDate(dataFallback, Session.getScriptTimeZone(), 'MM/yyyy');
+  }
+
+  return valor;
 }
 
 function formatarMoeda(valor) {
