@@ -26,22 +26,9 @@ urlpatterns = [
     path('api/setores/manutencao', views.api_manutencao),
     path('api/setores/rock', views.api_rock),
 
-    # aliases legados de financeiro (sem /setores)
-    path('api/financeiro/', views.api_financeiro, name='api_financeiro_legacy'),
-    path('api/financeiro', views.api_financeiro),
-
-    # alias com typo comum (finnaceiro) para evitar quebra de integração
-    path('api/finnaceiro/', views.api_financeiro, name='api_finnaceiro_typo'),
-    path('api/finnaceiro', views.api_financeiro),
-
     # aliases legados de rateio
     path('api/financeiro/rateio/', views.api_financeiro_rateio, name='api_financeiro_rateio_legacy'),
     path('api/financeiro/rateio', views.api_financeiro_rateio),
-
-    # alias com typo comum (finnaceiro/rateio) para evitar quebra de integração
-    path('api/finnaceiro/rateio/', views.api_financeiro_rateio, name='api_finnaceiro_rateio_typo'),
-    path('api/finnaceiro/rateio', views.api_financeiro_rateio),
-
     path('api/rateio/', views.api_financeiro_rateio, name='api_rateio_legacy'),
     path('api/rateio', views.api_financeiro_rateio),
 

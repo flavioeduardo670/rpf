@@ -22,8 +22,6 @@ const ERP_ENDPOINTS_RATEIO = [
   '/api/setores/financeiro/rateio',
   '/api/financeiro/rateio/',
   '/api/financeiro/rateio',
-  '/api/finnaceiro/rateio/', // typo comum
-  '/api/finnaceiro/rateio',
   '/api/rateio/',
   '/api/rateio',
 ];

@@ -45,10 +45,7 @@ def _build_api_endpoints():
         'manutencao': '/api/setores/manutencao/',
         'rock': '/api/setores/rock/',
         # aliases legados
-        'legacy_financeiro': '/api/financeiro/',
         'legacy_financeiro_rateio': '/api/financeiro/rateio/',
-        'legacy_finnaceiro': '/api/finnaceiro/',
-        'legacy_finnaceiro_rateio': '/api/finnaceiro/rateio/',
         'legacy_rateio': '/api/rateio/',
     }
 
