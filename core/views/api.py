@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
 from core.models import ConsumoEstoque, Morador, NotaFiscal, OrdemServico, Produto, RockEvento
+from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
 
 
 def _parse_limit(request, default=100, maximum=500):
@@ -32,12 +33,49 @@ def _json(data, status=200):
     return JsonResponse(data, status=status, encoder=DjangoJSONEncoder, json_dumps_params={'ensure_ascii': False})
 
 
+def _build_api_endpoints():
+    return {
+        'root': '/api/',
+        'setores': '/api/setores/',
+        'moradores': '/api/setores/moradores/',
+        'financeiro': '/api/setores/financeiro/',
+        'financeiro_rateio': '/api/setores/financeiro/rateio/',
+        'compras': '/api/setores/compras/',
+        'estoque': '/api/setores/estoque/',
+        'manutencao': '/api/setores/manutencao/',
+        'rock': '/api/setores/rock/',
+        # aliases legados
+        'legacy_financeiro_rateio': '/api/financeiro/rateio/',
+        'legacy_rateio': '/api/rateio/',
+    }
+
+
+@require_GET
+def api_root(request):
+    unauthorized = _check_api_key(request)
+    if unauthorized:
+        return unauthorized
+
+    return _json(
+        {
+            'api': 'rpf-readonly',
+            'version': 1,
+            'auth': {
+                'header': 'X-API-Key',
+                'query_param': 'api_key',
+            },
+            'endpoints': _build_api_endpoints(),
+        }
+    )
+
+
 @require_GET
 def api_setores(request):
     unauthorized = _check_api_key(request)
     if unauthorized:
         return unauthorized
 
+    endpoints = _build_api_endpoints()
     return _json(
         {
             'setores': [
@@ -48,14 +86,7 @@ def api_setores(request):
                 'manutencao',
                 'rock',
             ],
-            'endpoints': {
-                'moradores': '/api/setores/moradores/',
-                'financeiro': '/api/setores/financeiro/',
-                'compras': '/api/setores/compras/',
-                'estoque': '/api/setores/estoque/',
-                'manutencao': '/api/setores/manutencao/',
-                'rock': '/api/setores/rock/',
-            },
+            'endpoints': endpoints,
             'observacao': 'Envie X-API-Key no header (ou api_key na query string).',
         }
     )
@@ -115,6 +146,62 @@ def api_financeiro(request):
         for nota in notas
     ]
     return _json({'setor': 'financeiro', 'count': len(data), 'results': data})
+
+
+@require_GET
+def api_financeiro_rateio(request):
+    unauthorized = _check_api_key(request)
+    if unauthorized:
+        return unauthorized
+
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+
+    moradores = [
+        {
+            'id': item['morador'].id,
+            'nome': item['morador'].nome,
+            'apelido': item['morador'].apelido,
+            'email': item['morador'].email,
+            'codigo_quarto': item['morador'].codigo_quarto,
+            'quarto': item['morador'].quarto,
+            'peso_quarto': item['morador'].peso_quarto,
+            'aluguel': item['aluguel'],
+            'fixas': item['fixas'],
+            'fixas_detalhe': item['fixas_detalhe'],
+            'caixinha': item['caixinha'],
+            'parcelas': item['parcelas'],
+            'desconto': item['desconto'],
+            'extra': item['extra'],
+            'valor_total': item['valor'],
+        }
+        for item in resumo['rateio_moradores']
+    ]
+
+    return _json(
+        {
+            'setor': 'financeiro',
+            'tipo': 'rateio',
+            'mes_referencia': mes_referencia,
+            'resumo': {
+                'valor_aluguel': resumo['valor_aluguel'],
+                'valor_fixas_total': resumo['valor_fixas_total'],
+                'total_caixinha_mes': resumo['total_caixinha_mes'],
+                'total_parcelas_material': resumo['total_parcelas_material'],
+                'desconto_total_mes': resumo['desconto_total_mes'],
+                'pendencia_total_mes': resumo['pendencia_total_mes'],
+                'total_rateio': resumo['total_rateio'],
+                'total_moradores_ativos': resumo['total_moradores_ativos'],
+                'valor_por_morador': resumo['valor_por_morador'],
+                'caixinha_por_morador': resumo['caixinha_por_morador'],
+            },
+            'contas_fixas': [
+                {'nome': conta.nome, 'valor': conta.valor}
+                for conta in resumo['contas_fixas']
+            ],
+            'moradores': moradores,
+        }
+    )
 
 
 @require_GET
