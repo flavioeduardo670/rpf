@@ -20,16 +20,26 @@
         .table-wrap { overflow:auto; }
         table { width:100%; min-width:560px; border-collapse:collapse; }
         th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; }
-        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
+        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; position:relative; vertical-align:bottom; }
         .empty { color:var(--muted); text-align:center; }
         .section-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
         .section-top h2 { margin:0; }
         .form-table th { white-space:nowrap; }
         .form-actions { display:flex; justify-content:flex-end; margin-top:12px; }
         .th-title { display:block; font-size:.74rem; text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
-        .filter-input { width:100%; border:1px solid #d0d0d0; border-radius:8px; padding:6px 8px; font-size:.82rem; background:#fff; }
+        .filter-btn { display:inline-flex; align-items:center; gap:6px; border:1px solid #cfcfcf; background:#fff; color:#111; border-radius:999px; padding:4px 10px; font-size:.74rem; cursor:pointer; }
+        .filter-panel { position:absolute; top:calc(100% + 6px); right:0; z-index:10; width:220px; background:#fff; border:1px solid #d6d6d6; border-radius:12px; box-shadow:0 10px 20px rgba(0,0,0,.12); padding:10px; display:none; }
+        .filter-panel.active { display:block; }
+        .filter-panel input[type="text"] { width:100%; border:1px solid #d0d0d0; border-radius:8px; padding:6px 8px; font-size:.82rem; margin-bottom:8px; }
+        .filter-list { max-height:180px; overflow:auto; border:1px solid #eee; border-radius:8px; padding:6px; }
+        .filter-item { display:flex; gap:8px; align-items:center; font-size:.82rem; padding:3px 2px; }
+        .filter-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+        .filter-actions .btn { padding:6px 10px; font-size:.74rem; }
         .stock-table th { vertical-align:bottom; }
         .stock-table .th-title { margin-bottom:8px; }
+        .filters { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 14px; }
+        .filters label { font-size:.78rem; color:var(--muted); display:flex; gap:6px; align-items:center; }
+        .filters input { width:auto; }
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
@@ -60,6 +70,7 @@
                             <th>Nome</th>
                             <th>Tipo</th>
                             <th>Setor</th>
+                            <th>Cômodo</th>
                             <th>Local</th>
                             <th>Quantidade</th>
                             <th>Estoque minimo</th>
@@ -70,6 +81,7 @@
                             <td>{{ produto_form.nome }}</td>
                             <td>{{ produto_form.descricao }}</td>
                             <td>{{ produto_form.setor }}</td>
+                            <td>{{ produto_form.comodo }}</td>
                             <td>{{ produto_form.local }}</td>
                             <td>{{ produto_form.quantidade }}</td>
                             <td>{{ produto_form.estoque_minimo }}</td>
@@ -91,42 +103,78 @@
             <h2>Estoque atual</h2>
             <a class="btn" href="{% url 'exportar_estoque_csv' %}">Gerar planilha</a>
         </div>
+        <div class="filters" data-column-toggles>
+            <label><input type="checkbox" data-col="0" checked> Nome</label>
+            <label><input type="checkbox" data-col="1" checked> Tipo</label>
+            <label><input type="checkbox" data-col="2" checked> Setor</label>
+            <label><input type="checkbox" data-col="3" checked> Andar</label>
+            <label><input type="checkbox" data-col="4" checked> Cômodo</label>
+            <label><input type="checkbox" data-col="5" checked> Local</label>
+            <label><input type="checkbox" data-col="6" checked> Quantidade</label>
+            <label><input type="checkbox" data-col="7" checked> Estoque minimo</label>
+            <label><input type="checkbox" data-col="8" checked> Acoes</label>
+        </div>
         <div class="table-wrap">
-            <table class="stock-table">
+            <table class="stock-table" data-filter-table>
+                <thead>
                 <tr>
                     <th>
                         <span class="th-title">Nome</span>
-                        <input class="filter-input" type="text" placeholder="Filtrar nome">
+                        <button class="filter-btn" type="button" data-col="0">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Tipo</span>
-                        <input class="filter-input" type="text" placeholder="Filtrar tipo">
+                        <button class="filter-btn" type="button" data-col="1">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Setor</span>
-                        <input class="filter-input" type="text" placeholder="Filtrar setor">
+                        <button class="filter-btn" type="button" data-col="2">Filtro ▼</button>
+                    </th>
+                    <th>
+                        <span class="th-title">Andar</span>
+                        <button class="filter-btn" type="button" data-col="3">Filtro ▼</button>
+                    </th>
+                    <th>
+                        <span class="th-title">Cômodo</span>
+                        <button class="filter-btn" type="button" data-col="4">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Local</span>
-                        <input class="filter-input" type="text" placeholder="Filtrar local">
+                        <button class="filter-btn" type="button" data-col="5">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Quantidade</span>
-                        <input class="filter-input" type="text" placeholder="Filtrar quantidade">
+                        <button class="filter-btn" type="button" data-col="6">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Estoque minimo</span>
-                        <input class="filter-input" type="text" placeholder="Filtrar minimo">
+                        <button class="filter-btn" type="button" data-col="7">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Acoes</span>
                     </th>
                 </tr>
+                </thead>
+                <tbody>
                 {% for produto in produtos %}
                 <tr>
                     <td>{{ produto.nome }}</td>
                     <td>{{ produto.descricao }}</td>
                     <td>{{ produto.setor.nome }}</td>
+                    <td>
+                        {% if produto.local and produto.local.comodo %}
+                        {{ produto.local.comodo.andar.nome }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if produto.local and produto.local.comodo %}
+                        {{ produto.local.comodo.nome }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td>{{ produto.local.nome|default:"-" }}</td>
                     <td><strong>{{ produto.quantidade }}</strong></td>
                     <td>{{ produto.estoque_minimo }}</td>
@@ -139,11 +187,178 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="empty">Nenhum produto cadastrado.</td></tr>
+                <tr><td colspan="9" class="empty">Nenhum produto cadastrado.</td></tr>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
     </section>
 </div>
+<script>
+const estoqueTable = document.querySelector('[data-filter-table]');
+const estoqueToggleWrap = document.querySelector('[data-column-toggles]');
+const activeFilters = new Map();
+
+const getRowText = (row, colIndex) => (row.children[colIndex]?.innerText || '').trim();
+const normalize = (text) => text.toLowerCase();
+
+const applyFilters = () => {
+    const rows = Array.from(estoqueTable.querySelectorAll('tbody tr'));
+    rows.forEach(row => {
+        const isMatch = Array.from(activeFilters.entries()).every(([col, allowed]) => {
+            if (!allowed || allowed.size === 0) return true;
+            const cellText = normalize(getRowText(row, col));
+            return allowed.has(cellText);
+        });
+        row.style.display = isMatch ? '' : 'none';
+    });
+};
+
+const closeAllPanels = () => {
+    document.querySelectorAll('.filter-panel.active').forEach(panel => panel.classList.remove('active'));
+};
+
+const buildPanel = (colIndex) => {
+    const th = estoqueTable.querySelectorAll('th')[colIndex];
+    let panel = th.querySelector('.filter-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.className = 'filter-panel';
+        th.appendChild(panel);
+    }
+
+    const rows = Array.from(estoqueTable.querySelectorAll('tbody tr'));
+    const values = Array.from(new Set(rows.map(row => normalize(getRowText(row, colIndex))))).sort();
+    const currentAllowed = activeFilters.get(colIndex) || new Set(values);
+
+    panel.innerHTML = `
+        <input type="text" placeholder="Pesquisar...">
+        <label class="filter-item">
+            <input type="checkbox" data-select-all>
+            <span>Selecionar tudo</span>
+        </label>
+        <div class="filter-list"></div>
+        <div class="filter-actions">
+            <button type="button" class="btn light" data-clear>Limpar</button>
+            <button type="button" class="btn" data-apply>Aplicar</button>
+        </div>
+    `;
+
+    const searchInput = panel.querySelector('input[type="text"]');
+    const list = panel.querySelector('.filter-list');
+    const selectAll = panel.querySelector('[data-select-all]');
+
+    const renderList = () => {
+        const term = normalize(searchInput.value.trim());
+        list.innerHTML = '';
+        values.forEach(value => {
+            if (term && !value.includes(term)) return;
+            const label = document.createElement('label');
+            label.className = 'filter-item';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = value;
+            checkbox.checked = currentAllowed.has(value);
+            label.appendChild(checkbox);
+            const text = document.createElement('span');
+            text.textContent = value || '(vazio)';
+            label.appendChild(text);
+            list.appendChild(label);
+        });
+        const visibleChecks = Array.from(list.querySelectorAll('input[type="checkbox"]'));
+        selectAll.checked = visibleChecks.length > 0 && visibleChecks.every(c => c.checked);
+    };
+
+    selectAll.addEventListener('change', () => {
+        list.querySelectorAll('input[type="checkbox"]').forEach(box => { box.checked = selectAll.checked; });
+    });
+
+    searchInput.addEventListener('input', renderList);
+    renderList();
+
+    panel.querySelector('[data-clear]').addEventListener('click', () => {
+        activeFilters.delete(colIndex);
+        closeAllPanels();
+        applyFilters();
+    });
+
+    panel.querySelector('[data-apply]').addEventListener('click', () => {
+        const selected = new Set(
+            Array.from(list.querySelectorAll('input[type="checkbox"]'))
+                .filter(box => box.checked)
+                .map(box => box.value)
+        );
+        activeFilters.set(colIndex, selected);
+        closeAllPanels();
+        applyFilters();
+    });
+};
+
+if (estoqueTable) {
+    estoqueTable.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const colIndex = Number(btn.dataset.col);
+            closeAllPanels();
+            buildPanel(colIndex);
+            const panel = estoqueTable.querySelectorAll('th')[colIndex].querySelector('.filter-panel');
+            panel.classList.add('active');
+            panel.addEventListener('click', (panelEvent) => panelEvent.stopPropagation(), { once: true });
+        });
+    });
+
+    document.addEventListener('click', closeAllPanels);
+}
+
+if (estoqueToggleWrap && estoqueTable) {
+    estoqueToggleWrap.querySelectorAll('input[type="checkbox"]').forEach(toggle => {
+        toggle.addEventListener('change', () => {
+            const colIndex = Number(toggle.dataset.col);
+            estoqueTable.querySelectorAll('tr').forEach(row => {
+                const cell = row.children[colIndex];
+                if (cell) {
+                    cell.style.display = toggle.checked ? '' : 'none';
+                }
+            });
+        });
+    });
+}
+
+const comodoSelect = document.getElementById('id_comodo');
+const localSelect = document.getElementById('id_local');
+const locaisData = [
+    {% for local in locais %}
+    { id: {{ local.id }}, nome: "{{ local.nome|escapejs }}", comodo_id: {{ local.comodo_id|default:"null" }} },
+    {% endfor %}
+];
+
+const rebuildLocais = (comodoId) => {
+    if (!localSelect) return;
+    const current = localSelect.value;
+    localSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '---------';
+    localSelect.appendChild(placeholder);
+    locaisData
+        .filter(item => String(item.comodo_id) === String(comodoId))
+        .forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.nome;
+            if (String(item.id) === String(current)) {
+                option.selected = true;
+            }
+            localSelect.appendChild(option);
+        });
+};
+
+if (comodoSelect && localSelect) {
+    comodoSelect.addEventListener('change', () => rebuildLocais(comodoSelect.value));
+    if (comodoSelect.value) {
+        rebuildLocais(comodoSelect.value);
+    }
+}
+</script>
 </body>
 </html>

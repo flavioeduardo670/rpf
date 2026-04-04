@@ -39,5 +39,60 @@
         </form>
     </section>
 </div>
+<script>
+const comodoSelect = document.getElementById('id_comodo_estoque');
+const localSelect = document.getElementById('id_local_estoque');
+const locaisData = [
+    {% for local in locais %}
+    { id: {{ local.id }}, nome: "{{ local.nome|escapejs }}", comodo_id: {{ local.comodo_id|default:"null" }} },
+    {% endfor %}
+];
+
+const rebuildLocais = (comodoId) => {
+    if (!localSelect) return;
+    const current = localSelect.value;
+    localSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '---------';
+    localSelect.appendChild(placeholder);
+    locaisData
+        .filter(item => String(item.comodo_id) === String(comodoId))
+        .forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.nome;
+            if (String(item.id) === String(current)) {
+                option.selected = true;
+            }
+            localSelect.appendChild(option);
+        });
+};
+
+if (comodoSelect && localSelect) {
+    comodoSelect.addEventListener('change', () => rebuildLocais(comodoSelect.value));
+    if (comodoSelect.value) {
+        rebuildLocais(comodoSelect.value);
+    }
+}
+
+const categoriaSelect = document.getElementById('id_categoria_compra');
+const rockField = document.getElementById('id_rock_evento');
+const rockFieldWrapper = rockField ? rockField.closest('p') : null;
+
+const toggleRockField = () => {
+    if (!categoriaSelect || !rockFieldWrapper) return;
+    const show = categoriaSelect.value === 'rock';
+    rockFieldWrapper.style.display = show ? '' : 'none';
+    if (!show) {
+        rockField.value = '';
+    }
+};
+
+if (categoriaSelect) {
+    categoriaSelect.addEventListener('change', toggleRockField);
+    toggleRockField();
+}
+</script>
 </body>
 </html>

@@ -1,6 +1,8 @@
 from functools import wraps
 from decimal import Decimal
 from datetime import date, timedelta, datetime
+import calendar
+from collections import defaultdict
 import csv
 
 from django import forms
@@ -16,13 +18,18 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
 from ..forms import (
+    apply_form_config,
+    get_choice_options,
     ConfiguracaoFinanceiraForm,
     ConsumoForm,
+    MovimentacaoForm,
     MaterialUtilizadoForm,
     OrdemServicoForm,
     PerfilFotoForm,
     ProdutoForm,
+    RockItemForm,
     RockEventoForm,
+    EventoCalendarioForm,
     DescontoMensalForm,
     PendenciaMensalForm,
     AjusteMoradorForm,
@@ -33,17 +40,24 @@ from ..forms import (
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
 from ..models import (
+    ChoiceList,
+    ChoiceOption,
     ConfiguracaoFinanceira,
     ConsumoEstoque,
     MaterialUtilizado,
     Mensalidade,
     Morador,
+    Comodo,
+    Andar,
+    FormFieldConfig,
     LocalArmazenamento,
     NotaParcela,
     NotaFiscal,
     OrdemServico,
     Produto,
     RockEvento,
+    RockItem,
+    EventoCalendario,
     Setor,
     DescontoMensal,
     PendenciaMensal,
@@ -67,6 +81,13 @@ ContaFixaFormSet = modelformset_factory(
     can_delete=True,
 )
 
+AjusteMoradorFormSet = modelformset_factory(
+    AjusteMorador,
+    form=AjusteMoradorForm,
+    extra=1,
+    can_delete=True,
+)
+
 AcessoMoradorFormSet = modelformset_factory(
     Morador,
     form=AcessoMoradorForm,
@@ -77,6 +98,14 @@ MoradorEdicaoFormSet = modelformset_factory(
     Morador,
     form=MoradorEdicaoForm,
     extra=0,
+)
+
+RockItemFormSet = inlineformset_factory(
+    RockEvento,
+    RockItem,
+    form=RockItemForm,
+    extra=1,
+    can_delete=True,
 )
 
 
@@ -133,6 +162,68 @@ def home(request):
     return render(request, 'core/home.html')
 
 
+@login_required
+def calendario(request):
+    today = timezone.localdate()
+    mes_param = request.GET.get('mes')
+    try:
+        if mes_param:
+            ano, mes = [int(x) for x in mes_param.split('-')]
+            current = date(ano, mes, 1)
+        else:
+            current = today.replace(day=1)
+    except ValueError:
+        current = today.replace(day=1)
+
+    if request.method == 'POST':
+        form = EventoCalendarioForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(f"{redirect('calendario').url}?mes={current.strftime('%Y-%m')}")
+    else:
+        form = EventoCalendarioForm(initial={'data': today})
+
+    start = current
+    end = (current + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    eventos_por_dia = defaultdict(list)
+    for rock in RockEvento.objects.filter(data__range=(start, end)):
+        eventos_por_dia[rock.data].append(rock.nome)
+
+    for os in OrdemServico.objects.filter(data_inicio__date__range=(start, end)):
+        eventos_por_dia[os.data_inicio.date()].append(f"OS {os.numero}")
+
+    for manual in EventoCalendario.objects.filter(data__range=(start, end)):
+        eventos_por_dia[manual.data].append(manual.titulo)
+
+    cal = calendar.Calendar(firstweekday=0)
+    weeks = []
+    for week in cal.monthdatescalendar(current.year, current.month):
+        week_days = []
+        for day in week:
+            week_days.append({'date': day, 'events': eventos_por_dia.get(day, [])})
+        weeks.append(week_days)
+    dias_semana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
+
+    mes_anterior = (current - timedelta(days=1)).replace(day=1)
+    mes_proximo = (current + timedelta(days=32)).replace(day=1)
+
+    return render(
+        request,
+        'core/calendario.html',
+        {
+            'form': form,
+            'current': current,
+            'today': today,
+            'weeks': weeks,
+            'dias_semana': dias_semana,
+            'eventos_por_dia': eventos_por_dia,
+            'mes_anterior': mes_anterior,
+            'mes_proximo': mes_proximo,
+        },
+    )
+
+
 def cadastro(request):
     if request.user.is_authenticated:
         return redirect('home')
@@ -169,6 +260,7 @@ def gerenciar_acessos(request):
 @login_required
 def perfil(request):
     morador = getattr(request.user, 'morador', None)
+    ordens = []
     if request.method == 'POST' and morador:
         foto_form = PerfilFotoForm(request.POST, request.FILES, instance=morador)
         if foto_form.is_valid():
@@ -177,6 +269,9 @@ def perfil(request):
     else:
         foto_form = PerfilFotoForm(instance=morador)
 
+    if morador:
+        ordens = OrdemServico.objects.filter(executado_por=morador.nome).order_by('-data_inicio')
+
     return render(
         request,
         'core/perfil.html',
@@ -184,6 +279,7 @@ def perfil(request):
             'usuario': request.user,
             'morador': morador,
             'foto_form': foto_form,
+            'ordens': ordens,
         },
     )
 
@@ -191,13 +287,29 @@ def perfil(request):
 @login_required
 def moradores(request):
     moradores_qs = Morador.objects.select_related('user').all().order_by('ordem_hierarquia', 'nome')
+    if request.user.is_superuser:
+        allowed_ids = set(moradores_qs.values_list('id', flat=True))
+    else:
+        morador = getattr(request.user, 'morador', None)
+        allowed_ids = {morador.id} if morador else set()
+
+    def apply_permissions(formset):
+        for form in formset.forms:
+            if form.instance.pk not in allowed_ids:
+                for field in form.fields.values():
+                    field.disabled = True
+
     if request.method == 'POST':
         formset = MoradorEdicaoFormSet(request.POST, queryset=moradores_qs)
+        apply_permissions(formset)
         if formset.is_valid():
-            formset.save()
+            for form in formset.forms:
+                if form.instance.pk in allowed_ids and form.has_changed():
+                    form.save()
             return redirect('moradores')
     else:
         formset = MoradorEdicaoFormSet(queryset=moradores_qs)
+        apply_permissions(formset)
     return render(request, 'core/moradores.html', {'formset': formset})
 
 
@@ -269,13 +381,17 @@ def financeiro(request):
                     )
                     return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
         elif 'ajuste_submit' in request.POST:
-            ajuste_form = AjusteMoradorForm(request.POST)
-            if ajuste_form.is_valid():
-                ajuste = ajuste_form.save(commit=False)
+            ajuste_formset = AjusteMoradorFormSet(request.POST, queryset=AjusteMorador.objects.none())
+            if ajuste_formset.is_valid():
                 mes_referencia_str = request.POST.get('mes_referencia')
-                ajuste.mes_referencia = datetime.strptime(mes_referencia_str, '%Y-%m-%d').date().replace(day=1)
-                ajuste.save()
-                return redirect(f"{redirect('financeiro').url}?mes={ajuste.mes_referencia.strftime('%Y-%m')}")
+                mes_referencia = datetime.strptime(mes_referencia_str, '%Y-%m-%d').date().replace(day=1)
+                ajustes = ajuste_formset.save(commit=False)
+                for ajuste in ajustes:
+                    ajuste.mes_referencia = mes_referencia
+                    ajuste.save()
+                for obj in ajuste_formset.deleted_objects:
+                    obj.delete()
+                return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
         elif 'pendencia_submit' in request.POST:
             mes_referencia_str = request.POST.get('mes_referencia')
             if mes_referencia_str:
@@ -322,7 +438,7 @@ def financeiro(request):
     pendencia_obj = PendenciaMensal.objects.filter(mes_referencia=mes_referencia).first()
     desconto_form = DescontoMensalForm(instance=desconto_obj)
     pendencia_form = PendenciaMensalForm(instance=pendencia_obj)
-    ajuste_form = AjusteMoradorForm()
+    ajuste_formset = AjusteMoradorFormSet(queryset=AjusteMorador.objects.none())
     fixas_formset = ContaFixaFormSet(queryset=ContaFixa.objects.all())
 
     resumo_rateio = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
@@ -374,7 +490,7 @@ def financeiro(request):
         'mes_proximo': mes_proximo,
         'desconto_form': desconto_form,
         'pendencia_form': pendencia_form,
-        'ajuste_form': ajuste_form,
+        'ajuste_formset': ajuste_formset,
         'desconto_total_mes': desconto_total_mes,
         'fixas_formset': fixas_formset,
         'contas_fixas': contas_fixas,
@@ -419,6 +535,7 @@ def exportar_financeiro_csv(request):
     valor_variavel_por_morador = resumo_rateio['valor_variavel_por_morador']
     total_caixinha_mes = resumo_rateio['total_caixinha_mes']
     total_parcelas_material = resumo_rateio['total_parcelas_material']
+    parcelas_rateio = resumo_rateio['parcelas_rateio']
 
     notas = (
         NotaFiscal.objects.filter(
@@ -572,41 +689,56 @@ def editar_parcela(request, parcela_id):
 
 
 class NotaFiscalForm(forms.ModelForm):
+    comodo_estoque = forms.ModelChoiceField(
+        queryset=Comodo.objects.none(),
+        required=False,
+        label='Cômodo',
+    )
+    rock_evento = forms.ModelChoiceField(
+        queryset=RockEvento.objects.none(),
+        required=False,
+        label='Rock',
+        empty_label='Geral',
+    )
+
     class Meta:
         model = NotaFiscal
         fields = [
             'descricao',
             'fornecedor',
+            'categoria_compra',
             'setor_estoque',
+            'comodo_estoque',
             'local_estoque',
+            'rock_evento',
             'tipo_item',
             'quantidade',
             'qualidade',
+            'adicionar_estoque',
+            'cobrar_no_aluguel',
             'parcelado',
             'quantidade_parcelas',
             'valor',
             'data_emissao',
             'data_vencimento',
+            'status',
+            'data_pagamento',
+            'forma_pagamento',
             'observacao',
         ]
         labels = {
             'descricao': 'Item',
             'valor': 'Valor unitario',
         }
+        widgets = {
+            'data_emissao': forms.DateInput(attrs={'type': 'date'}),
+            'data_vencimento': forms.DateInput(attrs={'type': 'date'}),
+            'data_pagamento': forms.DateInput(attrs={'type': 'date'}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         setor_nomes = ['Infraestrutura', 'Hotelaria', 'Rock']
-        local_nomes = [
-            'Mala de ferramenta',
-            'Garagem',
-            'Lavanderia',
-            'Cozinha',
-            'Sala da cozinha',
-            'Sala dos quadrinhos',
-            'Terceiro andar',
-            'Primeiro andar',
-        ]
 
         setores = list(Setor.objects.filter(nome__in=setor_nomes))
         setor_map = {s.nome: s for s in setores}
@@ -615,29 +747,75 @@ class NotaFiscalForm(forms.ModelForm):
             for nome in setor_nomes
             if nome in setor_map
         ]
-        self.fields['setor_estoque'].required = True
+        self.fields['setor_estoque'].required = False
 
-        locais = list(LocalArmazenamento.objects.filter(nome__in=local_nomes))
-        local_map = {l.nome: l for l in locais}
-        self.fields['local_estoque'].choices = [
-            (local_map[nome].id, local_map[nome].nome)
-            for nome in local_nomes
-            if nome in local_map
-        ]
-        self.fields['local_estoque'].required = True
+        self.fields['comodo_estoque'].queryset = Comodo.objects.select_related('andar').order_by('andar__nome', 'nome')
+        selected_comodo = None
+        if self.data:
+            comodo_val = self.data.get(self.add_prefix('comodo_estoque'))
+            if comodo_val:
+                selected_comodo = Comodo.objects.filter(pk=comodo_val).first()
+        elif self.instance and self.instance.pk and self.instance.local_estoque and self.instance.local_estoque.comodo_id:
+            selected_comodo = self.instance.local_estoque.comodo
+
+        if selected_comodo:
+            self.fields['local_estoque'].queryset = LocalArmazenamento.objects.filter(
+                comodo=selected_comodo
+            ).order_by('nome')
+            self.fields['comodo_estoque'].initial = selected_comodo
+        else:
+            self.fields['local_estoque'].queryset = LocalArmazenamento.objects.none()
+        self.fields['local_estoque'].required = False
+        self.fields['rock_evento'].queryset = RockEvento.objects.order_by('-data', 'nome')
 
         self.fields['tipo_item'] = forms.ChoiceField(
-            choices=[
-                ('', '---'),
-                ('Bem de Uso', 'Bem de Uso'),
-                ('Bem Material', 'Bem Material'),
-                ('Bem de Consumo', 'Bem de Consumo'),
-                ('Bem de Troca', 'Bem de Troca'),
-            ],
+            choices=get_choice_options(
+                'nota_tipo_item',
+                [
+                    ('', '---'),
+                    ('Bem de Uso', 'Bem de Uso'),
+                    ('Bem Material', 'Bem Material'),
+                    ('Bem de Consumo', 'Bem de Consumo'),
+                    ('Bem de Troca', 'Bem de Troca'),
+                ],
+            ),
             required=True,
+        )
+        self.fields['categoria_compra'].choices = get_choice_options(
+            'categoria_compra',
+            [
+                ('geral', 'Geral'),
+                ('rock', 'Rock'),
+            ],
         )
         self.fields['quantidade_parcelas'].min_value = 1
         self.fields['quantidade_parcelas'].label = 'Quantidade de parcelas'
+
+        adicionar_estoque = self._get_adicionar_estoque_value()
+        if adicionar_estoque:
+            self.fields['setor_estoque'].required = True
+            self.fields['comodo_estoque'].required = True
+            self.fields['local_estoque'].required = True
+            self.fields['quantidade'].required = True
+        else:
+            self.fields['quantidade'].required = False
+        apply_form_config(self, 'nota_fiscal_form')
+
+    def clean(self):
+        cleaned = super().clean()
+        categoria = cleaned.get('categoria_compra')
+        if categoria != 'rock':
+            cleaned['rock_evento'] = None
+        return cleaned
+
+    def _get_adicionar_estoque_value(self):
+        if self.data:
+            valor = self.data.get(self.add_prefix('adicionar_estoque'))
+            if valor is not None:
+                return valor in ('on', 'true', 'True', '1')
+        if self.instance and self.instance.pk:
+            return bool(self.instance.adicionar_estoque)
+        return True
 
 
 class ParcelaForm(forms.ModelForm):
@@ -681,8 +859,13 @@ def compras(request):
             nota.setor = 'compras'
             if not nota.parcelado:
                 nota.quantidade_parcelas = 1
+            if not nota.adicionar_estoque:
+                nota.setor_estoque = None
+                nota.local_estoque = None
+                nota.quantidade = 0
+                nota.qualidade = ''
             nota.save()
-            if nota.quantidade > 0:
+            if nota.adicionar_estoque and nota.quantidade > 0:
                 produto, criado = Produto.objects.get_or_create(
                     nome=nota.descricao,
                     setor=nota.setor_estoque,
@@ -714,6 +897,8 @@ def compras(request):
         ),
         mes_cobranca=Subquery(mes_cobranca_sub),
     ).order_by('-data_emissao')
+    comodos = Comodo.objects.select_related('andar').order_by('andar__nome', 'nome')
+    locais = LocalArmazenamento.objects.select_related('comodo').order_by('nome')
     return render(
         request,
         'core/compras.html',
@@ -721,6 +906,8 @@ def compras(request):
             'form': form,
             'notas': notas,
             'can_edit_compras': can_edit_compras,
+            'comodos': comodos,
+            'locais': locais,
         },
     )
 
@@ -837,12 +1024,23 @@ def editar_nota_compra(request, nota_id):
         if form.is_valid():
             nota_atualizada = form.save(commit=False)
             nota_atualizada.setor = 'compras'
+            if not nota_atualizada.adicionar_estoque:
+                nota_atualizada.setor_estoque = None
+                nota_atualizada.local_estoque = None
+                nota_atualizada.quantidade = 0
+                nota_atualizada.qualidade = ''
             nota_atualizada.save()
             return redirect('compras')
     else:
         form = NotaFiscalForm(instance=nota)
 
-    return render(request, 'core/editar_nota.html', {'form': form, 'nota': nota})
+    comodos = Comodo.objects.select_related('andar').order_by('andar__nome', 'nome')
+    locais = LocalArmazenamento.objects.select_related('comodo').order_by('nome')
+    return render(
+        request,
+        'core/editar_nota.html',
+        {'form': form, 'nota': nota, 'comodos': comodos, 'locais': locais},
+    )
 
 
 @setor_required(
@@ -854,27 +1052,100 @@ def rock(request):
     can_edit_rock = _can_edit(request, 'acesso_rock_editar')
     if request.method == 'POST':
         evento_form = RockEventoForm(request.POST)
-        if evento_form.is_valid():
+        itens_formset = RockItemFormSet(request.POST)
+        if evento_form.is_valid() and itens_formset.is_valid():
             evento = evento_form.save()
+            itens_formset.instance = evento
+            itens = itens_formset.save(commit=False)
+            for item in itens_formset.deleted_objects:
+                _remover_consumo_rock(item)
+                item.delete()
+            for item in itens:
+                item.rock_evento = evento
+                item.save()
+                _sync_consumo_rock(item, evento.data)
             return redirect('rock')
     else:
         evento_form = RockEventoForm()
+        itens_formset = RockItemFormSet()
 
-    eventos = RockEvento.objects.order_by('-data')
+    eventos = RockEvento.objects.prefetch_related('itens').order_by('-data')
     consumos_rock = (
         ConsumoEstoque.objects.filter(setor='rock', rock_evento__isnull=False)
         .select_related('rock_evento', 'produto')
         .order_by('-data', '-id')
     )
+    total_expr = ExpressionWrapper(
+        Case(
+            When(quantidade__gt=0, then=F('quantidade') * F('valor')),
+            default=F('valor'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+    notas_rock = (
+        NotaFiscal.objects.filter(
+            setor='compras',
+            categoria_compra='rock',
+            rock_evento__isnull=False,
+            tipo_item='Bem de Troca',
+        )
+        .annotate(total_valor=total_expr)
+        .values('rock_evento_id')
+        .annotate(total=Sum('total_valor'))
+    )
+    total_por_rock = {item['rock_evento_id']: item['total'] for item in notas_rock}
+    total_gasto = 0
+    for evento in eventos:
+        evento_total = total_por_rock.get(evento.id) or Decimal('0.00')
+        setattr(evento, 'total_gasto', evento_total)
+        total_gasto += evento_total
+
     return render(
         request,
         'core/rock.html',
         {
             'evento_form': evento_form,
+            'itens_formset': itens_formset,
             'eventos': eventos,
             'consumos_rock': consumos_rock,
             'can_edit_rock': can_edit_rock,
+            'total_gasto': total_gasto,
         },
+    )
+
+
+@setor_required(
+    group_name='Rock',
+    morador_edit_attr='acesso_rock_editar',
+)
+def editar_rock(request, evento_id):
+    evento = get_object_or_404(RockEvento, id=evento_id)
+    if request.method == 'POST':
+        if 'excluir_submit' in request.POST:
+            evento.delete()
+            return redirect('rock')
+        evento_form = RockEventoForm(request.POST, instance=evento)
+        itens_formset = RockItemFormSet(request.POST, instance=evento)
+        if evento_form.is_valid() and itens_formset.is_valid():
+            evento = evento_form.save()
+            itens = itens_formset.save(commit=False)
+            for item in itens_formset.deleted_objects:
+                _remover_consumo_rock(item)
+                item.delete()
+            for item in itens:
+                item.rock_evento = evento
+                item.save()
+                _sync_consumo_rock(item, evento.data)
+            return redirect('rock')
+    else:
+        evento_form = RockEventoForm(instance=evento)
+        itens_formset = RockItemFormSet(instance=evento)
+
+    return render(
+        request,
+        'core/editar_rock.html',
+        {'evento_form': evento_form, 'itens_formset': itens_formset, 'evento': evento},
     )
 
 
@@ -902,7 +1173,7 @@ def almoxarifado(request):
     for nome in locais_base:
         LocalArmazenamento.objects.get_or_create(nome=nome)
 
-    produtos = Produto.objects.select_related('setor', 'local').all()
+    produtos = Produto.objects.select_related('setor', 'local', 'local__comodo', 'local__comodo__andar').all()
     produto_form = ProdutoForm()
 
     if request.method == 'POST' and 'produto_submit' in request.POST:
@@ -911,10 +1182,14 @@ def almoxarifado(request):
             produto_form.save()
             return redirect('almoxarifado')
 
+    comodos = Comodo.objects.select_related('andar').order_by('andar__nome', 'nome')
+    locais = LocalArmazenamento.objects.select_related('comodo').order_by('nome')
     context = {
         'produtos': produtos,
         'produto_form': produto_form,
         'can_edit_estoque': can_edit_estoque,
+        'comodos': comodos,
+        'locais': locais,
     }
     return render(request, 'core/almoxarifado.html', context)
 
@@ -1190,3 +1465,228 @@ def aplicar_consumo_material(material, produto, morador, data_consumo):
     material.data_consumo = data_consumo
     material.nome_material = produto.nome
     material.save()
+
+
+def _get_morador_rock():
+    return Morador.objects.get_or_create(
+        nome='Casa',
+        defaults={'apelido': 'Casa', 'ativo': False},
+    )[0]
+
+
+def _sync_consumo_rock(item, data_consumo):
+    if not item.produto_id:
+        return
+    morador_rock = _get_morador_rock()
+    with transaction.atomic():
+        if item.consumo_id:
+            consumo = item.consumo
+            if consumo.produto_id != item.produto_id:
+                produto_antigo = Produto.objects.select_for_update().get(pk=consumo.produto_id)
+                produto_antigo.quantidade += consumo.quantidade
+                produto_antigo.save(update_fields=['quantidade'])
+                produto_novo = Produto.objects.select_for_update().get(pk=item.produto_id)
+                produto_novo.quantidade -= item.quantidade
+                produto_novo.save(update_fields=['quantidade'])
+            else:
+                diff = item.quantidade - consumo.quantidade
+                if diff != 0:
+                    produto_atual = Produto.objects.select_for_update().get(pk=item.produto_id)
+                    produto_atual.quantidade -= diff
+                    produto_atual.save(update_fields=['quantidade'])
+
+            consumo.produto = item.produto
+            consumo.morador = morador_rock
+            consumo.data = data_consumo
+            consumo.quantidade = item.quantidade
+            consumo.setor = 'rock'
+            consumo.rock_evento = item.rock_evento
+            consumo.save(update_fields=['produto', 'morador', 'data', 'quantidade', 'setor', 'rock_evento'])
+        else:
+            produto_atual = Produto.objects.select_for_update().get(pk=item.produto_id)
+            produto_atual.quantidade -= item.quantidade
+            produto_atual.save(update_fields=['quantidade'])
+            consumo = ConsumoEstoque.objects.create(
+                morador=morador_rock,
+                produto=item.produto,
+                quantidade=item.quantidade,
+                data=data_consumo,
+                setor='rock',
+                rock_evento=item.rock_evento,
+            )
+            item.consumo = consumo
+            item.save(update_fields=['consumo'])
+
+
+def _remover_consumo_rock(item):
+    consumo = getattr(item, 'consumo', None)
+    if not consumo or not consumo.produto_id:
+        return
+    with transaction.atomic():
+        produto = Produto.objects.select_for_update().get(pk=consumo.produto_id)
+        produto.quantidade += consumo.quantidade
+        produto.save(update_fields=['quantidade'])
+        consumo.delete()
+
+
+@login_required
+def configurar_formularios(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied('Voce nao tem permissao para acessar este modulo.')
+
+    form_registry = [
+        ('nota_fiscal_form', 'Compras - Nota Fiscal', NotaFiscalForm),
+        ('produto_form', 'Almoxarifado - Produto', ProdutoForm),
+        ('movimentacao_form', 'Almoxarifado - Movimentacao', MovimentacaoForm),
+        ('consumo_form', 'Almoxarifado - Consumo', ConsumoForm),
+        ('ordem_servico_form', 'Manutencao - Ordem de Servico', OrdemServicoForm),
+        ('material_utilizado_form', 'Manutencao - Material Utilizado', MaterialUtilizadoForm),
+        ('configuracao_financeira_form', 'Financeiro - Configuracao', ConfiguracaoFinanceiraForm),
+        ('desconto_mensal_form', 'Financeiro - Desconto', DescontoMensalForm),
+        ('pendencia_mensal_form', 'Financeiro - Pendencia', PendenciaMensalForm),
+        ('ajuste_morador_form', 'Financeiro - Ajuste Morador', AjusteMoradorForm),
+        ('conta_fixa_form', 'Financeiro - Conta Fixa', ContaFixaForm),
+        ('cadastro_form', 'Cadastro', CadastroForm),
+        ('perfil_foto_form', 'Perfil - Foto', PerfilFotoForm),
+        ('acesso_morador_form', 'Morador - Acessos', AcessoMoradorForm),
+        ('morador_edicao_form', 'Morador - Edicao', MoradorEdicaoForm),
+        ('rock_evento_form', 'Rock - Evento', RockEventoForm),
+    ]
+
+    if request.method == 'POST':
+        for form_key, _label, form_class in form_registry:
+            form = form_class()
+            for idx, field_name in enumerate(form.fields.keys(), start=1):
+                label_value = request.POST.get(f'{form_key}__{field_name}__label', '').strip()
+                visible_value = request.POST.get(f'{form_key}__{field_name}__visible') == 'on'
+                order_value = request.POST.get(f'{form_key}__{field_name}__order', '').strip()
+                order = int(order_value) if order_value.isdigit() else idx
+                FormFieldConfig.objects.update_or_create(
+                    form_key=form_key,
+                    field_name=field_name,
+                    defaults={
+                        'label': label_value,
+                        'visible': visible_value,
+                        'order': order,
+                    },
+                )
+        return redirect('configurar_formularios')
+
+    forms_data = []
+    for form_key, label, form_class in form_registry:
+        form = form_class()
+        configs = {
+            cfg.field_name: cfg
+            for cfg in FormFieldConfig.objects.filter(form_key=form_key)
+        }
+        fields = []
+        for idx, (field_name, field) in enumerate(form.fields.items(), start=1):
+            cfg = configs.get(field_name)
+            fields.append(
+                {
+                    'name': field_name,
+                    'label': cfg.label if cfg and cfg.label else field.label,
+                    'visible': cfg.visible if cfg else True,
+                    'order': cfg.order if cfg else idx,
+                }
+            )
+        forms_data.append({'key': form_key, 'label': label, 'fields': fields})
+
+    return render(request, 'core/configurar_formularios.html', {'forms': forms_data})
+
+
+@login_required
+def configurar_listas(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied('Voce nao tem permissao para acessar este modulo.')
+
+    list_registry = [
+        ('produto_descricao', 'Produto - Tipo'),
+        ('nota_tipo_item', 'Compras - Tipo de item'),
+        ('categoria_compra', 'Compras - Categoria'),
+        ('movimentacao_tipo', 'Almoxarifado - Tipo de movimentacao'),
+        ('consumo_setor', 'Almoxarifado - Setor de consumo'),
+        ('morador_funcoes', 'Moradores - Funcoes'),
+    ]
+
+    for key, label in list_registry:
+        ChoiceList.objects.get_or_create(key=key, defaults={'label': label})
+
+    ChoiceOptionFormSet = modelformset_factory(
+        ChoiceOption,
+        fields=('value', 'label', 'order', 'active'),
+        extra=1,
+        can_delete=True,
+    )
+    SetorFormSet = modelformset_factory(Setor, fields=('nome',), extra=1, can_delete=True)
+    AndarFormSet = modelformset_factory(Andar, fields=('nome',), extra=1, can_delete=True)
+    ComodoFormSet = modelformset_factory(Comodo, fields=('nome', 'andar'), extra=1, can_delete=True)
+    LocalFormSet = modelformset_factory(LocalArmazenamento, fields=('nome', 'comodo'), extra=1, can_delete=True)
+
+    setor_formset = SetorFormSet(queryset=Setor.objects.all(), prefix='setor')
+    andar_formset = AndarFormSet(queryset=Andar.objects.all(), prefix='andar')
+    comodo_formset = ComodoFormSet(queryset=Comodo.objects.select_related('andar'), prefix='comodo')
+    local_formset = LocalFormSet(queryset=LocalArmazenamento.objects.select_related('comodo'), prefix='local')
+    list_formsets = []
+    for key, _label in list_registry:
+        choice_list = ChoiceList.objects.get(key=key)
+        formset = ChoiceOptionFormSet(
+            queryset=ChoiceOption.objects.filter(choice_list=choice_list),
+            prefix=key,
+        )
+        list_formsets.append((choice_list, formset))
+
+    if request.method == 'POST':
+        section = request.POST.get('config_section')
+        if section == 'estrutura':
+            andar_formset = AndarFormSet(request.POST, queryset=Andar.objects.all(), prefix='andar')
+            comodo_formset = ComodoFormSet(request.POST, queryset=Comodo.objects.select_related('andar'), prefix='comodo')
+            local_formset = LocalFormSet(request.POST, queryset=LocalArmazenamento.objects.select_related('comodo'), prefix='local')
+            if andar_formset.is_valid() and comodo_formset.is_valid() and local_formset.is_valid():
+                andar_formset.save()
+                comodo_formset.save()
+                local_formset.save()
+                return redirect('configurar_listas')
+        elif section == 'setores':
+            setor_formset = SetorFormSet(request.POST, queryset=Setor.objects.all(), prefix='setor')
+            if setor_formset.is_valid():
+                setor_formset.save()
+                return redirect('configurar_listas')
+        elif section and section.startswith('choice:'):
+            key = section.split(':', 1)[1]
+            if key:
+                list_formsets = []
+                for list_key, _label in list_registry:
+                    choice_list = ChoiceList.objects.get(key=list_key)
+                    if list_key == key:
+                        formset = ChoiceOptionFormSet(
+                            request.POST,
+                            queryset=ChoiceOption.objects.filter(choice_list=choice_list),
+                            prefix=list_key,
+                        )
+                        if formset.is_valid():
+                            instances = formset.save(commit=False)
+                            for obj in formset.deleted_objects:
+                                obj.delete()
+                            for inst in instances:
+                                inst.choice_list = choice_list
+                                inst.save()
+                            return redirect('configurar_listas')
+                    else:
+                        formset = ChoiceOptionFormSet(
+                            queryset=ChoiceOption.objects.filter(choice_list=choice_list),
+                            prefix=list_key,
+                        )
+                    list_formsets.append((choice_list, formset))
+
+    return render(
+        request,
+        'core/configurar_listas.html',
+        {
+            'setor_formset': setor_formset,
+            'andar_formset': andar_formset,
+            'comodo_formset': comodo_formset,
+            'local_formset': local_formset,
+            'list_formsets': list_formsets,
+        },
+    )

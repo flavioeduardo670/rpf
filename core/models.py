@@ -105,6 +105,8 @@ class NotaFiscal(models.Model):
     tipo_item = models.CharField(max_length=100, blank=True, null=True)
     quantidade = models.IntegerField(default=0)
     qualidade = models.CharField(max_length=100, blank=True, null=True)
+    adicionar_estoque = models.BooleanField(default=True)
+    cobrar_no_aluguel = models.BooleanField(default=True)
     parcelado = models.BooleanField(default=False)
     quantidade_parcelas = models.IntegerField(default=1)
     categoria_compra = models.CharField(max_length=20, default='geral')
@@ -122,6 +124,7 @@ class NotaFiscal(models.Model):
     data_pagamento = models.DateField(blank=True, null=True)  # Data em que foi paga
     forma_pagamento = models.CharField(max_length=50, blank=True, null=True)
     observacao = models.TextField(blank=True, null=True)
+    rock_evento = models.ForeignKey('RockEvento', on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.descricao} - {self.fornecedor}"
@@ -136,6 +139,8 @@ class RockEvento(models.Model):
     nome = models.CharField(max_length=200)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     quantidade_pessoas = models.IntegerField(default=0)
+    horario_inicio = models.TimeField(null=True, blank=True)
+    horario_fim = models.TimeField(null=True, blank=True)
     observacoes = models.TextField(blank=True, null=True)
     data = models.DateField()
     valor_arrecadado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -249,15 +254,106 @@ class Setor(models.Model):
         return self.nome
 
 
+
+class Andar(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+
+class Comodo(models.Model):
+    nome = models.CharField(max_length=150)
+    andar = models.ForeignKey(Andar, on_delete=models.CASCADE, related_name='comodos')
+
+    class Meta:
+        unique_together = ('nome', 'andar')
+        ordering = ['andar__nome', 'nome']
+
+    def __str__(self):
+        return f"{self.nome} ({self.andar.nome})"
+
+
+
+
 class LocalArmazenamento(models.Model):
     """
     Local físico onde os produtos ficam armazenados.
     """
     nome = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
+    comodo = models.ForeignKey(Comodo, on_delete=models.SET_NULL, null=True, blank=True, related_name='locais')
 
     def __str__(self):
         return self.nome
+
+
+class RockItem(models.Model):
+    rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='itens')
+    produto = models.ForeignKey('Produto', on_delete=models.SET_NULL, null=True, blank=True)
+    quantidade = models.IntegerField(default=1)
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    observacao = models.TextField(blank=True, null=True)
+    consumo = models.OneToOneField('ConsumoEstoque', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return (self.produto.nome if self.produto else 'Item')
+
+
+class FormFieldConfig(models.Model):
+    form_key = models.CharField(max_length=100)
+    field_name = models.CharField(max_length=100)
+    label = models.CharField(max_length=200, blank=True)
+    visible = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ('form_key', 'field_name')
+        ordering = ['form_key', 'order', 'field_name']
+
+    def __str__(self):
+        return f"{self.form_key}:{self.field_name}"
+
+
+class ChoiceList(models.Model):
+    key = models.CharField(max_length=100, unique=True)
+    label = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['label', 'key']
+
+    def __str__(self):
+        return self.label
+
+
+class ChoiceOption(models.Model):
+    choice_list = models.ForeignKey(ChoiceList, on_delete=models.CASCADE, related_name='options')
+    value = models.CharField(max_length=100)
+    label = models.CharField(max_length=200)
+    order = models.PositiveIntegerField(default=0)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('choice_list', 'value')
+        ordering = ['order', 'label']
+
+    def __str__(self):
+        return f"{self.choice_list.key}:{self.label}"
+
+
+class EventoCalendario(models.Model):
+    titulo = models.CharField(max_length=200)
+    data = models.DateField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-data', 'titulo']
+
+    def __str__(self):
+        return f"{self.data} - {self.titulo}"
 
 
 class Produto(models.Model):

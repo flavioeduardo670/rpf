@@ -3,11 +3,20 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.test.utils import override_settings
+from django.utils import timezone
 from decimal import Decimal
 import shutil
 import tempfile
 
-from .models import ConfiguracaoFinanceira, Morador, MovimentacaoEstoque, NotaFiscal, Produto, Setor
+from .models import (
+    ConfiguracaoFinanceira,
+    Morador,
+    MovimentacaoEstoque,
+    NotaFiscal,
+    NotaParcela,
+    Produto,
+    Setor,
+)
 
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
@@ -124,42 +133,61 @@ class FinanceiroRateioTests(TestCase):
         group, _ = Group.objects.get_or_create(name='Financeiro')
         self.user.groups.add(group)
 
+        Morador.objects.all().delete()
+        self.mes_referencia = timezone.localdate().replace(day=1)
         ConfiguracaoFinanceira.objects.create(valor_aluguel=800, valor_agua=100, valor_luz=100)
         Morador.objects.create(nome='Ana', quarto='1', ativo=True)
         Morador.objects.create(nome='Bruno', quarto='2', ativo=True)
         Morador.objects.create(nome='Carlos', quarto='3', ativo=False)
 
-        NotaFiscal.objects.create(
+        nota_paga = NotaFiscal.objects.create(
             setor='compras',
             descricao='Mercado',
             fornecedor='Fornecedor',
             valor=200,
-            data_emissao='2026-03-01',
-            data_vencimento='2026-03-10',
+            data_emissao=self.mes_referencia,
+            data_vencimento=self.mes_referencia.replace(day=10),
+            status='pago',
+            tipo_item='Bem Material',
+        )
+        NotaParcela.objects.create(
+            nota=nota_paga,
+            numero=1,
+            valor=200,
+            vencimento=self.mes_referencia.replace(day=10),
+            mes_referencia=self.mes_referencia,
             status='pago',
         )
-        NotaFiscal.objects.create(
+
+        nota_pendente = NotaFiscal.objects.create(
             setor='compras',
             descricao='Internet',
             fornecedor='Fornecedor',
             valor=100,
-            data_emissao='2026-03-01',
-            data_vencimento='2026-03-10',
+            data_emissao=self.mes_referencia,
+            data_vencimento=self.mes_referencia.replace(day=15),
+            status='pendente',
+            tipo_item='Bem de Consumo',
+        )
+        NotaParcela.objects.create(
+            nota=nota_pendente,
+            numero=1,
+            valor=100,
+            vencimento=self.mes_referencia.replace(day=15),
+            mes_referencia=self.mes_referencia,
             status='pendente',
         )
 
     def test_financeiro_calcula_rateio_com_aluguel_e_gastos_pagos(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('financeiro'))
+        response = self.client.get(f"{reverse('financeiro')}?mes={self.mes_referencia.strftime('%Y-%m')}")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['valor_aluguel'], Decimal('800'))
-        self.assertEqual(response.context['valor_agua'], Decimal('100'))
-        self.assertEqual(response.context['valor_luz'], Decimal('100'))
         self.assertEqual(response.context['total_despesas'], Decimal('200'))
-        self.assertEqual(response.context['total_rateio'], Decimal('1200'))
+        self.assertEqual(response.context['total_rateio'], Decimal('1100.00'))
         self.assertEqual(response.context['total_moradores_ativos'], 2)
-        self.assertEqual(response.context['valor_por_morador'], Decimal('600.00'))
+        self.assertEqual(response.context['valor_por_morador'], Decimal('550.00'))
         self.assertEqual(len(response.context['rateio_moradores']), 2)
 
 

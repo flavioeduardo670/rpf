@@ -29,6 +29,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     parcelas_mes = NotaParcela.objects.filter(
         mes_referencia=mes_referencia,
         nota__setor='compras',
+        nota__cobrar_no_aluguel=True,
     ).select_related('nota')
     parcelas_consumo = parcelas_mes.filter(nota__tipo_item='Bem de Consumo').exclude(nota__categoria_compra='rock')
     parcelas_material = parcelas_mes.filter(nota__tipo_item='Bem Material').exclude(nota__categoria_compra='rock')

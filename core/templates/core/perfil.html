@@ -142,6 +142,34 @@
         <p class="muted">Seu usuario ainda nao esta vinculado a um morador.</p>
         {% endif %}
     </section>
+
+    {% if morador %}
+    <section class="panel">
+        <h2>Ordens de servico vinculadas</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Numero</th>
+                    <th>Setor</th>
+                    <th>Status</th>
+                    <th>Inicio</th>
+                    <th>Fim</th>
+                </tr>
+                {% for os in ordens %}
+                <tr>
+                    <td>{{ os.numero }}</td>
+                    <td>{{ os.get_setor_display }}</td>
+                    <td>{{ os.get_status_display }}</td>
+                    <td>{{ os.data_inicio }}</td>
+                    <td>{{ os.data_fim|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="empty">Nenhuma OS vinculada.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </section>
+    {% endif %}
 </div>
 </body>
 </html>

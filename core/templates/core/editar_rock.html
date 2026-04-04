@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setor de Rocks</title>
+    <title>Editar Rock</title>
     <style>
         :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
         * { box-sizing:border-box; }
         body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
-        .wrap { max-width:1280px; margin:0 auto; }
+        .wrap { max-width:1000px; margin:0 auto; }
         .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
         h1 { margin:0; }
         .btn, button { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .btn.light { background:#fff; color:#111; }
         .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
-        .panel h2, .panel h3 { margin-top:0; }
         form p { margin:0 0 12px; }
         input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
         textarea { min-height:36px; height:36px; }
@@ -21,26 +21,23 @@
         .row-actions { display:flex; justify-content:center; }
         .btn-danger { background:#fff; color:#111; border-color:#c00; }
         .btn-add { margin-top:10px; }
-        table { width:100%; min-width:860px; border-collapse:collapse; }
+        table { width:100%; min-width:720px; border-collapse:collapse; }
         th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:top; }
         th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
-        .empty { color:var(--muted); text-align:center; }
-        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
+        .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:14px; }
+        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} .actions{flex-direction:column;} }
     </style>
 </head>
 <body>
 <div class="wrap">
     <div class="top">
-        <h1>Setor de Rocks</h1>
-        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+        <h1>Editar Rock</h1>
+        <a class="btn light" href="{% url 'rock' %}">Voltar</a>
     </div>
 
     <section class="panel">
-        <h2>Novo rock (festa)</h2>
-        {% if can_edit_rock %}
         <form method="post">
             {% csrf_token %}
-            <h3>Dados da festa</h3>
             {{ evento_form.as_p }}
 
             <h3>Bebidas e itens do rock</h3>
@@ -51,7 +48,6 @@
                         <th>Despesas</th>
                         <th>Quantidade</th>
                         <th>Valor unitario</th>
-                        <th>Total</th>
                         <th>Observacao</th>
                         <th>Excluir</th>
                     </tr>
@@ -61,7 +57,6 @@
                         <td>{{ form.produto }}</td>
                         <td>{{ form.quantidade }}</td>
                         <td>{{ form.valor_unitario }}</td>
-                        <td>-</td>
                         <td>{{ form.observacao }}</td>
                         <td class="row-actions">
                             <button type="button" class="btn btn-danger" data-remove-row>Excluir</button>
@@ -74,77 +69,12 @@
             </div>
             <button type="button" class="btn btn-add" id="add-rock-item">Adicionar linha</button>
 
-            <button type="submit">Salvar rock</button>
+            <div class="actions">
+                <button type="submit" name="excluir_submit" class="btn light" onclick="return confirm('Tem certeza que deseja excluir este rock?');">Excluir</button>
+                <a class="btn light" href="{% url 'rock' %}">Cancelar</a>
+                <button type="submit" class="btn">Salvar</button>
+            </div>
         </form>
-        {% else %}
-        <p>Somente visualizacao. Para cadastrar rock, solicite acesso de edicao.</p>
-        {% endif %}
-    </section>
-
-    <section class="panel">
-        <h2>Rocks registrados</h2>
-        <div class="table-wrap">
-            <table>
-                <tr>
-                    <th>Nome</th>
-                    <th>Tipo</th>
-                    <th>Pessoas</th>
-                    <th>Data</th>
-                    <th>Horario</th>
-                    <th>Valor arrecadado</th>
-                    <th>Total gasto</th>
-                    <th>Acoes</th>
-                </tr>
-                {% for evento in eventos %}
-                <tr>
-                    <td>{{ evento.nome }}</td>
-                    <td>{{ evento.get_tipo_display }}</td>
-                    <td>{{ evento.quantidade_pessoas }}</td>
-                    <td>{{ evento.data }}</td>
-                    <td>
-                        {% if evento.horario_inicio %}{{ evento.horario_inicio }}{% else %}-{% endif %}
-                        {% if evento.horario_fim %} - {{ evento.horario_fim }}{% endif %}
-                    </td>
-                    <td>R$ {{ evento.valor_arrecadado }}</td>
-                    <td>R$ {{ evento.total_gasto|floatformat:2 }}</td>
-                    <td>
-                        {% if can_edit_rock %}
-                        <a class="btn" href="{% url 'editar_rock' evento.id %}">Editar</a>
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="8" class="empty">Nenhum rock registrado.</td></tr>
-                {% endfor %}
-            </table>
-        </div>
-        <p class="muted">Total gasto (todos os rocks): R$ {{ total_gasto|floatformat:2 }}</p>
-    </section>
-
-    <section class="panel">
-        <h2>Gastos por rock (almoxarifado)</h2>
-        <div class="table-wrap">
-            <table>
-                <tr>
-                    <th>Rock</th>
-                    <th>Item</th>
-                    <th>Quantidade</th>
-                    <th>Data</th>
-                </tr>
-                {% for consumo in consumos_rock %}
-                <tr>
-                    <td>{{ consumo.rock_evento.nome }}</td>
-                    <td>{{ consumo.produto.nome }}</td>
-                    <td>{{ consumo.quantidade }}</td>
-                    <td>{{ consumo.data }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="empty">Nenhum gasto registrado.</td></tr>
-                {% endfor %}
-            </table>
-        </div>
     </section>
 </div>
 <template id="rock-item-template">
@@ -152,7 +82,6 @@
         <td>{{ itens_formset.empty_form.produto }}</td>
         <td>{{ itens_formset.empty_form.quantidade }}</td>
         <td>{{ itens_formset.empty_form.valor_unitario }}</td>
-        <td>-</td>
         <td>{{ itens_formset.empty_form.observacao }}</td>
         <td class="row-actions">
             <button type="button" class="btn btn-danger" data-remove-row>Excluir</button>

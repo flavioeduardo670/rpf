@@ -1,6 +1,7 @@
 param(
   [int]$Port = 8000,
-  [switch]$OpenFirewall
+  [switch]$OpenFirewall,
+  [switch]$OpenBrowser
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,14 +23,14 @@ function Get-LanIps {
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$python = Join-Path $repoRoot "venv\\Scripts\\python.exe"
+$python = Join-Path $repoRoot "venv\Scripts\python.exe"
 $managePy = Join-Path $repoRoot "manage.py"
 
 if (-not (Test-Path $python)) {
-  throw "Não encontrei o Python do venv em: $python. Crie/ative o venv primeiro."
+  throw "Nao encontrei o Python do venv em: $python. Crie/ative o venv primeiro."
 }
 if (-not (Test-Path $managePy)) {
-  throw "Não encontrei manage.py em: $managePy"
+  throw "Nao encontrei manage.py em: $managePy"
 }
 
 if ($OpenFirewall) {
@@ -50,11 +51,18 @@ if ($ips.Count -gt 0) {
   foreach ($ip in $ips) {
     Write-Host "  http://$ip`:$Port/"
   }
+  $env:DJANGO_ALLOWED_HOSTS = ($ips + @('localhost', '127.0.0.1')) -join ','
 } else {
-  Write-Host "Não consegui detectar um IPv4 de rede. Rode: ipconfig"
+  Write-Host "Nao consegui detectar um IPv4 de rede. Rode: ipconfig"
 }
 
 Write-Host ""
 Write-Host "Iniciando Django em 0.0.0.0:$Port ..."
+$env:DJANGO_DEBUG = if ($env:DJANGO_DEBUG) { $env:DJANGO_DEBUG } else { "true" }
+if (-not $env:DJANGO_SECRET_KEY) {
+  $env:DJANGO_SECRET_KEY = "dev-only-change-me"
+}
+if ($OpenBrowser) {
+  Start-Process "http://localhost:$Port/"
+}
 & $python $managePy runserver "0.0.0.0:$Port"
-

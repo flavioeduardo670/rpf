@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Formularios</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:1200px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        h1 { margin:0; }
+        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .btn.light { background:#fff; color:#111; }
+        .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:16px; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; }
+        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
+        input[type="text"], input[type="number"] { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
+        .form-actions { display:flex; justify-content:flex-end; margin-top:14px; gap:10px; }
+        .muted { color:var(--muted); font-size:.85rem; margin-top:6px; }
+        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn{width:100%; text-align:center;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Configurar Formularios</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for form in forms %}
+        <section class="card">
+            <h2>{{ form.label }}</h2>
+            <p class="muted">Defina visibilidade, rotulo e ordem dos campos.</p>
+            <table>
+                <tr>
+                    <th>Campo</th>
+                    <th>Rotulo</th>
+                    <th>Visivel</th>
+                    <th>Ordem</th>
+                </tr>
+                {% for field in form.fields %}
+                <tr>
+                    <td>{{ field.name }}</td>
+                    <td>
+                        <input type="text" name="{{ form.key }}__{{ field.name }}__label" value="{{ field.label|default:'' }}">
+                    </td>
+                    <td>
+                        <input type="checkbox" name="{{ form.key }}__{{ field.name }}__visible" {% if field.visible %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="number" name="{{ form.key }}__{{ field.name }}__order" value="{{ field.order }}" min="1">
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </section>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" class="btn">Salvar configuracoes</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

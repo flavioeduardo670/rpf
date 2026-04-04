@@ -201,8 +201,34 @@
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
-            {{ ajuste_form.as_p }}
-            <button type="submit" name="ajuste_submit" class="btn">Salvar ajuste</button>
+            {{ ajuste_formset.management_form }}
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Morador</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Motivo</th>
+                        <th>Excluir</th>
+                    </tr>
+                    <tbody id="ajuste-body">
+                    {% for form in ajuste_formset %}
+                    <tr>
+                        <td>{{ form.morador }}</td>
+                        <td>{{ form.tipo }}</td>
+                        <td>{{ form.valor }}</td>
+                        <td>{{ form.motivo }}</td>
+                        <td>
+                            <button type="button" class="btn btn-invert" data-remove-ajuste>Excluir</button>
+                            <span style="display:none;">{{ form.DELETE }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-invert" id="add-ajuste">Adicionar morador</button>
+            <button type="submit" name="ajuste_submit" class="btn">Salvar ajustes</button>
         </form>
         {% else %}
         <p>Somente visualizacao para ajustes individuais.</p>
@@ -258,5 +284,61 @@
         </table>
     </div>
 </div>
+<template id="ajuste-template">
+    <tr>
+        <td>{{ ajuste_formset.empty_form.morador }}</td>
+        <td>{{ ajuste_formset.empty_form.tipo }}</td>
+        <td>{{ ajuste_formset.empty_form.valor }}</td>
+        <td>{{ ajuste_formset.empty_form.motivo }}</td>
+        <td>
+            <button type="button" class="btn btn-invert" data-remove-ajuste>Excluir</button>
+            <span style="display:none;">{{ ajuste_formset.empty_form.DELETE }}</span>
+        </td>
+    </tr>
+</template>
+<script>
+const ajusteBody = document.getElementById('ajuste-body');
+const addAjusteBtn = document.getElementById('add-ajuste');
+const ajusteTemplate = document.getElementById('ajuste-template');
+const ajusteTotalForms = document.getElementById('id_ajustemorador_set-TOTAL_FORMS') || document.querySelector('input[name$=\"-TOTAL_FORMS\"]');
+
+const addAjusteRow = () => {
+    if (!ajusteBody || !ajusteTemplate || !ajusteTotalForms) return;
+    const formCount = Number.parseInt(ajusteTotalForms.value, 10) || ajusteBody.querySelectorAll('tr').length;
+    const clone = ajusteTemplate.content.cloneNode(true);
+    clone.querySelectorAll('input, select, textarea').forEach(input => {
+        input.name = input.name.replace('__prefix__', formCount);
+        input.id = input.id.replace('__prefix__', formCount);
+        if (input.type === 'checkbox') {
+            input.checked = false;
+        } else {
+            input.value = '';
+        }
+    });
+    ajusteBody.appendChild(clone);
+    ajusteTotalForms.value = formCount + 1;
+};
+
+const removeAjusteRow = (row) => {
+    const deleteInput = row.querySelector('input[type=\"checkbox\"]');
+    if (deleteInput) {
+        deleteInput.checked = true;
+        row.style.display = 'none';
+    } else {
+        row.remove();
+    }
+};
+
+if (ajusteBody) {
+    ajusteBody.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-remove-ajuste]');
+        if (!btn) return;
+        removeAjusteRow(btn.closest('tr'));
+    });
+}
+if (addAjusteBtn) {
+    addAjusteBtn.addEventListener('click', addAjusteRow);
+}
+</script>
 </body>
 </html>

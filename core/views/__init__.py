@@ -18,7 +18,10 @@ from .estoque import (
 )
 from .legacy import (
     cadastro,
+    calendario,
     compras,
+    configurar_formularios,
+    configurar_listas,
     editar_nota_compra,
     editar_os,
     gerenciar_acessos,
@@ -28,6 +31,7 @@ from .legacy import (
     moradores,
     perfil,
     rock,
+    editar_rock,
     exportar_compras_csv,
     exportar_moradores_csv,
 )

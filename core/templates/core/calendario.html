@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario - Sistema RPF</title>
+    <style>
+        :root {
+            --bg: #f1f1f1;
+            --panel: #ffffff;
+            --ink: #101010;
+            --muted: #5f5f5f;
+            --line: #d2d2d2;
+            --line-strong: #b0b0b0;
+            --accent: #101010;
+            --accent-soft: #f4f4f4;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 15% 0, #ffffff 0%, transparent 35%),
+                radial-gradient(circle at 90% 10%, #e9e9e9 0%, transparent 30%),
+                linear-gradient(160deg, #f7f7f7, #efefef);
+            color: var(--ink);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        }
+
+        .wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .header h1 {
+            margin: 8px 0 4px;
+            font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+        }
+
+        .header p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: var(--panel);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 6px 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .month-nav a {
+            text-decoration: none;
+            color: var(--ink);
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+        }
+
+        .month-label {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-size: 0.85rem;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 1.3fr);
+            gap: 18px;
+        }
+
+        .calendar {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .weekday-row {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: var(--muted);
+            padding: 6px 0;
+        }
+
+        .weeks {
+            display: grid;
+            gap: 8px;
+        }
+
+        .week {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .day {
+            min-height: 120px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #fbfbfb;
+        }
+
+        .day.outside {
+            opacity: 0.55;
+            background: #f0f0f0;
+        }
+
+        .day.today {
+            border: 2px solid var(--accent);
+            background: #fdfdfd;
+        }
+
+        .day-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .day-number {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .events {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--muted);
+            overflow: hidden;
+        }
+
+        .events li {
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: #ededed;
+            color: #1d1d1d;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .side {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .side h3 {
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            font-size: 0.9rem;
+        }
+
+        .form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .field label {
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .field input {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            border: 1px solid var(--accent);
+            background: var(--accent);
+            color: #f7f7f7;
+            font-weight: 700;
+            padding: 10px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .note {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .wrap { padding: 16px; }
+            .weekday-row, .week {
+                gap: 6px;
+            }
+            .day {
+                min-height: 96px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="wrap">
+        <header class="header">
+            <div>
+                <a href="{% url 'home' %}" class="back">Voltar ao inicio</a>
+                <h1>Calendario</h1>
+                <p>Rocks e OSs aparecem automaticamente. Eventos manuais podem ser adicionados abaixo.</p>
+            </div>
+            <div class="month-nav">
+                <a href="?mes={{ mes_anterior|date:'Y-m' }}">&lt;</a>
+                <div class="month-label">{{ current|date:"F Y" }}</div>
+                <a href="?mes={{ mes_proximo|date:'Y-m' }}">&gt;</a>
+            </div>
+        </header>
+
+        <section class="layout">
+            <div class="calendar">
+                <div class="weekday-row">
+                    {% for dia in dias_semana %}
+                        <div class="weekday">{{ dia }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="weeks">
+                    {% for week in weeks %}
+                        <div class="week">
+                            {% for day in week %}
+                                <div class="day{% if day.date.month != current.month %} outside{% endif %}{% if day.date == today %} today{% endif %}">
+                                    <div class="day-header">
+                                        <span class="day-number">{{ day.date.day }}</span>
+                                    </div>
+                                    <ul class="events">
+                                        {% for evento in day.events %}
+                                            <li>{{ evento }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <aside class="side">
+                <h3>Adicionar evento</h3>
+                <form method="post" class="form">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="{{ form.titulo.id_for_label }}">Evento</label>
+                        {{ form.titulo }}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.data.id_for_label }}">Data</label>
+                        {{ form.data }}
+                    </div>
+                    <button type="submit" class="btn">Salvar evento</button>
+                </form>
+                <p class="note">Aparece junto com o codigo da OS e o nome de cada rock.</p>
+            </aside>
+        </section>
+    </main>
+</body>
+</html>

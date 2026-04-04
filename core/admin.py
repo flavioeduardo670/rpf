@@ -1,7 +1,9 @@
 from django.contrib import admin
-from .models import ConfiguracaoFinanceira, Morador, Mensalidade, NotaFiscal
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 
+from .forms import CadastroForm
+from .models import ConfiguracaoFinanceira, Morador, Mensalidade, NotaFiscal
 
 
 # =====================================================
@@ -64,7 +66,7 @@ class MoradorAdmin(admin.ModelAdmin):
                 'ativo',
             )
         }),
-        ('Permissões de Acesso', {
+        ('Permissoes de Acesso', {
             'fields': (
                 'acesso_financeiro_visualizar',
                 'acesso_financeiro_editar',
@@ -92,7 +94,29 @@ admin.site.register(NotaFiscal)
 admin.site.register(ConfiguracaoFinanceira)
 
 
+# Re-registra o User com formulario que permite vincular Morador.
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 
-# Remove User padrão e oculta cadastro de usuários no admin
-admin.site.unregister(User)
 
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    add_form = CadastroForm
+    add_fieldsets = (
+        (
+            None,
+            {
+                'classes': ('wide',),
+                'fields': ('username', 'email', 'morador', 'password1', 'password2'),
+            },
+        ),
+    )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        morador = form.cleaned_data.get('morador')
+        if morador:
+            morador.user = obj
+            morador.save(update_fields=['user'])
