@@ -241,7 +241,9 @@ class OrdemServicoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         moradores = Morador.objects.filter(ativo=True).order_by('ordem_hierarquia', 'nome')
         self.fields['executado_por'] = forms.ChoiceField(
-            choices=[('', '---')] + [(m.nome, m.nome) for m in moradores],
+            choices=[('', '---')] + [
+                (m.nome, m.apelido or m.nome) for m in moradores
+            ],
             required=True,
             label='Executado por',
         )

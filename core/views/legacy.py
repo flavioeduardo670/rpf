@@ -1327,6 +1327,10 @@ def exportar_estoque_csv(request):
     morador_edit_attr='acesso_manutencao_editar',
 )
 def manutencao(request):
+    morador_apelidos = {
+        morador.nome: (morador.apelido or morador.nome)
+        for morador in Morador.objects.all()
+    }
     can_edit_manutencao = _can_edit(request, 'acesso_manutencao_editar')
     if request.method == 'POST':
         os_form = OrdemServicoForm(request.POST)
@@ -1338,9 +1342,13 @@ def manutencao(request):
     else:
         os_form = OrdemServicoForm()
 
+    ordens = OrdemServico.objects.all().order_by('setor', '-numero')
+    for ordem in ordens:
+        ordem.executado_por_exibicao = morador_apelidos.get(ordem.executado_por, ordem.executado_por)
+
     context = {
         'os_form': os_form,
-        'ordens': OrdemServico.objects.all().order_by('setor', '-numero'),
+        'ordens': ordens,
         'can_edit_manutencao': can_edit_manutencao,
     }
     return render(request, 'core/manutencao.html', context)
