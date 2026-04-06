@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurar Listas</title>
+    <title>Configuracoes da Casa</title>
     <style>
         :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
         * { box-sizing:border-box; }
@@ -28,13 +28,13 @@
 <body>
 <div class="wrap">
     <div class="top">
-        <h1>Configurar Listas</h1>
+        <h1>Configuracoes da Casa</h1>
         <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
 
     <section class="card">
-        <h2>Estrutura do Almoxarifado</h2>
-        <p class="muted">Edite andares, cômodos e locais.</p>
+        <h2>Comodos e locais da casa</h2>
+        <p class="muted">Edite andares, cômodos e locais de armazenamento.</p>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="config_section" value="estrutura">
@@ -99,8 +99,8 @@
     </section>
 
     <section class="card">
-        <h2>Setores</h2>
-        <p class="muted">Edite todos os setores do sistema.</p>
+        <h2>Setores da casa</h2>
+        <p class="muted">Edite os setores utilizados no sistema.</p>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="config_section" value="setores">

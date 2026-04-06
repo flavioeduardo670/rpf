@@ -224,6 +224,15 @@
                 <p>Controle produtos e movimentacoes de entrada e saida.</p>
                 <a href="{% url 'almoxarifado' %}" class="btn">Acessar modulo</a>
             </article>
+
+            {% if user.is_superuser %}
+            <article class="card">
+                <span class="chip">Configuracoes</span>
+                <h2>Configuracoes da Casa</h2>
+                <p>Edite cômodos, locais, setores e funções da casa em uma tela unica.</p>
+                <a href="{% url 'configurar_casa' %}" class="btn">Acessar configuracoes</a>
+            </article>
+            {% endif %}
         </section>
     </main>
 </body>
