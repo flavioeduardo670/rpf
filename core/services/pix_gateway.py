@@ -5,9 +5,8 @@ import hmac
 import json
 from decimal import Decimal
 from typing import Any
+from urllib import error, request
 from urllib.parse import quote
-
-import requests
 from django.conf import settings
 
 
@@ -74,21 +73,21 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
         return fallback
 
     try:
-        resp = requests.post(
-            f"{base_url.rstrip('/')}/pix/cobrancas",
+        req = request.Request(
+            url=f"{base_url.rstrip('/')}/pix/cobrancas",
             headers={
                 'Authorization': f'Bearer {token}',
                 'Content-Type': 'application/json',
             },
-            json={
+            data=json.dumps({
                 'txid': txid,
                 'valor': f"{pedido.valor_total:.2f}",
                 'nome_comprador': pedido.nome_comprador,
-            },
-            timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10),
+            }).encode('utf-8'),
+            method='POST',
         )
-        resp.raise_for_status()
-        data = resp.json()
+        with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
+            data = json.loads(response.read().decode('utf-8'))
         return {
             'txid': data.get('txid') or txid,
             'payload_pix': data.get('payload_pix') or payload_pix,
@@ -96,7 +95,7 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
             'qr_code_url': data.get('qr_code_url') or fallback['qr_code_url'],
             'provider_payload': data,
         }
-    except (requests.RequestException, ValueError, json.JSONDecodeError):
+    except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
         return fallback
 
 
@@ -107,19 +106,19 @@ def consultar_status_por_txid(txid: str) -> dict[str, Any]:
         return {'txid': txid, 'status': 'desconhecido'}
 
     try:
-        resp = requests.get(
-            f"{base_url.rstrip('/')}/pix/cobrancas/{txid}",
+        req = request.Request(
+            url=f"{base_url.rstrip('/')}/pix/cobrancas/{txid}",
             headers={'Authorization': f'Bearer {token}'},
-            timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10),
+            method='GET',
         )
-        resp.raise_for_status()
-        data = resp.json()
+        with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
+            data = json.loads(response.read().decode('utf-8'))
         return {
             'txid': data.get('txid', txid),
             'status': data.get('status', 'desconhecido'),
             'provider_payload': data,
         }
-    except (requests.RequestException, ValueError, json.JSONDecodeError):
+    except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
         return {'txid': txid, 'status': 'desconhecido'}
 
 
