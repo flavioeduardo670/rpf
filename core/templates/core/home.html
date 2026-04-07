@@ -147,11 +147,18 @@
 
         .btn:hover { transform: translateY(-1px); background: #1b1b1b; }
 
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
         @media (max-width: 920px) {
             .wrap { padding: 16px; }
             .hero { grid-template-columns: 1fr; }
             .grid { grid-template-columns: 1fr; }
             .btn { width: 100%; }
+            .btn-group { flex-direction: column; }
         }
     </style>
 </head>
@@ -207,17 +214,12 @@
             <article class="card">
                 <span class="chip">Eventos</span>
                 <h2>Rocks</h2>
-                <p>Registre festas, arrecadacao e gastos do setor de rock.</p>
-                <a href="{% url 'rock' %}" class="btn">Acessar modulo</a>
+                <p>Escolha entre gerenciar os rocks ou acessar a area de compra de ingressos.</p>
+                <div class="btn-group">
+                    <a href="{% url 'rock' %}" class="btn">Acessar rocks</a>
+                    <a href="{% url 'comprar_rocks' %}" class="btn">Acessar ingressos</a>
+                </div>
             </article>
-            {% if usuario_sem_vinculo %}
-            <article class="card">
-                <span class="chip">Ingressos</span>
-                <h2>Compras Rocks</h2>
-                <p>Escolha um rock, selecione lote e realize o pagamento para entrar na lista.</p>
-                <a href="{% url 'comprar_rocks' %}" class="btn">Comprar ingresso</a>
-            </article>
-            {% endif %}
 
             <article class="card">
                 <span class="chip">Suprimentos</span>
