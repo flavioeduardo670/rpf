@@ -92,7 +92,30 @@ class MoradorAdmin(admin.ModelAdmin):
 
 admin.site.register(Mensalidade)
 admin.site.register(NotaFiscal)
-admin.site.register(ConfiguracaoFinanceira)
+@admin.register(ConfiguracaoFinanceira)
+class ConfiguracaoFinanceiraAdmin(admin.ModelAdmin):
+    list_display = (
+        'valor_aluguel',
+        'valor_agua',
+        'valor_luz',
+        'conta_principal_pix',
+        'conta_recebimentos_pix',
+        'conta_pagamentos_pix',
+        'atualizado_em',
+    )
+    fieldsets = (
+        ('Valores base', {'fields': ('valor_aluguel', 'valor_agua', 'valor_luz')}),
+        (
+            'Contas da casa (PIX)',
+            {
+                'fields': (
+                    'conta_principal_pix',
+                    'conta_recebimentos_pix',
+                    'conta_pagamentos_pix',
+                )
+            },
+        ),
+    )
 
 
 # Re-registra o User com formulario que permite vincular Morador.

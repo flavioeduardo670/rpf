@@ -1373,6 +1373,8 @@ def lotes_rock(request, evento_id):
 @login_required
 def comprar_rocks(request):
     morador = _get_user_morador(request.user)
+    configuracao_financeira = ConfiguracaoFinanceira.objects.order_by('-id').first()
+    pix_recebimentos = (configuracao_financeira.conta_recebimentos_pix if configuracao_financeira else '') or ''
     eventos = RockEvento.objects.prefetch_related('lotes').order_by('-data')
     lotes_disponiveis = LoteIngressoRock.objects.filter(
         quantidade_total__gt=F('quantidade_vendida')
@@ -1434,6 +1436,8 @@ def comprar_rocks(request):
             f"Pagamento ingresso rock | Evento {pedido_pagamento.rock_evento.nome} | "
             f"Lote {pedido_pagamento.lote.nome} | Valor R$ {pedido_pagamento.valor_total}"
         )
+        if pix_recebimentos:
+            mensagem = f"PIX:{pix_recebimentos} | {mensagem}"
         qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(mensagem)}"
 
     meus_pedidos = PedidoIngressoRock.objects.filter(usuario=request.user).order_by('-criado_em')[:10]
@@ -1447,6 +1451,7 @@ def comprar_rocks(request):
             'compra_form': compra_form,
             'pedido_pagamento': pedido_pagamento,
             'qr_code_url': qr_code_url,
+            'pix_recebimentos': pix_recebimentos,
             'meus_pedidos': meus_pedidos,
         },
     )

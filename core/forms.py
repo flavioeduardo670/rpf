@@ -318,16 +318,29 @@ class MaterialUtilizadoForm(forms.ModelForm):
 class ConfiguracaoFinanceiraForm(forms.ModelForm):
     class Meta:
         model = ConfiguracaoFinanceira
-        fields = ['valor_aluguel', 'valor_agua', 'valor_luz']
+        fields = [
+            'valor_aluguel',
+            'valor_agua',
+            'valor_luz',
+            'conta_principal_pix',
+            'conta_recebimentos_pix',
+            'conta_pagamentos_pix',
+        ]
         labels = {
             'valor_aluguel': 'Aluguel',
             'valor_agua': 'Conta de agua',
             'valor_luz': 'Conta de luz',
+            'conta_principal_pix': 'PIX conta principal',
+            'conta_recebimentos_pix': 'PIX conta de recebimentos',
+            'conta_pagamentos_pix': 'PIX conta de pagamentos',
         }
         widgets = {
             'valor_aluguel': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'valor_agua': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'valor_luz': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'conta_principal_pix': forms.TextInput(attrs={'placeholder': 'Chave PIX da conta principal'}),
+            'conta_recebimentos_pix': forms.TextInput(attrs={'placeholder': 'Chave PIX para receber pagamentos'}),
+            'conta_pagamentos_pix': forms.TextInput(attrs={'placeholder': 'Chave PIX da conta de pagamentos'}),
         }
 
     def __init__(self, *args, **kwargs):

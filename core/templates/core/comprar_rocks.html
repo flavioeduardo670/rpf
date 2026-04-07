@@ -168,6 +168,9 @@
                 <hr>
                 <h2>Pagamento</h2>
                 <p>Pedido #{{ pedido_pagamento.id }} - Evento {{ pedido_pagamento.rock_evento.nome }} - Valor total R$ {{ pedido_pagamento.valor_total }}</p>
+                {% if pix_recebimentos %}
+                <p><strong>PIX de recebimentos:</strong> {{ pix_recebimentos }}</p>
+                {% endif %}
                 {% if qr_code_url %}
                 <img src="{{ qr_code_url }}" alt="QR Code do pagamento" class="qr-code">
                 {% endif %}
