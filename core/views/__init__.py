@@ -30,3 +30,4 @@ from .rock import (
     lotes_rock,
     rock,
 )
+from .pix import webhook_pix

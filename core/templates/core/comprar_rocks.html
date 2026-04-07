@@ -183,10 +183,7 @@
                 {% if qr_code_url and pix_payload %}
                 <button type="button" class="btn app-btn" id="abrir-qrcode" data-qr-url="{{ qr_code_url }}" data-pix-payload="{{ pix_payload }}">Abrir QR Code para pagamento</button>
                 {% endif %}
-                <form method="post">
-                    {% csrf_token %}
-                    <button type="submit" class="btn app-btn" name="confirmar_pagamento" value="{{ pedido_pagamento.id }}">Ja paguei e quero entrar na lista</button>
-                </form>
+                <p class="muted">Apos o pagamento, a confirmacao e automatica via webhook do PSP.</p>
                 {% endif %}
             </article>
         </section>
