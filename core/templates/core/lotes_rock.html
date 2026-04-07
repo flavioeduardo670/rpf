@@ -4,45 +4,181 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lotes do Rock</title>
+    <style>
+        :root {
+            --bg: #f3f3f3;
+            --panel: #ffffff;
+            --ink: #111111;
+            --muted: #666666;
+            --line: #d8d8d8;
+            --radius: 14px;
+            --shadow: 0 10px 24px rgba(0,0,0,.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: linear-gradient(165deg, #f7f7f7, #ededed);
+            color: var(--ink);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        }
+
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        h1, h2 { margin: 0; }
+
+        .sub {
+            margin: 6px 0 0;
+            color: var(--muted);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #111;
+            background: #111;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 9px 14px;
+            font-size: .86rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-outline {
+            background: #fff;
+            color: #111;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.3fr .7fr;
+            gap: 14px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border-bottom: 1px solid #ececec;
+            padding: 10px 8px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f7f7f7;
+            text-transform: uppercase;
+            font-size: .74rem;
+            letter-spacing: .6px;
+        }
+
+        .center { text-align: center; }
+
+        form p {
+            margin: 0 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        input, select {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #c8c8c8;
+            font: inherit;
+        }
+
+        .empty {
+            color: var(--muted);
+            text-align: center;
+            padding: 14px 8px;
+        }
+
+        @media (max-width: 920px) {
+            .wrap { padding: 14px; }
+            .topbar { flex-direction: column; align-items: flex-start; }
+            .grid { grid-template-columns: 1fr; }
+            .btn { width: 100%; }
+        }
+    </style>
 </head>
 <body>
-    <h1>Lotes de ingressos - {{ evento.nome }}</h1>
-    <a href="{% url 'rock' %}">Voltar</a>
+    <main class="wrap">
+        <header class="topbar">
+            <div>
+                <h1>Lotes de ingressos</h1>
+                <p class="sub">Evento: <strong>{{ evento.nome }}</strong></p>
+            </div>
+            <a href="{% url 'rock' %}" class="btn">Voltar para Rocks</a>
+        </header>
 
-    <h2>Lotes cadastrados</h2>
-    <table border="1" cellpadding="6">
-        <tr>
-            <th>Nome do lote</th>
-            <th>Quantidade</th>
-            <th>Vendidos</th>
-            <th>Disponiveis</th>
-            <th>Preco</th>
-            <th>Acoes</th>
-        </tr>
-        {% for lote in lotes %}
-        <tr>
-            <td>{{ lote.nome }}</td>
-            <td>{{ lote.quantidade_total }}</td>
-            <td>{{ lote.quantidade_vendida }}</td>
-            <td>{{ lote.quantidade_disponivel }}</td>
-            <td>R$ {{ lote.preco }}</td>
-            <td>
+        <section class="grid">
+            <article class="card">
+                <h2 style="margin-bottom: 12px;">Lotes cadastrados</h2>
+                <table>
+                    <tr>
+                        <th>Nome do lote</th>
+                        <th class="center">Quantidade</th>
+                        <th class="center">Vendidos</th>
+                        <th class="center">Disponiveis</th>
+                        <th>Preco</th>
+                        <th class="center">Acoes</th>
+                    </tr>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td>{{ lote.nome }}</td>
+                        <td class="center">{{ lote.quantidade_total }}</td>
+                        <td class="center">{{ lote.quantidade_vendida }}</td>
+                        <td class="center">{{ lote.quantidade_disponivel }}</td>
+                        <td>R$ {{ lote.preco }}</td>
+                        <td class="center">
+                            <form method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline" name="excluir_lote" value="{{ lote.id }}">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty">Nenhum lote cadastrado.</td></tr>
+                    {% endfor %}
+                </table>
+            </article>
+
+            <article class="card">
+                <h2 style="margin-bottom: 12px;">Novo lote</h2>
                 <form method="post">
                     {% csrf_token %}
-                    <button type="submit" name="excluir_lote" value="{{ lote.id }}">Excluir</button>
+                    {{ form.as_p }}
+                    <button type="submit" class="btn">Salvar lote</button>
                 </form>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6">Nenhum lote cadastrado.</td></tr>
-        {% endfor %}
-    </table>
-
-    <h2>Novo lote</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Salvar lote</button>
-    </form>
+            </article>
+        </section>
+    </main>
 </body>
 </html>

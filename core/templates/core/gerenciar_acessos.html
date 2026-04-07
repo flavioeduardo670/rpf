@@ -80,6 +80,7 @@
                 <table>
                     <tr>
                         <th>Usuario</th>
+                        <th>Vincular a morador</th>
                         <th class="center">Financeiro V</th>
                         <th class="center">Financeiro E</th>
                         <th class="center">Compras V</th>
@@ -97,6 +98,14 @@
                             {{ form.instance.user.username }}
                             {{ form.id }}
                         </td>
+                        <td>
+                            <select name="vinculo_morador_{{ form.instance.user.id }}">
+                                <option value="">Nao vincular</option>
+                                {% for morador in moradores_sem_usuario %}
+                                    <option value="{{ morador.id }}">{{ morador.apelido|default:morador.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
                         <td class="center">{{ form.acesso_financeiro_visualizar }}</td>
                         <td class="center">{{ form.acesso_financeiro_editar }}</td>
                         <td class="center">{{ form.acesso_compras_visualizar }}</td>
@@ -109,7 +118,7 @@
                         <td class="center">{{ form.acesso_rock_editar }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="11" class="center">Nenhum usuario sem morador.</td></tr>
+                    <tr><td colspan="12" class="center">Nenhum usuario sem morador.</td></tr>
                     {% endfor %}
                 </table>
             </div>
