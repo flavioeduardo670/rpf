@@ -171,8 +171,8 @@
                 {% if pix_recebimentos %}
                 <p><strong>PIX de recebimentos:</strong> {{ pix_recebimentos }}</p>
                 {% endif %}
-                {% if qr_code_url %}
-                <img src="{{ qr_code_url }}" alt="QR Code do pagamento" class="qr-code">
+                {% if qr_code_url and pix_payload %}
+                <button type="button" class="btn" id="abrir-qrcode" data-qr-url="{{ qr_code_url }}" data-pix-payload="{{ pix_payload }}">Abrir QR Code para pagamento</button>
                 {% endif %}
                 <form method="post">
                     {% csrf_token %}
@@ -206,5 +206,40 @@
             </table>
         </section>
     </main>
+    <script>
+        const btnQr = document.getElementById('abrir-qrcode');
+        if (btnQr) {
+            btnQr.addEventListener('click', () => {
+                const qrUrl = btnQr.dataset.qrUrl;
+                const payload = btnQr.dataset.pixPayload;
+                const popup = window.open('', 'pix-qrcode', 'width=420,height=620');
+                if (!popup) {
+                    alert('Nao foi possivel abrir a janela do QR Code. Libere pop-ups para continuar.');
+                    return;
+                }
+                popup.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>QR Code PIX</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
+                            img { width: 300px; height: 300px; border: 1px solid #ddd; border-radius: 8px; }
+                            textarea { width: 100%; height: 140px; margin-top: 12px; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>Pagamento PIX</h2>
+                        <img src="${qrUrl}" alt="QR Code PIX">
+                        <p>Codigo PIX copia e cola:</p>
+                        <textarea readonly>${payload}</textarea>
+                    </body>
+                    </html>
+                `);
+                popup.document.close();
+            });
+        }
+    </script>
 </body>
 </html>

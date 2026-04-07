@@ -1271,6 +1271,40 @@ def _gerar_pdf_simples(titulo, linhas):
     return pdf
 
 
+def _pix_tlv(pid, value):
+    value = str(value)
+    return f"{pid}{len(value):02d}{value}"
+
+
+def _pix_crc16(payload):
+    data = (payload + '6304').encode('utf-8')
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return f"{crc:04X}"
+
+
+def _gerar_payload_pix(chave_pix, valor, txid):
+    merchant_account = _pix_tlv('00', 'br.gov.bcb.pix') + _pix_tlv('01', chave_pix)
+    payload = (
+        _pix_tlv('00', '01')
+        + _pix_tlv('26', merchant_account)
+        + _pix_tlv('52', '0000')
+        + _pix_tlv('53', '986')
+        + _pix_tlv('54', f"{Decimal(valor):.2f}")
+        + _pix_tlv('58', 'BR')
+        + _pix_tlv('59', 'REPUBLICA RPF')
+        + _pix_tlv('60', 'SAO PAULO')
+        + _pix_tlv('62', _pix_tlv('05', txid))
+    )
+    return payload + '6304' + _pix_crc16(payload)
+
+
 @setor_required(
     group_name='Rock',
     morador_view_attr='acesso_rock_visualizar',
@@ -1382,6 +1416,7 @@ def comprar_rocks(request):
 
     pedido_pagamento = None
     qr_code_url = None
+    pix_payload = ''
     compra_form = CompraIngressoRockForm(lotes_queryset=lotes_disponiveis)
 
     if request.method == 'POST' and 'iniciar_compra' in request.POST:
@@ -1432,13 +1467,13 @@ def comprar_rocks(request):
         return redirect('comprar_rocks')
 
     if pedido_pagamento:
-        mensagem = (
-            f"Pagamento ingresso rock | Evento {pedido_pagamento.rock_evento.nome} | "
-            f"Lote {pedido_pagamento.lote.nome} | Valor R$ {pedido_pagamento.valor_total}"
-        )
         if pix_recebimentos:
-            mensagem = f"PIX:{pix_recebimentos} | {mensagem}"
-        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(mensagem)}"
+            pix_payload = _gerar_payload_pix(
+                pix_recebimentos,
+                pedido_pagamento.valor_total,
+                f"RPF{pedido_pagamento.id}",
+            )
+            qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(pix_payload)}"
 
     meus_pedidos = PedidoIngressoRock.objects.filter(usuario=request.user).order_by('-criado_em')[:10]
 
@@ -1452,6 +1487,7 @@ def comprar_rocks(request):
             'pedido_pagamento': pedido_pagamento,
             'qr_code_url': qr_code_url,
             'pix_recebimentos': pix_recebimentos,
+            'pix_payload': pix_payload,
             'meus_pedidos': meus_pedidos,
         },
     )
