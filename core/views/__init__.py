@@ -1,3 +1,4 @@
+from .acessos import gerenciar_acessos
 from .financeiro import editar_parcela, exportar_financeiro_csv, financeiro, pagar_nota, pagar_parcela
 from .estoque import (
     almoxarifado,
@@ -15,18 +16,17 @@ from .legacy import (
     configurar_listas,
     editar_nota_compra,
     editar_os,
-    gerenciar_acessos,
     home,
     lista_os,
     manutencao,
-    moradores,
-    perfil,
-    rock,
-    editar_rock,
-    lotes_rock,
-    ingressos_rock,
-    exportar_ingressos_rock_pdf,
-    comprar_rocks,
     exportar_compras_csv,
-    exportar_moradores_csv,
+)
+from .moradores import exportar_moradores_csv, moradores, perfil
+from .rock import (
+    comprar_rocks,
+    editar_rock,
+    exportar_ingressos_rock_pdf,
+    ingressos_rock,
+    lotes_rock,
+    rock,
 )
