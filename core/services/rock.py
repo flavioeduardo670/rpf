@@ -77,6 +77,9 @@ def confirmar_pagamento_pedido(pedido_pagamento):
         pedido_pagamento = PedidoIngressoRock.objects.select_for_update().select_related('lote', 'rock_evento').get(
             pk=pedido_pagamento.pk
         )
+        if pedido_pagamento.status == 'pago':
+            return pedido_pagamento
+
         lote = LoteIngressoRock.objects.select_for_update().get(pk=pedido_pagamento.lote_id)
         disponivel = lote.quantidade_total - lote.quantidade_vendida
         if pedido_pagamento.quantidade > disponivel:

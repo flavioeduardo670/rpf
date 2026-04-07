@@ -4,7 +4,6 @@ from datetime import date, timedelta, datetime
 import calendar
 from collections import defaultdict
 import csv
-from urllib.parse import quote
 
 from django import forms
 from django.core.exceptions import PermissionDenied
@@ -47,10 +46,10 @@ from ..forms import (
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
 from core.services.rock import (
-    confirmar_pagamento_pedido,
     criar_ingresso_rock,
     remover_ingresso_rock,
 )
+from core.services.pix_gateway import criar_cobranca_pix
 from ..models import (
     ChoiceList,
     ChoiceOption,
@@ -1289,40 +1288,6 @@ def _gerar_pdf_simples(titulo, linhas):
     return pdf
 
 
-def _pix_tlv(pid, value):
-    value = str(value)
-    return f"{pid}{len(value):02d}{value}"
-
-
-def _pix_crc16(payload):
-    data = (payload + '6304').encode('utf-8')
-    crc = 0xFFFF
-    for byte in data:
-        crc ^= byte << 8
-        for _ in range(8):
-            if crc & 0x8000:
-                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
-            else:
-                crc = (crc << 1) & 0xFFFF
-    return f"{crc:04X}"
-
-
-def _gerar_payload_pix(chave_pix, valor, txid):
-    merchant_account = _pix_tlv('00', 'br.gov.bcb.pix') + _pix_tlv('01', chave_pix)
-    payload = (
-        _pix_tlv('00', '01')
-        + _pix_tlv('26', merchant_account)
-        + _pix_tlv('52', '0000')
-        + _pix_tlv('53', '986')
-        + _pix_tlv('54', f"{Decimal(valor):.2f}")
-        + _pix_tlv('58', 'BR')
-        + _pix_tlv('59', 'REPUBLICA RPF')
-        + _pix_tlv('60', 'SAO PAULO')
-        + _pix_tlv('62', _pix_tlv('05', txid))
-    )
-    return payload + '6304' + _pix_crc16(payload)
-
-
 @setor_required(
     group_name='Rock',
     morador_view_attr='acesso_rock_visualizar',
@@ -1456,29 +1421,20 @@ def comprar_rocks(request):
                 quantidade=quantidade,
                 valor_total=valor_total,
             )
-            messages.success(request, 'Pedido de compra criado. Gere o pagamento para confirmar seu ingresso.')
+            cobranca = criar_cobranca_pix(pedido=pedido_pagamento, chave_pix=pix_recebimentos)
+            pedido_pagamento.txid = cobranca.get('txid', '')
+            pedido_pagamento.payload_pix = cobranca.get('payload_pix', '')
+            pedido_pagamento.status_gateway = cobranca.get('status_gateway', '')
+            pedido_pagamento.save(update_fields=['txid', 'payload_pix', 'status_gateway'])
+            qr_code_url = cobranca.get('qr_code_url')
+            pix_payload = pedido_pagamento.payload_pix
+            messages.success(request, 'Pedido criado. Aguarde a confirmacao automatica do PSP apos o pagamento.')
         else:
             messages.error(request, 'Nao foi possivel iniciar a compra. Confira os dados informados.')
 
-    if request.method == 'POST' and 'confirmar_pagamento' in request.POST:
-        pedido_pagamento = get_object_or_404(
-            PedidoIngressoRock,
-            id=request.POST.get('confirmar_pagamento'),
-            usuario=request.user,
-            status='aguardando_pagamento',
-        )
-        confirmar_pagamento_pedido(pedido_pagamento)
-        messages.success(request, 'Pagamento confirmado e ingresso adicionado na lista.')
-        return redirect('comprar_rocks')
-
     if pedido_pagamento:
-        if pix_recebimentos:
-            pix_payload = _gerar_payload_pix(
-                pix_recebimentos,
-                pedido_pagamento.valor_total,
-                f"RPF{pedido_pagamento.id}",
-            )
-            qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(pix_payload)}"
+        qr_code_url = qr_code_url or ''
+        pix_payload = pix_payload or pedido_pagamento.payload_pix
 
     meus_pedidos = PedidoIngressoRock.objects.filter(usuario=request.user).order_by('-criado_em')[:10]
 
