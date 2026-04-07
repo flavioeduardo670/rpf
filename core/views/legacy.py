@@ -46,6 +46,11 @@ from ..forms import (
     MoradorEdicaoForm,
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
+from core.services.rock import (
+    confirmar_pagamento_pedido,
+    criar_ingresso_rock,
+    remover_ingresso_rock,
+)
 from ..models import (
     ChoiceList,
     ChoiceOption,
@@ -1333,23 +1338,21 @@ def ingressos_rock(request, evento_id):
             raise PermissionDenied('Voce nao tem permissao para editar ingressos.')
         if 'excluir_ingresso' in request.POST:
             ingresso = get_object_or_404(IngressoRock, id=request.POST.get('excluir_ingresso'), rock_evento=evento)
-            ingresso.delete()
-            evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
-            evento.save(update_fields=['quantidade_pessoas'])
+            remover_ingresso_rock(ingresso)
             messages.success(request, 'Ingresso removido com sucesso.')
             return redirect('ingressos_rock', evento_id=evento.id)
         form = IngressoRockForm(request.POST, evento=evento)
         if form.is_valid():
-            ingresso = form.save(commit=False)
             lote = form.cleaned_data['lote']
-            if ingresso.quantidade_ingressos > lote.quantidade_disponivel:
-                raise PermissionDenied('Quantidade indisponivel para este lote.')
-            ingresso.rock_evento = evento
-            ingresso.save()
-            lote.quantidade_vendida = lote.quantidade_vendida + ingresso.quantidade_ingressos
-            lote.save(update_fields=['quantidade_vendida'])
-            evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
-            evento.save(update_fields=['quantidade_pessoas'])
+            criar_ingresso_rock(
+                evento=evento,
+                lote=lote,
+                nome=form.cleaned_data['nome'],
+                telefone=form.cleaned_data['telefone'],
+                quantidade_ingressos=form.cleaned_data['quantidade_ingressos'],
+                status_pagamento=form.cleaned_data['status_pagamento'],
+                observacao=form.cleaned_data.get('observacao'),
+            )
             messages.success(request, 'Ingresso registrado com sucesso.')
             return redirect('ingressos_rock', evento_id=evento.id)
         messages.error(request, 'Nao foi possivel registrar o ingresso. Confira os dados informados.')
@@ -1464,28 +1467,7 @@ def comprar_rocks(request):
             usuario=request.user,
             status='aguardando_pagamento',
         )
-        lote = pedido_pagamento.lote
-        if pedido_pagamento.quantidade > lote.quantidade_disponivel:
-            raise PermissionDenied('Quantidade indisponivel para este lote.')
-        pedido_pagamento.status = 'pago'
-        pedido_pagamento.pago_em = timezone.now()
-        pedido_pagamento.save(update_fields=['status', 'pago_em'])
-        lote.quantidade_vendida = lote.quantidade_vendida + pedido_pagamento.quantidade
-        lote.save(update_fields=['quantidade_vendida'])
-        IngressoRock.objects.create(
-            rock_evento=pedido_pagamento.rock_evento,
-            nome=pedido_pagamento.nome_comprador,
-            telefone=pedido_pagamento.telefone,
-            quantidade_ingressos=pedido_pagamento.quantidade,
-            valor_unitario=(pedido_pagamento.valor_total / pedido_pagamento.quantidade),
-            status_pagamento='pago',
-            observacao=f"Lote: {pedido_pagamento.lote.nome}",
-        )
-        total_pessoas = sum(
-            IngressoRock.objects.filter(rock_evento=pedido_pagamento.rock_evento).values_list('quantidade_ingressos', flat=True)
-        )
-        pedido_pagamento.rock_evento.quantidade_pessoas = total_pessoas
-        pedido_pagamento.rock_evento.save(update_fields=['quantidade_pessoas'])
+        confirmar_pagamento_pedido(pedido_pagamento)
         messages.success(request, 'Pagamento confirmado e ingresso adicionado na lista.')
         return redirect('comprar_rocks')
 

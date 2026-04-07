@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 from decimal import Decimal
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -616,3 +618,150 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
+
+
+class AuditoriaEvento(models.Model):
+    TIPO_CHOICES = [
+        ('configuracao_financeira_pix', 'Configuracao financeira PIX'),
+        ('vinculo_user_morador', 'Vinculo User/Morador'),
+        ('pedido_ingresso_status', 'Status de pedido de ingresso'),
+    ]
+
+    tipo = models.CharField(max_length=60, choices=TIPO_CHOICES)
+    descricao = models.CharField(max_length=255)
+    entidade = models.CharField(max_length=80, blank=True, default='')
+    entidade_id = models.PositiveIntegerField(null=True, blank=True)
+    dados = models.JSONField(blank=True, default=dict)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em', '-id']
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.criado_em:%d/%m/%Y %H:%M}"
+
+
+def _registrar_auditoria_evento(*, tipo, descricao, entidade='', entidade_id=None, dados=None):
+    AuditoriaEvento.objects.create(
+        tipo=tipo,
+        descricao=descricao,
+        entidade=entidade,
+        entidade_id=entidade_id,
+        dados=dados or {},
+    )
+
+
+@receiver(pre_save, sender=ConfiguracaoFinanceira)
+def _cache_configuracao_financeira_pix(sender, instance, **kwargs):
+    anterior = None
+    if instance.pk:
+        anterior = sender.objects.filter(pk=instance.pk).values(
+            'conta_principal_pix',
+            'conta_recebimentos_pix',
+            'conta_pagamentos_pix',
+        ).first()
+    instance._auditoria_pix_anterior = anterior
+
+
+@receiver(post_save, sender=ConfiguracaoFinanceira)
+def _auditar_configuracao_financeira_pix(sender, instance, created, **kwargs):
+    novo = {
+        'conta_principal_pix': instance.conta_principal_pix,
+        'conta_recebimentos_pix': instance.conta_recebimentos_pix,
+        'conta_pagamentos_pix': instance.conta_pagamentos_pix,
+    }
+    anterior = getattr(instance, '_auditoria_pix_anterior', None)
+    if created:
+        _registrar_auditoria_evento(
+            tipo='configuracao_financeira_pix',
+            descricao='Configuracao financeira PIX criada.',
+            entidade='ConfiguracaoFinanceira',
+            entidade_id=instance.id,
+            dados={'anterior': None, 'novo': novo},
+        )
+        return
+
+    if anterior and anterior != novo:
+        _registrar_auditoria_evento(
+            tipo='configuracao_financeira_pix',
+            descricao='Configuracao financeira PIX alterada.',
+            entidade='ConfiguracaoFinanceira',
+            entidade_id=instance.id,
+            dados={'anterior': anterior, 'novo': novo},
+        )
+
+
+@receiver(pre_save, sender=Morador)
+def _cache_vinculo_morador_user(sender, instance, **kwargs):
+    user_id_anterior = None
+    if instance.pk:
+        user_id_anterior = sender.objects.filter(pk=instance.pk).values_list('user_id', flat=True).first()
+    instance._auditoria_user_id_anterior = user_id_anterior
+
+
+@receiver(post_save, sender=Morador)
+def _auditar_vinculo_morador_user(sender, instance, created, **kwargs):
+    if created:
+        return
+
+    user_id_anterior = getattr(instance, '_auditoria_user_id_anterior', None)
+    user_id_novo = instance.user_id
+    if user_id_anterior == user_id_novo:
+        return
+
+    username_anterior = User.objects.filter(id=user_id_anterior).values_list('username', flat=True).first()
+    username_novo = User.objects.filter(id=user_id_novo).values_list('username', flat=True).first()
+
+    if user_id_anterior and user_id_novo:
+        descricao = 'Vinculo User/Morador alterado.'
+    elif user_id_novo:
+        descricao = 'User vinculado a morador.'
+    else:
+        descricao = 'User desvinculado de morador.'
+
+    _registrar_auditoria_evento(
+        tipo='vinculo_user_morador',
+        descricao=descricao,
+        entidade='Morador',
+        entidade_id=instance.id,
+        dados={
+            'morador_id': instance.id,
+            'morador_nome': instance.nome,
+            'user_id_anterior': user_id_anterior,
+            'username_anterior': username_anterior,
+            'user_id_novo': user_id_novo,
+            'username_novo': username_novo,
+        },
+    )
+
+
+@receiver(pre_save, sender=PedidoIngressoRock)
+def _cache_status_pedido_ingresso(sender, instance, **kwargs):
+    status_anterior = None
+    if instance.pk:
+        status_anterior = sender.objects.filter(pk=instance.pk).values_list('status', flat=True).first()
+    instance._auditoria_status_anterior = status_anterior
+
+
+@receiver(post_save, sender=PedidoIngressoRock)
+def _auditar_status_pedido_ingresso(sender, instance, created, **kwargs):
+    if created:
+        return
+
+    status_anterior = getattr(instance, '_auditoria_status_anterior', None)
+    status_novo = instance.status
+    if not status_anterior or status_anterior == status_novo:
+        return
+
+    _registrar_auditoria_evento(
+        tipo='pedido_ingresso_status',
+        descricao='Status do pedido de ingresso alterado.',
+        entidade='PedidoIngressoRock',
+        entidade_id=instance.id,
+        dados={
+            'pedido_id': instance.id,
+            'evento_id': instance.rock_evento_id,
+            'status_anterior': status_anterior,
+            'status_novo': status_novo,
+        },
+    )
