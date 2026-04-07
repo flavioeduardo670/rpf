@@ -31,6 +31,7 @@ class Morador(models.Model):
     foto_perfil = models.FileField(upload_to='perfil_fotos/', null=True, blank=True)
     ordem_hierarquia = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField(default=True)
+    ultima_visualizacao_os = models.DateTimeField(blank=True, null=True)
 
     # Permissões internas do sistema
     acesso_financeiro_visualizar = models.BooleanField(default=False)
@@ -50,6 +51,23 @@ class Morador(models.Model):
     def __str__(self):
         return self.nome
 
+
+
+class AcessoUsuario(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='acesso_usuario')
+    acesso_financeiro_visualizar = models.BooleanField(default=False)
+    acesso_financeiro_editar = models.BooleanField(default=False)
+    acesso_compras_visualizar = models.BooleanField(default=False)
+    acesso_compras_editar = models.BooleanField(default=False)
+    acesso_estoque_visualizar = models.BooleanField(default=False)
+    acesso_estoque_editar = models.BooleanField(default=False)
+    acesso_manutencao_visualizar = models.BooleanField(default=False)
+    acesso_manutencao_editar = models.BooleanField(default=False)
+    acesso_rock_visualizar = models.BooleanField(default=False)
+    acesso_rock_editar = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.user.username
 
 
 class Mensalidade(models.Model):
@@ -303,6 +321,29 @@ class RockItem(models.Model):
         return (self.produto.nome if self.produto else 'Item')
 
 
+class IngressoRock(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('pago', 'Pago'),
+    ]
+
+    rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='ingressos')
+    nome = models.CharField(max_length=150)
+    telefone = models.CharField(max_length=30, blank=True, null=True)
+    quantidade_ingressos = models.PositiveIntegerField(default=1)
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status_pagamento = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+    observacao = models.CharField(max_length=200, blank=True, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def valor_total(self):
+        return self.quantidade_ingressos * self.valor_unitario
+
+    def __str__(self):
+        return f"{self.nome} - {self.rock_evento.nome}"
+
+
 class FormFieldConfig(models.Model):
     form_key = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
@@ -535,8 +576,5 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
-
-
 
 

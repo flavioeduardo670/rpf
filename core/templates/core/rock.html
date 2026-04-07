@@ -108,10 +108,9 @@
                     <td>R$ {{ evento.valor_arrecadado }}</td>
                     <td>R$ {{ evento.total_gasto|floatformat:2 }}</td>
                     <td>
+                        <a class="btn" href="{% url 'ingressos_rock' evento.id %}">Ingressos</a>
                         {% if can_edit_rock %}
                         <a class="btn" href="{% url 'editar_rock' evento.id %}">Editar</a>
-                        {% else %}
-                        -
                         {% endif %}
                     </td>
                 </tr>

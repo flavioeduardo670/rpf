@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingressos do Rock</title>
+    <style>
+        body { margin:0; padding:26px; font-family:"Trebuchet MS","Segoe UI",sans-serif; background:#f3f3f3; color:#111; }
+        .wrap { max-width:1200px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; }
+        .panel { background:#fff; border:1px solid #ddd; border-radius:12px; padding:16px; margin-bottom:12px; }
+        .btn { display:inline-block; text-decoration:none; border:1px solid #111; background:#111; color:#fff; padding:8px 12px; border-radius:999px; font-weight:700; font-size:.85rem; }
+        .btn.light { background:#fff; color:#111; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { border-bottom:1px solid #ececec; padding:10px; text-align:left; }
+        th { background:#f7f7f7; font-size:.78rem; text-transform:uppercase; }
+        form p { margin:0 0 10px; }
+        input, select { width:100%; border:1px solid #ccc; border-radius:8px; padding:8px; }
+        .actions { display:flex; gap:8px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <h1>Ingressos - {{ evento.nome }}</h1>
+        <div class="actions">
+            <a class="btn light" href="{% url 'rock' %}">Voltar</a>
+            <a class="btn" href="{% url 'exportar_ingressos_rock_pdf' evento.id %}">Gerar PDF</a>
+        </div>
+    </div>
+
+    <section class="panel">
+        <p><strong>Data:</strong> {{ evento.data }} | <strong>Pessoas na lista:</strong> {{ ingressos|length }} | <strong>Total recebido:</strong> R$ {{ total_recebido|floatformat:2 }}</p>
+    </section>
+
+    <section class="panel">
+        <h2>Lista de compradores</h2>
+        <table>
+            <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Qtd Ingressos</th>
+                <th>Valor Unit.</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Observacao</th>
+                <th>Acoes</th>
+            </tr>
+            {% for ingresso in ingressos %}
+            <tr>
+                <td>{{ ingresso.nome }}</td>
+                <td>{{ ingresso.telefone|default:"-" }}</td>
+                <td>{{ ingresso.quantidade_ingressos }}</td>
+                <td>R$ {{ ingresso.valor_unitario }}</td>
+                <td>R$ {{ ingresso.valor_total }}</td>
+                <td>{{ ingresso.get_status_pagamento_display }}</td>
+                <td>{{ ingresso.observacao|default:"-" }}</td>
+                <td>
+                    {% if can_edit_rock %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <button class="btn light" type="submit" name="excluir_ingresso" value="{{ ingresso.id }}">Excluir</button>
+                    </form>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8">Nenhum ingresso cadastrado.</td></tr>
+            {% endfor %}
+        </table>
+    </section>
+
+    {% if can_edit_rock %}
+    <section class="panel">
+        <h2>Adicionar comprador</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn" type="submit">Adicionar na lista</button>
+        </form>
+    </section>
+    {% endif %}
+</div>
+</body>
+</html>
