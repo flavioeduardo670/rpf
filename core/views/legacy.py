@@ -290,6 +290,7 @@ def gerenciar_acessos(request):
     acessos_usuarios_qs = AcessoUsuario.objects.select_related('user').filter(
         user__in=usuarios_sem_morador
     ).order_by('user__username')
+    moradores_sem_usuario = Morador.objects.filter(user__isnull=True).order_by('ordem_hierarquia', 'nome')
 
     if request.method == 'POST':
         formset = AcessoMoradorFormSet(request.POST, queryset=moradores_qs)
@@ -297,6 +298,24 @@ def gerenciar_acessos(request):
         if formset.is_valid() and usuario_formset.is_valid():
             formset.save()
             usuario_formset.save()
+            moradores_livres = {
+                morador.id: morador
+                for morador in Morador.objects.filter(user__isnull=True)
+            }
+            for acesso_usuario in acessos_usuarios_qs:
+                morador_id = request.POST.get(f'vinculo_morador_{acesso_usuario.user_id}')
+                if not morador_id:
+                    continue
+                try:
+                    morador_id = int(morador_id)
+                except (TypeError, ValueError):
+                    continue
+                morador = moradores_livres.get(morador_id)
+                if not morador:
+                    continue
+                morador.user = acesso_usuario.user
+                morador.save(update_fields=['user'])
+                moradores_livres.pop(morador_id, None)
             return redirect('gerenciar_acessos')
     else:
         formset = AcessoMoradorFormSet(queryset=moradores_qs)
@@ -305,7 +324,7 @@ def gerenciar_acessos(request):
     return render(
         request,
         'core/gerenciar_acessos.html',
-        {'formset': formset, 'usuario_formset': usuario_formset},
+        {'formset': formset, 'usuario_formset': usuario_formset, 'moradores_sem_usuario': moradores_sem_usuario},
     )
 
 
@@ -1252,6 +1271,40 @@ def _gerar_pdf_simples(titulo, linhas):
     return pdf
 
 
+def _pix_tlv(pid, value):
+    value = str(value)
+    return f"{pid}{len(value):02d}{value}"
+
+
+def _pix_crc16(payload):
+    data = (payload + '6304').encode('utf-8')
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return f"{crc:04X}"
+
+
+def _gerar_payload_pix(chave_pix, valor, txid):
+    merchant_account = _pix_tlv('00', 'br.gov.bcb.pix') + _pix_tlv('01', chave_pix)
+    payload = (
+        _pix_tlv('00', '01')
+        + _pix_tlv('26', merchant_account)
+        + _pix_tlv('52', '0000')
+        + _pix_tlv('53', '986')
+        + _pix_tlv('54', f"{Decimal(valor):.2f}")
+        + _pix_tlv('58', 'BR')
+        + _pix_tlv('59', 'REPUBLICA RPF')
+        + _pix_tlv('60', 'SAO PAULO')
+        + _pix_tlv('62', _pix_tlv('05', txid))
+    )
+    return payload + '6304' + _pix_crc16(payload)
+
+
 @setor_required(
     group_name='Rock',
     morador_view_attr='acesso_rock_visualizar',
@@ -1271,16 +1324,21 @@ def ingressos_rock(request, evento_id):
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
             return redirect('ingressos_rock', evento_id=evento.id)
-        form = IngressoRockForm(request.POST)
+        form = IngressoRockForm(request.POST, evento=evento)
         if form.is_valid():
             ingresso = form.save(commit=False)
+            lote = form.cleaned_data['lote']
+            if ingresso.quantidade_ingressos > lote.quantidade_disponivel:
+                raise PermissionDenied('Quantidade indisponivel para este lote.')
             ingresso.rock_evento = evento
             ingresso.save()
+            lote.quantidade_vendida = lote.quantidade_vendida + ingresso.quantidade_ingressos
+            lote.save(update_fields=['quantidade_vendida'])
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
             return redirect('ingressos_rock', evento_id=evento.id)
     else:
-        form = IngressoRockForm()
+        form = IngressoRockForm(evento=evento)
 
     total_recebido = sum((ingresso.valor_total for ingresso in ingressos), Decimal('0.00'))
     return render(
@@ -1349,6 +1407,8 @@ def lotes_rock(request, evento_id):
 @login_required
 def comprar_rocks(request):
     morador = _get_user_morador(request.user)
+    configuracao_financeira = ConfiguracaoFinanceira.objects.order_by('-id').first()
+    pix_recebimentos = (configuracao_financeira.conta_recebimentos_pix if configuracao_financeira else '') or ''
     eventos = RockEvento.objects.prefetch_related('lotes').order_by('-data')
     lotes_disponiveis = LoteIngressoRock.objects.filter(
         quantidade_total__gt=F('quantidade_vendida')
@@ -1356,6 +1416,7 @@ def comprar_rocks(request):
 
     pedido_pagamento = None
     qr_code_url = None
+    pix_payload = ''
     compra_form = CompraIngressoRockForm(lotes_queryset=lotes_disponiveis)
 
     if request.method == 'POST' and 'iniciar_compra' in request.POST:
@@ -1406,11 +1467,13 @@ def comprar_rocks(request):
         return redirect('comprar_rocks')
 
     if pedido_pagamento:
-        mensagem = (
-            f"Pagamento ingresso rock | Evento {pedido_pagamento.rock_evento.nome} | "
-            f"Lote {pedido_pagamento.lote.nome} | Valor R$ {pedido_pagamento.valor_total}"
-        )
-        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(mensagem)}"
+        if pix_recebimentos:
+            pix_payload = _gerar_payload_pix(
+                pix_recebimentos,
+                pedido_pagamento.valor_total,
+                f"RPF{pedido_pagamento.id}",
+            )
+            qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(pix_payload)}"
 
     meus_pedidos = PedidoIngressoRock.objects.filter(usuario=request.user).order_by('-criado_em')[:10]
 
@@ -1423,6 +1486,8 @@ def comprar_rocks(request):
             'compra_form': compra_form,
             'pedido_pagamento': pedido_pagamento,
             'qr_code_url': qr_code_url,
+            'pix_recebimentos': pix_recebimentos,
+            'pix_payload': pix_payload,
             'meus_pedidos': meus_pedidos,
         },
     )

@@ -244,6 +244,9 @@ class ConfiguracaoFinanceira(models.Model):
     valor_aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     valor_agua = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     valor_luz = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    conta_principal_pix = models.CharField(max_length=255, blank=True, default='')
+    conta_recebimentos_pix = models.CharField(max_length=255, blank=True, default='')
+    conta_pagamentos_pix = models.CharField(max_length=255, blank=True, default='')
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -251,7 +254,7 @@ class ConfiguracaoFinanceira(models.Model):
         verbose_name_plural = 'Configuracoes Financeiras'
 
     def __str__(self):
-        return f"Aluguel: R$ {self.valor_aluguel} | Agua: R$ {self.valor_agua} | Luz: R$ {self.valor_luz}"
+        return f"Aluguel: R$ {self.valor_aluguel} | PIX recebimentos: {self.conta_recebimentos_pix or '-'}"
 
 
 class ContaFixa(models.Model):
@@ -613,4 +616,3 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
