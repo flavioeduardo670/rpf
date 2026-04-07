@@ -1,9 +1,11 @@
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Acessos</title>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <style>
         :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
         * { box-sizing:border-box; }
@@ -22,14 +24,21 @@
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
-<body>
-<div class="wrap">
-    <div class="top">
+<body class="app-body">
+<div class="wrap app-wrap">
+    <div class="top app-topbar">
         <h1>Gerenciar acessos</h1>
-        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+        <a class="btn app-btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="message {{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 
-    <section class="card">
+    <section class="card app-card">
         <p class="muted">Somente superusuario pode editar estes acessos.</p>
         <form method="post">
             {% csrf_token %}
@@ -123,7 +132,7 @@
                 </table>
             </div>
             <div style="margin-top:12px;">
-                <button class="btn" type="submit">Salvar acessos</button>
+                <button class="btn app-btn" type="submit">Salvar acessos</button>
             </div>
         </form>
     </section>

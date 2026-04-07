@@ -1,9 +1,11 @@
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financeiro</title>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <style>
         :root {
             --bg: #f3f3f3;
@@ -71,7 +73,7 @@
         }
     </style>
 </head>
-<body>
+<body class="app-body">
 <div class="wrap">
     <header class="hero">
         <div>
@@ -83,6 +85,13 @@
             <a href="{% url 'exportar_financeiro_csv' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-invert">Exportar planilha</a>
         </div>
     </header>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="message {{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 
     <section class="config-wrap">
         <h2>Mes de referencia</h2>
