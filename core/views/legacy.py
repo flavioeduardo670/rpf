@@ -290,6 +290,7 @@ def gerenciar_acessos(request):
     acessos_usuarios_qs = AcessoUsuario.objects.select_related('user').filter(
         user__in=usuarios_sem_morador
     ).order_by('user__username')
+    moradores_sem_usuario = Morador.objects.filter(user__isnull=True).order_by('ordem_hierarquia', 'nome')
 
     if request.method == 'POST':
         formset = AcessoMoradorFormSet(request.POST, queryset=moradores_qs)
@@ -297,6 +298,24 @@ def gerenciar_acessos(request):
         if formset.is_valid() and usuario_formset.is_valid():
             formset.save()
             usuario_formset.save()
+            moradores_livres = {
+                morador.id: morador
+                for morador in Morador.objects.filter(user__isnull=True)
+            }
+            for acesso_usuario in acessos_usuarios_qs:
+                morador_id = request.POST.get(f'vinculo_morador_{acesso_usuario.user_id}')
+                if not morador_id:
+                    continue
+                try:
+                    morador_id = int(morador_id)
+                except (TypeError, ValueError):
+                    continue
+                morador = moradores_livres.get(morador_id)
+                if not morador:
+                    continue
+                morador.user = acesso_usuario.user
+                morador.save(update_fields=['user'])
+                moradores_livres.pop(morador_id, None)
             return redirect('gerenciar_acessos')
     else:
         formset = AcessoMoradorFormSet(queryset=moradores_qs)
@@ -305,7 +324,7 @@ def gerenciar_acessos(request):
     return render(
         request,
         'core/gerenciar_acessos.html',
-        {'formset': formset, 'usuario_formset': usuario_formset},
+        {'formset': formset, 'usuario_formset': usuario_formset, 'moradores_sem_usuario': moradores_sem_usuario},
     )
 
 
@@ -1271,16 +1290,21 @@ def ingressos_rock(request, evento_id):
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
             return redirect('ingressos_rock', evento_id=evento.id)
-        form = IngressoRockForm(request.POST)
+        form = IngressoRockForm(request.POST, evento=evento)
         if form.is_valid():
             ingresso = form.save(commit=False)
+            lote = form.cleaned_data['lote']
+            if ingresso.quantidade_ingressos > lote.quantidade_disponivel:
+                raise PermissionDenied('Quantidade indisponivel para este lote.')
             ingresso.rock_evento = evento
             ingresso.save()
+            lote.quantidade_vendida = lote.quantidade_vendida + ingresso.quantidade_ingressos
+            lote.save(update_fields=['quantidade_vendida'])
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
             return redirect('ingressos_rock', evento_id=evento.id)
     else:
-        form = IngressoRockForm()
+        form = IngressoRockForm(evento=evento)
 
     total_recebido = sum((ingresso.valor_total for ingresso in ingressos), Decimal('0.00'))
     return render(
