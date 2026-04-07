@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import login
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 from ..forms import (
     apply_form_config,
@@ -316,7 +317,9 @@ def gerenciar_acessos(request):
                 morador.user = acesso_usuario.user
                 morador.save(update_fields=['user'])
                 moradores_livres.pop(morador_id, None)
+            messages.success(request, 'Acessos atualizados com sucesso.')
             return redirect('gerenciar_acessos')
+        messages.error(request, 'Nao foi possivel salvar os acessos. Revise os campos destacados.')
     else:
         formset = AcessoMoradorFormSet(queryset=moradores_qs)
         usuario_formset = AcessoUsuarioFormSet(queryset=acessos_usuarios_qs, prefix='usuarios')
@@ -459,7 +462,9 @@ def financeiro(request):
                         mes_referencia=mes_referencia,
                         defaults={'valor_total': desconto_form.cleaned_data['valor_total']},
                     )
+                    messages.success(request, 'Desconto mensal salvo com sucesso.')
                     return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
+                messages.error(request, 'Nao foi possivel salvar o desconto mensal.')
         elif 'ajuste_submit' in request.POST:
             ajuste_formset = AjusteMoradorFormSet(request.POST, queryset=AjusteMorador.objects.none())
             if ajuste_formset.is_valid():
@@ -471,7 +476,9 @@ def financeiro(request):
                     ajuste.save()
                 for obj in ajuste_formset.deleted_objects:
                     obj.delete()
+                messages.success(request, 'Ajustes individuais salvos com sucesso.')
                 return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
+            messages.error(request, 'Nao foi possivel salvar os ajustes individuais.')
         elif 'pendencia_submit' in request.POST:
             mes_referencia_str = request.POST.get('mes_referencia')
             if mes_referencia_str:
@@ -482,20 +489,26 @@ def financeiro(request):
                         mes_referencia=mes_referencia,
                         defaults={'valor_total': pendencia_form.cleaned_data['valor_total']},
                     )
+                    messages.success(request, 'Pendencia mensal salva com sucesso.')
                     return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
+                messages.error(request, 'Nao foi possivel salvar a pendencia mensal.')
         elif 'fixas_submit' in request.POST:
             fixas_formset = ContaFixaFormSet(request.POST, queryset=ContaFixa.objects.all())
             if fixas_formset.is_valid():
                 fixas_formset.save()
+                messages.success(request, 'Contas fixas atualizadas com sucesso.')
                 mes_ref = request.POST.get('mes_referencia')
                 if mes_ref:
                     return redirect(f"{redirect('financeiro').url}?mes={mes_ref[:7]}")
                 return redirect('financeiro')
+            messages.error(request, 'Nao foi possivel salvar as contas fixas.')
         else:
             configuracao_form = ConfiguracaoFinanceiraForm(request.POST, instance=configuracao)
             if configuracao_form.is_valid():
                 configuracao_form.save()
+                messages.success(request, 'Valor de aluguel atualizado com sucesso.')
                 return redirect('financeiro')
+            messages.error(request, 'Nao foi possivel salvar a configuracao de aluguel.')
     if configuracao_form is None:
         configuracao_form = ConfiguracaoFinanceiraForm(instance=configuracao)
 
@@ -1323,6 +1336,7 @@ def ingressos_rock(request, evento_id):
             ingresso.delete()
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
+            messages.success(request, 'Ingresso removido com sucesso.')
             return redirect('ingressos_rock', evento_id=evento.id)
         form = IngressoRockForm(request.POST, evento=evento)
         if form.is_valid():
@@ -1336,7 +1350,9 @@ def ingressos_rock(request, evento_id):
             lote.save(update_fields=['quantidade_vendida'])
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
+            messages.success(request, 'Ingresso registrado com sucesso.')
             return redirect('ingressos_rock', evento_id=evento.id)
+        messages.error(request, 'Nao foi possivel registrar o ingresso. Confira os dados informados.')
     else:
         form = IngressoRockForm(evento=evento)
 
@@ -1386,6 +1402,7 @@ def lotes_rock(request, evento_id):
         if 'excluir_lote' in request.POST:
             lote = get_object_or_404(LoteIngressoRock, id=request.POST.get('excluir_lote'), rock_evento=evento)
             lote.delete()
+            messages.success(request, 'Lote excluido com sucesso.')
             return redirect('lotes_rock', evento_id=evento.id)
 
         form = LoteIngressoRockForm(request.POST)
@@ -1393,7 +1410,9 @@ def lotes_rock(request, evento_id):
             lote = form.save(commit=False)
             lote.rock_evento = evento
             lote.save()
+            messages.success(request, 'Lote criado com sucesso.')
             return redirect('lotes_rock', evento_id=evento.id)
+        messages.error(request, 'Nao foi possivel salvar o lote. Revise os campos preenchidos.')
     else:
         form = LoteIngressoRockForm()
 
@@ -1434,6 +1453,9 @@ def comprar_rocks(request):
                 quantidade=quantidade,
                 valor_total=valor_total,
             )
+            messages.success(request, 'Pedido de compra criado. Gere o pagamento para confirmar seu ingresso.')
+        else:
+            messages.error(request, 'Nao foi possivel iniciar a compra. Confira os dados informados.')
 
     if request.method == 'POST' and 'confirmar_pagamento' in request.POST:
         pedido_pagamento = get_object_or_404(
@@ -1464,6 +1486,7 @@ def comprar_rocks(request):
         )
         pedido_pagamento.rock_evento.quantidade_pessoas = total_pessoas
         pedido_pagamento.rock_evento.save(update_fields=['quantidade_pessoas'])
+        messages.success(request, 'Pagamento confirmado e ingresso adicionado na lista.')
         return redirect('comprar_rocks')
 
     if pedido_pagamento:

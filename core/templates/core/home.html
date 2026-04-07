@@ -1,9 +1,11 @@
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema RPF</title>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <style>
         :root {
             --bg: #f3f3f3;
@@ -162,8 +164,15 @@
         }
     </style>
 </head>
-<body>
-    <main class="wrap">
+<body class="app-body">
+    <main class="wrap app-wrap">
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="message {{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
         <section class="hero">
             <div class="hero-main">
                 <h1>Sistema de Gestao RPF</h1>
@@ -180,35 +189,35 @@
                 <span class="chip">Minha conta</span>
                 <h2>Perfil pessoal</h2>
                 <p>Consulte seus dados de usuario e vinculo com morador.</p>
-                <a href="{% url 'perfil' %}" class="btn">Acessar perfil</a>
+                <a href="{% url 'perfil' %}" class="btn app-btn">Acessar perfil</a>
             </article>
 
             <article class="card">
                 <span class="chip">Cadastro</span>
                 <h2>Moradores</h2>
                 <p>Gerencie moradores, quartos e status de atividade.</p>
-                <a href="{% url 'moradores' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'moradores' %}" class="btn app-btn">Acessar modulo</a>
             </article>
 
             <article class="card">
                 <span class="chip">Financeiro</span>
                 <h2>Financeiro</h2>
                 <p>Acompanhe recebimentos, despesas, rateio e exportacao de planilha.</p>
-                <a href="{% url 'financeiro' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'financeiro' %}" class="btn app-btn">Acessar modulo</a>
             </article>
 
             <article class="card">
                 <span class="chip">Operacoes</span>
                 <h2>Ordens de Servico</h2>
                 <p>Registre e acompanhe ordens de servico por setor.</p>
-                <a href="{% url 'manutencao' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'manutencao' %}" class="btn app-btn">Acessar modulo</a>
             </article>
 
             <article class="card">
                 <span class="chip">Agenda</span>
                 <h2>Calendario</h2>
                 <p>Visualize rocks, OSs e eventos adicionados manualmente.</p>
-                <a href="{% url 'calendario' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'calendario' %}" class="btn app-btn">Acessar modulo</a>
             </article>
 
             <article class="card">
@@ -216,11 +225,11 @@
                 <h2>Rocks</h2>
                 <p>Escolha entre gerenciar os rocks ou acessar a area de compra de ingressos.</p>
                 <div class="btn-group">
-                    <a href="{% if usuario_sem_vinculo %}{% url 'comprar_rocks' %}{% else %}{% url 'rock' %}{% endif %}" class="btn">
+                    <a href="{% if usuario_sem_vinculo %}{% url 'comprar_rocks' %}{% else %}{% url 'rock' %}{% endif %}" class="btn app-btn">
                         {% if usuario_sem_vinculo %}Comprar ingressos{% else %}Acessar rocks{% endif %}
                     </a>
                     {% if not usuario_sem_vinculo %}
-                    <a href="{% url 'comprar_rocks' %}" class="btn">Acessar ingressos</a>
+                    <a href="{% url 'comprar_rocks' %}" class="btn app-btn">Acessar ingressos</a>
                     {% endif %}
                 </div>
             </article>
@@ -229,14 +238,14 @@
                 <span class="chip">Suprimentos</span>
                 <h2>Compras</h2>
                 <p>Cadastre notas fiscais do setor de compras.</p>
-                <a href="{% url 'compras' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'compras' %}" class="btn app-btn">Acessar modulo</a>
             </article>
 
             <article class="card">
                 <span class="chip">Estoque</span>
                 <h2>Almoxarifado</h2>
                 <p>Controle produtos e movimentacoes de entrada e saida.</p>
-                <a href="{% url 'almoxarifado' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'almoxarifado' %}" class="btn app-btn">Acessar modulo</a>
             </article>
 
             {% if user.is_superuser %}
@@ -244,13 +253,13 @@
                 <span class="chip">Configuracoes</span>
                 <h2>Configuracoes da Casa</h2>
                 <p>Edite cômodos, locais, setores e funções da casa em uma tela unica.</p>
-                <a href="{% url 'configurar_casa' %}" class="btn">Acessar configuracoes</a>
+                <a href="{% url 'configurar_casa' %}" class="btn app-btn">Acessar configuracoes</a>
             </article>
             <article class="card">
                 <span class="chip">Permissoes</span>
                 <h2>Gerenciar acessos</h2>
                 <p>Defina os acessos de moradores e de usuarios sem vinculo com morador.</p>
-                <a href="{% url 'gerenciar_acessos' %}" class="btn">Acessar modulo</a>
+                <a href="{% url 'gerenciar_acessos' %}" class="btn app-btn">Acessar modulo</a>
             </article>
             {% endif %}
         </section>

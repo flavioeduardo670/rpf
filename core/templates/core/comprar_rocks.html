@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compra de ingressos Rock</title>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <style>
         :root {
             --bg: #f3f3f3;
@@ -126,19 +128,26 @@
         }
     </style>
 </head>
-<body>
-    <main class="wrap">
-        <header class="topbar">
+<body class="app-body">
+    <main class="wrap app-wrap">
+        <header class="topbar app-topbar">
             <h1 class="title">Compra de ingressos dos Rocks</h1>
-            <a href="{% url 'home' %}" class="btn">Voltar para home</a>
+            <a href="{% url 'home' %}" class="btn app-btn">Voltar para home</a>
         </header>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="message {{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
 
         {% if morador %}
         <p class="hint">Esta area e focada para usuarios sem vinculo com a casa, mas voce tambem pode usar.</p>
         {% endif %}
 
         <section class="grid">
-            <article class="card">
+            <article class="card app-card">
                 <h2>Rocks cadastrados</h2>
                 {% for evento in eventos %}
                 <div class="evento">
@@ -161,7 +170,7 @@
                 <form method="post">
                     {% csrf_token %}
                     {{ compra_form.as_p }}
-                    <button type="submit" class="btn" name="iniciar_compra" value="1">Gerar pagamento</button>
+                    <button type="submit" class="btn app-btn" name="iniciar_compra" value="1">Gerar pagamento</button>
                 </form>
 
                 {% if pedido_pagamento %}
@@ -172,17 +181,17 @@
                 <p><strong>PIX de recebimentos:</strong> {{ pix_recebimentos }}</p>
                 {% endif %}
                 {% if qr_code_url and pix_payload %}
-                <button type="button" class="btn" id="abrir-qrcode" data-qr-url="{{ qr_code_url }}" data-pix-payload="{{ pix_payload }}">Abrir QR Code para pagamento</button>
+                <button type="button" class="btn app-btn" id="abrir-qrcode" data-qr-url="{{ qr_code_url }}" data-pix-payload="{{ pix_payload }}">Abrir QR Code para pagamento</button>
                 {% endif %}
                 <form method="post">
                     {% csrf_token %}
-                    <button type="submit" class="btn" name="confirmar_pagamento" value="{{ pedido_pagamento.id }}">Ja paguei e quero entrar na lista</button>
+                    <button type="submit" class="btn app-btn" name="confirmar_pagamento" value="{{ pedido_pagamento.id }}">Ja paguei e quero entrar na lista</button>
                 </form>
                 {% endif %}
             </article>
         </section>
 
-        <section class="card" style="margin-top: 14px;">
+        <section class="card app-card" style="margin-top: 14px;">
             <h2>Meus pedidos</h2>
             <table>
                 <tr>

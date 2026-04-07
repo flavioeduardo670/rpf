@@ -1,0 +1,131 @@
+:root {
+    --app-panel: #ffffff;
+    --app-ink: #101010;
+    --app-muted: #616161;
+    --app-line: #d7d7d7;
+    --app-light: #f6f6f6;
+    --app-dark: #111111;
+    --app-radius: 12px;
+    --app-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+
+* { box-sizing: border-box; }
+
+.app-body {
+    margin: 0;
+    color: var(--app-ink);
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.app-wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.app-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.app-btn,
+.app-btn:visited {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    border: 1px solid var(--app-dark);
+    border-radius: 999px;
+    background: var(--app-dark);
+    color: #fff;
+    font-weight: 700;
+    font-size: .86rem;
+    padding: 9px 14px;
+    cursor: pointer;
+}
+
+.app-btn--outline {
+    background: #fff;
+    color: var(--app-dark);
+}
+
+.app-card {
+    background: var(--app-panel);
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius);
+    padding: 16px;
+    box-shadow: var(--app-shadow);
+}
+
+.app-table-wrap {
+    overflow: auto;
+}
+
+.app-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.app-table th,
+.app-table td {
+    padding: 10px 11px;
+    border-bottom: 1px solid #e8e8e8;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.app-table th {
+    background: var(--app-light);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+
+.messages {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 0;
+    list-style: none;
+}
+
+.message {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: .92rem;
+}
+
+.message.success {
+    background: #f1faee;
+    border-color: #b7e4c7;
+    color: #1b5e20;
+}
+
+.message.error {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #9f1239;
+}
+
+.message.warning {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+.message.info {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e3a8a;
+}
+
+@media (max-width: 920px) {
+    .app-wrap { padding: 14px; }
+    .app-topbar { flex-direction: column; align-items: flex-start; }
+    .app-btn { width: 100%; text-align: center; }
+}

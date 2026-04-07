@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lotes do Rock</title>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <style>
         :root {
             --bg: #f3f3f3;
@@ -128,18 +130,25 @@
         }
     </style>
 </head>
-<body>
-    <main class="wrap">
-        <header class="topbar">
+<body class="app-body">
+    <main class="wrap app-wrap">
+        <header class="topbar app-topbar">
             <div>
                 <h1>Lotes de ingressos</h1>
                 <p class="sub">Evento: <strong>{{ evento.nome }}</strong></p>
             </div>
-            <a href="{% url 'rock' %}" class="btn">Voltar para Rocks</a>
+            <a href="{% url 'rock' %}" class="btn app-btn">Voltar para Rocks</a>
         </header>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="message {{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
 
         <section class="grid">
-            <article class="card">
+            <article class="card app-card">
                 <h2 style="margin-bottom: 12px;">Lotes cadastrados</h2>
                 <table>
                     <tr>
@@ -160,7 +169,7 @@
                         <td class="center">
                             <form method="post">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-outline" name="excluir_lote" value="{{ lote.id }}">Excluir</button>
+                                <button type="submit" class="btn btn-outline app-btn app-btn--outline" name="excluir_lote" value="{{ lote.id }}">Excluir</button>
                             </form>
                         </td>
                     </tr>
@@ -170,12 +179,12 @@
                 </table>
             </article>
 
-            <article class="card">
+            <article class="card app-card">
                 <h2 style="margin-bottom: 12px;">Novo lote</h2>
                 <form method="post">
                     {% csrf_token %}
                     {{ form.as_p }}
-                    <button type="submit" class="btn">Salvar lote</button>
+                    <button type="submit" class="btn app-btn">Salvar lote</button>
                 </form>
             </article>
         </section>

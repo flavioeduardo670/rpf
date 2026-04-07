@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Setor de Rocks</title>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <style>
         :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
         * { box-sizing:border-box; }
@@ -30,14 +32,21 @@
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
     </style>
 </head>
-<body>
-<div class="wrap">
-    <div class="top">
+<body class="app-body">
+<div class="wrap app-wrap">
+    <div class="top app-topbar">
         <h1>Setor de Rocks</h1>
-        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+        <a class="btn app-btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="message {{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 
-    <section class="panel">
+    <section class="panel app-card">
         <h2>Novo rock (festa)</h2>
         {% if can_edit_rock %}
         <form method="post">
@@ -83,7 +92,7 @@
         {% endif %}
     </section>
 
-    <section class="panel">
+    <section class="panel app-card">
         <h2>Rocks registrados</h2>
         <div class="table-wrap">
             <table>
@@ -137,7 +146,7 @@
         <p class="muted">Total gasto (todos os rocks): R$ {{ total_gasto|floatformat:2 }}</p>
     </section>
 
-    <section class="panel">
+    <section class="panel app-card">
         <h2>Gastos por rock (almoxarifado)</h2>
         <div class="table-wrap">
             <table>
