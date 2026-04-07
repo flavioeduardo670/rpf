@@ -1290,16 +1290,21 @@ def ingressos_rock(request, evento_id):
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
             return redirect('ingressos_rock', evento_id=evento.id)
-        form = IngressoRockForm(request.POST)
+        form = IngressoRockForm(request.POST, evento=evento)
         if form.is_valid():
             ingresso = form.save(commit=False)
+            lote = form.cleaned_data['lote']
+            if ingresso.quantidade_ingressos > lote.quantidade_disponivel:
+                raise PermissionDenied('Quantidade indisponivel para este lote.')
             ingresso.rock_evento = evento
             ingresso.save()
+            lote.quantidade_vendida = lote.quantidade_vendida + ingresso.quantidade_ingressos
+            lote.save(update_fields=['quantidade_vendida'])
             evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
             evento.save(update_fields=['quantidade_pessoas'])
             return redirect('ingressos_rock', evento_id=evento.id)
     else:
-        form = IngressoRockForm()
+        form = IngressoRockForm(evento=evento)
 
     total_recebido = sum((ingresso.valor_total for ingresso in ingressos), Decimal('0.00'))
     return render(
