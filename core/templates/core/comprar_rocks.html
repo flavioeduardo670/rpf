@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compra de ingressos Rock</title>
+</head>
+<body>
+    <h1>Compra de ingressos dos Rocks</h1>
+    <a href="{% url 'home' %}">Voltar</a>
+
+    {% if morador %}
+    <p>Esta area e focada para usuarios sem vinculo com a casa, mas voce tambem pode usar.</p>
+    {% endif %}
+
+    <h2>Rocks cadastrados</h2>
+    <ul>
+        {% for evento in eventos %}
+        <li>
+            <strong>{{ evento.nome }}</strong> - {{ evento.data }}
+            <ul>
+                {% for lote in evento.lotes.all %}
+                <li>{{ lote.nome }} | R$ {{ lote.preco }} | Disponiveis: {{ lote.quantidade_disponivel }}</li>
+                {% empty %}
+                <li>Sem lotes cadastrados</li>
+                {% endfor %}
+            </ul>
+        </li>
+        {% empty %}
+        <li>Nenhum rock cadastrado.</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Comprar ingresso</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ compra_form.as_p }}
+        <button type="submit" name="iniciar_compra" value="1">Gerar pagamento</button>
+    </form>
+
+    {% if pedido_pagamento %}
+    <h2>Pagamento</h2>
+    <p>Pedido #{{ pedido_pagamento.id }} - Evento {{ pedido_pagamento.rock_evento.nome }} - Valor total R$ {{ pedido_pagamento.valor_total }}</p>
+    {% if qr_code_url %}
+    <img src="{{ qr_code_url }}" alt="QR Code do pagamento">
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="confirmar_pagamento" value="{{ pedido_pagamento.id }}">Ja paguei e quero entrar na lista</button>
+    </form>
+    {% endif %}
+
+    <h2>Meus pedidos</h2>
+    <table border="1" cellpadding="6">
+        <tr>
+            <th>Evento</th>
+            <th>Lote</th>
+            <th>Quantidade</th>
+            <th>Valor total</th>
+            <th>Status</th>
+        </tr>
+        {% for pedido in meus_pedidos %}
+        <tr>
+            <td>{{ pedido.rock_evento.nome }}</td>
+            <td>{{ pedido.lote.nome }}</td>
+            <td>{{ pedido.quantidade }}</td>
+            <td>R$ {{ pedido.valor_total }}</td>
+            <td>{{ pedido.get_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Sem pedidos.</td></tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

@@ -210,6 +210,14 @@
                 <p>Registre festas, arrecadacao e gastos do setor de rock.</p>
                 <a href="{% url 'rock' %}" class="btn">Acessar modulo</a>
             </article>
+            {% if usuario_sem_vinculo %}
+            <article class="card">
+                <span class="chip">Ingressos</span>
+                <h2>Compras Rocks</h2>
+                <p>Escolha um rock, selecione lote e realize o pagamento para entrar na lista.</p>
+                <a href="{% url 'comprar_rocks' %}" class="btn">Comprar ingresso</a>
+            </article>
+            {% endif %}
 
             <article class="card">
                 <span class="chip">Suprimentos</span>

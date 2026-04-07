@@ -344,6 +344,43 @@ class IngressoRock(models.Model):
         return f"{self.nome} - {self.rock_evento.nome}"
 
 
+class LoteIngressoRock(models.Model):
+    rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='lotes')
+    nome = models.CharField(max_length=100)
+    quantidade_total = models.PositiveIntegerField(default=0)
+    quantidade_vendida = models.PositiveIntegerField(default=0)
+    preco = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    @property
+    def quantidade_disponivel(self):
+        disponivel = self.quantidade_total - self.quantidade_vendida
+        return disponivel if disponivel > 0 else 0
+
+    def __str__(self):
+        return f"{self.rock_evento.nome} - {self.nome}"
+
+
+class PedidoIngressoRock(models.Model):
+    STATUS_CHOICES = [
+        ('aguardando_pagamento', 'Aguardando pagamento'),
+        ('pago', 'Pago'),
+    ]
+
+    rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='pedidos_ingresso')
+    lote = models.ForeignKey(LoteIngressoRock, on_delete=models.PROTECT, related_name='pedidos')
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    nome_comprador = models.CharField(max_length=150)
+    telefone = models.CharField(max_length=30, blank=True, null=True)
+    quantidade = models.PositiveIntegerField(default=1)
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='aguardando_pagamento')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    pago_em = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Pedido {self.id} - {self.nome_comprador}"
+
+
 class FormFieldConfig(models.Model):
     form_key = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
@@ -576,5 +613,4 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
 

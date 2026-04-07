@@ -93,6 +93,7 @@
                     <th>Horario</th>
                     <th>Valor arrecadado</th>
                     <th>Total gasto</th>
+                    <th>Lotes</th>
                     <th>Acoes</th>
                 </tr>
                 {% for evento in eventos %}
@@ -108,14 +109,24 @@
                     <td>R$ {{ evento.valor_arrecadado }}</td>
                     <td>R$ {{ evento.total_gasto|floatformat:2 }}</td>
                     <td>
+                        {% for lote in evento.lotes_resumo %}
+                        <div>{{ lote.nome }} - Qtd: {{ lote.quantidade_total }} - R$ {{ lote.preco }}</div>
+                        {% empty %}
+                        <div>-</div>
+                        {% endfor %}
+                    </td>
+                    <td>
                         <a class="btn" href="{% url 'ingressos_rock' evento.id %}">Ingressos</a>
+                        {% if can_edit_rock %}
+                        <a class="btn" href="{% url 'lotes_rock' evento.id %}">Lotes</a>
+                        {% endif %}
                         {% if can_edit_rock %}
                         <a class="btn" href="{% url 'editar_rock' evento.id %}">Editar</a>
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="empty">Nenhum rock registrado.</td></tr>
+                <tr><td colspan="9" class="empty">Nenhum rock registrado.</td></tr>
                 {% endfor %}
             </table>
         </div>

@@ -23,6 +23,7 @@ from .models import (
     RockEvento,
     RockItem,
     IngressoRock,
+    LoteIngressoRock,
     DescontoMensal,
     PendenciaMensal,
     AjusteMorador,
@@ -396,6 +397,36 @@ class IngressoRockForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['quantidade_ingressos'].widget = forms.NumberInput(attrs={'min': '1'})
         self.fields['valor_unitario'].widget = forms.NumberInput(attrs={'step': '0.01', 'min': '0'})
+
+
+class LoteIngressoRockForm(forms.ModelForm):
+    class Meta:
+        model = LoteIngressoRock
+        fields = ['nome', 'quantidade_total', 'preco']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['quantidade_total'].widget = forms.NumberInput(attrs={'min': '1'})
+        self.fields['preco'].widget = forms.NumberInput(attrs={'step': '0.01', 'min': '0'})
+
+
+class CompraIngressoRockForm(forms.Form):
+    lote = forms.ModelChoiceField(queryset=LoteIngressoRock.objects.none(), label='Lote')
+    nome_comprador = forms.CharField(max_length=150, label='Nome')
+    telefone = forms.CharField(max_length=30, required=False, label='Telefone')
+    quantidade = forms.IntegerField(min_value=1, initial=1, label='Quantidade de ingressos')
+
+    def __init__(self, *args, lotes_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['lote'].queryset = lotes_queryset or LoteIngressoRock.objects.none()
+
+    def clean(self):
+        cleaned = super().clean()
+        lote = cleaned.get('lote')
+        quantidade = cleaned.get('quantidade') or 0
+        if lote and quantidade > lote.quantidade_disponivel:
+            raise forms.ValidationError('Quantidade solicitada maior que o disponivel no lote.')
+        return cleaned
 
 
 class EventoCalendarioForm(forms.ModelForm):
