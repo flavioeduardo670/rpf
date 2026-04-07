@@ -314,3 +314,82 @@ class AdminUserVinculoTests(TestCase):
         novo_usuario = User.objects.get(username='novo_usuario')
         self.morador.refresh_from_db()
         self.assertEqual(self.morador.user_id, novo_usuario.id)
+
+
+class MigracaoViewsPorDominioRoutesTests(TestCase):
+    def setUp(self):
+        self.financeiro_user = User.objects.create_user(username='financeiro_migracao', password='123456')
+        financeiro_group, _ = Group.objects.get_or_create(name='Financeiro')
+        self.financeiro_user.groups.add(financeiro_group)
+
+        self.estoque_user = User.objects.create_user(username='estoque_migracao', password='123456')
+        estoque_group, _ = Group.objects.get_or_create(name='Estoque')
+        self.estoque_user.groups.add(estoque_group)
+
+        self.rock_user = User.objects.create_user(username='rock_migracao', password='123456')
+        rock_group, _ = Group.objects.get_or_create(name='Rock')
+        self.rock_user.groups.add(rock_group)
+
+        self.admin_user = User.objects.create_superuser(
+            username='admin_migracao',
+            email='admin_migracao@test.com',
+            password='Admin123..',
+        )
+        self.sem_permissao = User.objects.create_user(username='sem_permissao_migracao', password='123456')
+
+        self.nota = NotaFiscal.objects.create(
+            setor='compras',
+            descricao='Conta de internet',
+            fornecedor='Fornecedor Teste',
+            valor=Decimal('150.00'),
+            data_emissao='2026-03-01',
+            data_vencimento='2026-03-10',
+            status='pendente',
+        )
+        self.parcela = NotaParcela.objects.create(
+            nota=self.nota,
+            numero=1,
+            valor=Decimal('150.00'),
+            vencimento='2026-03-10',
+            mes_referencia='2026-03-01',
+            status='pendente',
+        )
+
+    def test_fluxo_pagamento_critico_por_rotas_migradas(self):
+        self.client.force_login(self.financeiro_user)
+
+        financeiro_response = self.client.get(reverse('financeiro'))
+        self.assertEqual(financeiro_response.status_code, 200)
+
+        pagar_nota_response = self.client.post(reverse('pagar_nota', args=[self.nota.id]))
+        self.assertEqual(pagar_nota_response.status_code, 302)
+
+        self.parcela.status = 'pendente'
+        self.parcela.data_pagamento = None
+        self.parcela.save(update_fields=['status', 'data_pagamento'])
+
+        pagar_parcela_response = self.client.post(reverse('pagar_parcela', args=[self.parcela.id]))
+        self.assertEqual(pagar_parcela_response.status_code, 302)
+
+        self.nota.refresh_from_db()
+        self.parcela.refresh_from_db()
+        self.assertEqual(self.nota.status, 'pago')
+        self.assertEqual(self.parcela.status, 'pago')
+
+    def test_regressao_permissoes_acessos(self):
+        self.client.force_login(self.sem_permissao)
+        forbidden = self.client.get(reverse('gerenciar_acessos'))
+        self.assertEqual(forbidden.status_code, 403)
+
+        self.client.force_login(self.admin_user)
+        allowed = self.client.get(reverse('gerenciar_acessos'))
+        self.assertEqual(allowed.status_code, 200)
+
+    def test_regressao_rotas_moradores_e_rock(self):
+        self.client.force_login(self.admin_user)
+        moradores_response = self.client.get(reverse('moradores'))
+        self.assertEqual(moradores_response.status_code, 200)
+
+        self.client.force_login(self.rock_user)
+        rock_response = self.client.get(reverse('rock'))
+        self.assertEqual(rock_response.status_code, 200)
