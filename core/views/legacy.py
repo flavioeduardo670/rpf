@@ -261,6 +261,7 @@ def gerenciar_acessos(request):
 def perfil(request):
     morador = getattr(request.user, 'morador', None)
     ordens = []
+    novas_ordens = []
     if request.method == 'POST' and morador:
         foto_form = PerfilFotoForm(request.POST, request.FILES, instance=morador)
         if foto_form.is_valid():
@@ -271,6 +272,13 @@ def perfil(request):
 
     if morador:
         ordens = OrdemServico.objects.filter(executado_por=morador.nome).order_by('-data_inicio')
+        filtro_novas = ordens.filter(status='aberta')
+        if morador.ultima_visualizacao_os:
+            filtro_novas = filtro_novas.filter(data_inicio__gt=morador.ultima_visualizacao_os)
+
+        novas_ordens = list(filtro_novas)
+        morador.ultima_visualizacao_os = timezone.now()
+        morador.save(update_fields=['ultima_visualizacao_os'])
 
     return render(
         request,
@@ -280,6 +288,7 @@ def perfil(request):
             'morador': morador,
             'foto_form': foto_form,
             'ordens': ordens,
+            'novas_ordens': novas_ordens,
         },
     )
 

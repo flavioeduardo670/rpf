@@ -31,6 +31,7 @@ class Morador(models.Model):
     foto_perfil = models.FileField(upload_to='perfil_fotos/', null=True, blank=True)
     ordem_hierarquia = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField(default=True)
+    ultima_visualizacao_os = models.DateTimeField(blank=True, null=True)
 
     # Permissões internas do sistema
     acesso_financeiro_visualizar = models.BooleanField(default=False)
@@ -535,7 +536,6 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
 
 
 
