@@ -22,6 +22,7 @@ from .models import (
     Setor,
     RockEvento,
     RockItem,
+    IngressoRock,
     DescontoMensal,
     PendenciaMensal,
     AjusteMorador,
@@ -384,6 +385,17 @@ class RockItemForm(forms.ModelForm):
         if not produto:
             raise forms.ValidationError('Selecione um produto para o item do rock.')
         return cleaned
+
+
+class IngressoRockForm(forms.ModelForm):
+    class Meta:
+        model = IngressoRock
+        fields = ['nome', 'telefone', 'quantidade_ingressos', 'valor_unitario', 'status_pagamento', 'observacao']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['quantidade_ingressos'].widget = forms.NumberInput(attrs={'min': '1'})
+        self.fields['valor_unitario'].widget = forms.NumberInput(attrs={'step': '0.01', 'min': '0'})
 
 
 class EventoCalendarioForm(forms.ModelForm):

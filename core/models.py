@@ -321,6 +321,29 @@ class RockItem(models.Model):
         return (self.produto.nome if self.produto else 'Item')
 
 
+class IngressoRock(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('pago', 'Pago'),
+    ]
+
+    rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='ingressos')
+    nome = models.CharField(max_length=150)
+    telefone = models.CharField(max_length=30, blank=True, null=True)
+    quantidade_ingressos = models.PositiveIntegerField(default=1)
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status_pagamento = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+    observacao = models.CharField(max_length=200, blank=True, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def valor_total(self):
+        return self.quantidade_ingressos * self.valor_unitario
+
+    def __str__(self):
+        return f"{self.nome} - {self.rock_evento.nome}"
+
+
 class FormFieldConfig(models.Model):
     form_key = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
@@ -553,6 +576,5 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
 
 

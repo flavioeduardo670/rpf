@@ -29,6 +29,7 @@ from ..forms import (
     PerfilFotoForm,
     ProdutoForm,
     RockItemForm,
+    IngressoRockForm,
     RockEventoForm,
     EventoCalendarioForm,
     DescontoMensalForm,
@@ -59,6 +60,7 @@ from ..models import (
     Produto,
     RockEvento,
     RockItem,
+    IngressoRock,
     EventoCalendario,
     Setor,
     DescontoMensal,
@@ -1193,6 +1195,111 @@ def editar_rock(request, evento_id):
         'core/editar_rock.html',
         {'evento_form': evento_form, 'itens_formset': itens_formset, 'evento': evento},
     )
+
+
+def _texto_pdf(valor):
+    return str(valor).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _gerar_pdf_simples(titulo, linhas):
+    conteudo = [f"BT /F1 12 Tf 40 800 Td ({_texto_pdf(titulo)}) Tj"]
+    y = 780
+    for linha in linhas:
+        conteudo.append(f"1 0 0 1 40 {y} Tm ({_texto_pdf(linha)}) Tj")
+        y -= 16
+        if y < 40:
+            break
+    conteudo.append("ET")
+    stream = "\n".join(conteudo).encode('latin-1', errors='replace')
+
+    objetos = []
+    objetos.append(b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n")
+    objetos.append(b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n")
+    objetos.append(
+        b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n"
+    )
+    objetos.append(b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n")
+    objetos.append(f"5 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1') + stream + b"\nendstream endobj\n")
+
+    pdf = b"%PDF-1.4\n"
+    offsets = [0]
+    for obj in objetos:
+        offsets.append(len(pdf))
+        pdf += obj
+    xref_start = len(pdf)
+    pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1')
+    pdf += b"0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
+    pdf += (
+        f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF"
+    ).encode('latin-1')
+    return pdf
+
+
+@setor_required(
+    group_name='Rock',
+    morador_view_attr='acesso_rock_visualizar',
+    morador_edit_attr='acesso_rock_editar',
+)
+def ingressos_rock(request, evento_id):
+    evento = get_object_or_404(RockEvento, id=evento_id)
+    can_edit_rock = _can_edit(request, 'acesso_rock_editar')
+    ingressos = IngressoRock.objects.filter(rock_evento=evento).order_by('nome')
+
+    if request.method == 'POST':
+        if not can_edit_rock:
+            raise PermissionDenied('Voce nao tem permissao para editar ingressos.')
+        if 'excluir_ingresso' in request.POST:
+            ingresso = get_object_or_404(IngressoRock, id=request.POST.get('excluir_ingresso'), rock_evento=evento)
+            ingresso.delete()
+            evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
+            evento.save(update_fields=['quantidade_pessoas'])
+            return redirect('ingressos_rock', evento_id=evento.id)
+        form = IngressoRockForm(request.POST)
+        if form.is_valid():
+            ingresso = form.save(commit=False)
+            ingresso.rock_evento = evento
+            ingresso.save()
+            evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
+            evento.save(update_fields=['quantidade_pessoas'])
+            return redirect('ingressos_rock', evento_id=evento.id)
+    else:
+        form = IngressoRockForm()
+
+    total_recebido = sum((ingresso.valor_total for ingresso in ingressos), Decimal('0.00'))
+    return render(
+        request,
+        'core/ingressos_rock.html',
+        {
+            'evento': evento,
+            'form': form,
+            'ingressos': ingressos,
+            'can_edit_rock': can_edit_rock,
+            'total_recebido': total_recebido,
+        },
+    )
+
+
+@setor_required(
+    group_name='Rock',
+    morador_view_attr='acesso_rock_visualizar',
+    morador_edit_attr='acesso_rock_editar',
+)
+def exportar_ingressos_rock_pdf(request, evento_id):
+    evento = get_object_or_404(RockEvento, id=evento_id)
+    ingressos = IngressoRock.objects.filter(rock_evento=evento).order_by('nome')
+    linhas = [f"Evento: {evento.nome} | Data: {evento.data} | Pessoas: {ingressos.count()}"]
+    for idx, ingresso in enumerate(ingressos, start=1):
+        linhas.append(
+            f"{idx}. {ingresso.nome} | Qtd: {ingresso.quantidade_ingressos} | "
+            f"Total: R$ {ingresso.valor_total} | {ingresso.get_status_pagamento_display()}"
+        )
+    pdf_bytes = _gerar_pdf_simples(f"Lista de ingressos - {evento.nome}", linhas)
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="ingressos_rock_{evento.id}.pdf"'
+    return response
 
 
 @setor_required(
