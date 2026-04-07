@@ -22,6 +22,10 @@
         th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
         .empty { color:var(--muted); text-align:center; }
         .actions a { text-decoration:none; }
+        .setor-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin: 18px 0 8px; }
+        .setor-header h3 { margin:0; }
+        .toggle-btn { border:1px solid #111; background:#fff; color:#111; padding:7px 11px; border-radius:999px; cursor:pointer; font-weight:700; }
+        .is-hidden { display:none; }
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
     </style>
 </head>
@@ -50,7 +54,52 @@
 
     <section class="panel">
         <h2>Ordens registradas</h2>
-        <div class="table-wrap">
+        {% for secao in secoes_setor %}
+        <div class="setor-header">
+            <h3>{{ secao.label }}</h3>
+            <button type="button" class="toggle-btn" data-target="setor-{{ secao.setor }}" data-label-show="Mostrar {{ secao.label }}" data-label-hide="Ocultar {{ secao.label }}">Ocultar {{ secao.label }}</button>
+        </div>
+        <div class="table-wrap" id="setor-{{ secao.setor }}">
+            <table>
+                <tr>
+                    <th>Numero</th>
+                    <th>Descricao</th>
+                    <th>Observacao</th>
+                    <th>Executado por</th>
+                    <th>Status</th>
+                    <th>Inicio</th>
+                    <th>Fim</th>
+                    <th>Acoes</th>
+                </tr>
+                {% for os in secao.ordens %}
+                <tr>
+                    <td>{{ os.numero }}</td>
+                    <td>{{ os.descricao }}</td>
+                    <td>{{ os.observacao|default:"-" }}</td>
+                    <td>{{ os.executado_por_exibicao }}</td>
+                    <td>{{ os.get_status_display }}</td>
+                    <td>{{ os.data_inicio }}</td>
+                    <td>{{ os.data_fim|default:"-" }}</td>
+                    <td class="actions">
+                        {% if can_edit_manutencao %}
+                        <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="empty">Nenhuma OS ativa neste setor.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endfor %}
+
+        <div class="setor-header">
+            <h3>OSs finalizadas</h3>
+            <button type="button" class="toggle-btn" data-target="setor-finalizadas" data-label-show="Mostrar OSs finalizadas" data-label-hide="Ocultar OSs finalizadas">Ocultar OSs finalizadas</button>
+        </div>
+        <div class="table-wrap" id="setor-finalizadas">
             <table>
                 <tr>
                     <th>Numero</th>
@@ -63,7 +112,7 @@
                     <th>Fim</th>
                     <th>Acoes</th>
                 </tr>
-                {% for os in ordens %}
+                {% for os in ordens_finalizadas %}
                 <tr>
                     <td>{{ os.numero }}</td>
                     <td>{{ os.get_setor_display }}</td>
@@ -72,7 +121,7 @@
                     <td>{{ os.executado_por_exibicao }}</td>
                     <td>{{ os.get_status_display }}</td>
                     <td>{{ os.data_inicio }}</td>
-                    <td>{{ os.data_fim }}</td>
+                    <td>{{ os.data_fim|default:"-" }}</td>
                     <td class="actions">
                         {% if can_edit_manutencao %}
                         <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
@@ -82,11 +131,22 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="9" class="empty">Nenhuma OS registrada.</td></tr>
+                <tr><td colspan="9" class="empty">Nenhuma OS finalizada.</td></tr>
                 {% endfor %}
             </table>
         </div>
     </section>
 </div>
+<script>
+    document.querySelectorAll('.toggle-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetId = button.dataset.target;
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const oculto = target.classList.toggle('is-hidden');
+            button.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
+        });
+    });
+</script>
 </body>
 </html>
