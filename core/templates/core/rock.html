@@ -19,6 +19,8 @@
         textarea { min-height:36px; height:36px; }
         .table-wrap { overflow:auto; }
         .row-actions { display:flex; justify-content:center; }
+        .evento-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+        .evento-actions .btn { white-space:nowrap; }
         .btn-danger { background:#fff; color:#111; border-color:#c00; }
         .btn-add { margin-top:10px; }
         table { width:100%; min-width:860px; border-collapse:collapse; }
@@ -116,6 +118,7 @@
                         {% endfor %}
                     </td>
                     <td>
+                        <div class="evento-actions">
                         <a class="btn" href="{% url 'ingressos_rock' evento.id %}">Ingressos</a>
                         {% if can_edit_rock %}
                         <a class="btn" href="{% url 'lotes_rock' evento.id %}">Lotes</a>
@@ -123,6 +126,7 @@
                         {% if can_edit_rock %}
                         <a class="btn" href="{% url 'editar_rock' evento.id %}">Editar</a>
                         {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

@@ -3,7 +3,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
-from django.db.models import Case, IntegerField, When
+from django.db.models import Case, F, IntegerField, When
 from .models import (
     ChoiceList,
     ChoiceOption,
@@ -318,16 +318,29 @@ class MaterialUtilizadoForm(forms.ModelForm):
 class ConfiguracaoFinanceiraForm(forms.ModelForm):
     class Meta:
         model = ConfiguracaoFinanceira
-        fields = ['valor_aluguel', 'valor_agua', 'valor_luz']
+        fields = [
+            'valor_aluguel',
+            'valor_agua',
+            'valor_luz',
+            'conta_principal_pix',
+            'conta_recebimentos_pix',
+            'conta_pagamentos_pix',
+        ]
         labels = {
             'valor_aluguel': 'Aluguel',
             'valor_agua': 'Conta de agua',
             'valor_luz': 'Conta de luz',
+            'conta_principal_pix': 'PIX conta principal',
+            'conta_recebimentos_pix': 'PIX conta de recebimentos',
+            'conta_pagamentos_pix': 'PIX conta de pagamentos',
         }
         widgets = {
             'valor_aluguel': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'valor_agua': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'valor_luz': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'conta_principal_pix': forms.TextInput(attrs={'placeholder': 'Chave PIX da conta principal'}),
+            'conta_recebimentos_pix': forms.TextInput(attrs={'placeholder': 'Chave PIX para receber pagamentos'}),
+            'conta_pagamentos_pix': forms.TextInput(attrs={'placeholder': 'Chave PIX da conta de pagamentos'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -389,14 +402,37 @@ class RockItemForm(forms.ModelForm):
 
 
 class IngressoRockForm(forms.ModelForm):
+    lote = forms.ModelChoiceField(
+        queryset=LoteIngressoRock.objects.none(),
+        label='Lote',
+    )
+
     class Meta:
         model = IngressoRock
-        fields = ['nome', 'telefone', 'quantidade_ingressos', 'valor_unitario', 'status_pagamento', 'observacao']
+        fields = ['nome', 'telefone', 'lote', 'quantidade_ingressos', 'status_pagamento', 'observacao']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, evento=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['quantidade_ingressos'].widget = forms.NumberInput(attrs={'min': '1'})
-        self.fields['valor_unitario'].widget = forms.NumberInput(attrs={'step': '0.01', 'min': '0'})
+        lotes = LoteIngressoRock.objects.none()
+        if evento:
+            lotes = evento.lotes.filter(quantidade_total__gt=F('quantidade_vendida')).order_by('id')
+        self.fields['lote'].queryset = lotes
+
+    def clean(self):
+        cleaned = super().clean()
+        lote = cleaned.get('lote')
+        quantidade = cleaned.get('quantidade_ingressos') or 0
+        if lote and quantidade > lote.quantidade_disponivel:
+            raise forms.ValidationError('Quantidade solicitada maior que o disponivel no lote.')
+        return cleaned
+
+    def save(self, commit=True):
+        lote = self.cleaned_data.get('lote')
+        self.instance.valor_unitario = lote.preco if lote else 0
+        if lote and not self.instance.observacao:
+            self.instance.observacao = f'Lote: {lote.nome}'
+        return super().save(commit=commit)
 
 
 class LoteIngressoRockForm(forms.ModelForm):
