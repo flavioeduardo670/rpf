@@ -216,8 +216,12 @@
                 <h2>Rocks</h2>
                 <p>Escolha entre gerenciar os rocks ou acessar a area de compra de ingressos.</p>
                 <div class="btn-group">
-                    <a href="{% url 'rock' %}" class="btn">Acessar rocks</a>
+                    <a href="{% if usuario_sem_vinculo %}{% url 'comprar_rocks' %}{% else %}{% url 'rock' %}{% endif %}" class="btn">
+                        {% if usuario_sem_vinculo %}Comprar ingressos{% else %}Acessar rocks{% endif %}
+                    </a>
+                    {% if not usuario_sem_vinculo %}
                     <a href="{% url 'comprar_rocks' %}" class="btn">Acessar ingressos</a>
+                    {% endif %}
                 </div>
             </article>
 
