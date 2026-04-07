@@ -31,6 +31,7 @@ class Morador(models.Model):
     foto_perfil = models.FileField(upload_to='perfil_fotos/', null=True, blank=True)
     ordem_hierarquia = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField(default=True)
+    ultima_visualizacao_os = models.DateTimeField(blank=True, null=True)
 
     # Permissões internas do sistema
     acesso_financeiro_visualizar = models.BooleanField(default=False)
@@ -50,6 +51,23 @@ class Morador(models.Model):
     def __str__(self):
         return self.nome
 
+
+
+class AcessoUsuario(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='acesso_usuario')
+    acesso_financeiro_visualizar = models.BooleanField(default=False)
+    acesso_financeiro_editar = models.BooleanField(default=False)
+    acesso_compras_visualizar = models.BooleanField(default=False)
+    acesso_compras_editar = models.BooleanField(default=False)
+    acesso_estoque_visualizar = models.BooleanField(default=False)
+    acesso_estoque_editar = models.BooleanField(default=False)
+    acesso_manutencao_visualizar = models.BooleanField(default=False)
+    acesso_manutencao_editar = models.BooleanField(default=False)
+    acesso_rock_visualizar = models.BooleanField(default=False)
+    acesso_rock_editar = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.user.username
 
 
 class Mensalidade(models.Model):
@@ -535,8 +553,6 @@ class MaterialUtilizado(models.Model):
 
     def __str__(self):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
-
-
 
 
 

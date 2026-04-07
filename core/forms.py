@@ -7,6 +7,7 @@ from django.db.models import Case, IntegerField, When
 from .models import (
     ChoiceList,
     ChoiceOption,
+    AcessoUsuario,
     EventoCalendario,
     FormFieldConfig,
     Morador,
@@ -443,39 +444,47 @@ class ContaFixaForm(forms.ModelForm):
 
 
 class CadastroForm(UserCreationForm):
-    morador = forms.ModelChoiceField(
-        queryset=Morador.objects.none(),
-        required=True,
-        label='Morador',
-    )
     email = forms.EmailField(required=False, label='Email')
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = ['username', 'email', 'morador', 'password1', 'password2']
+        fields = ['username', 'email', 'password1', 'password2']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['morador'].queryset = Morador.objects.filter(
-            ativo=True,
-            user__isnull=True,
-        ).order_by('ordem_hierarquia', 'nome')
-        self.fields['morador'].label_from_instance = lambda m: (m.apelido or m.nome)
         apply_form_config(self, 'cadastro_form')
 
     def save(self, commit=True):
         user = super().save(commit=commit)
-        morador = self.cleaned_data.get('morador')
-        if morador:
-            morador.user = user
-            if commit:
-                morador.save(update_fields=['user'])
+        if commit:
+            AcessoUsuario.objects.get_or_create(user=user)
         return user
 
 
 class AcessoMoradorForm(forms.ModelForm):
     class Meta:
         model = Morador
+        fields = [
+            'acesso_financeiro_visualizar',
+            'acesso_financeiro_editar',
+            'acesso_compras_visualizar',
+            'acesso_compras_editar',
+            'acesso_estoque_visualizar',
+            'acesso_estoque_editar',
+            'acesso_manutencao_visualizar',
+            'acesso_manutencao_editar',
+            'acesso_rock_visualizar',
+            'acesso_rock_editar',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_form_config(self, 'acesso_morador_form')
+
+
+class AcessoUsuarioForm(forms.ModelForm):
+    class Meta:
+        model = AcessoUsuario
         fields = [
             'acesso_financeiro_visualizar',
             'acesso_financeiro_editar',
