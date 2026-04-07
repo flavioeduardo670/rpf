@@ -198,6 +198,28 @@ def _get_user_morador(user):
         return None
 
 
+def _organizar_ordens_por_setor(ordens):
+    setor_labels = dict(OrdemServico.SETOR_CHOICES)
+    ordens_ativas_por_setor = {setor: [] for setor, _ in OrdemServico.SETOR_CHOICES}
+    ordens_finalizadas = []
+
+    for ordem in ordens:
+        if ordem.status == 'finalizada':
+            ordens_finalizadas.append(ordem)
+            continue
+        ordens_ativas_por_setor.setdefault(ordem.setor, []).append(ordem)
+
+    secoes_setor = [
+        {
+            'setor': setor,
+            'label': setor_labels.get(setor, setor.title()),
+            'ordens': ordens_ativas_por_setor.get(setor, []),
+        }
+        for setor, _ in OrdemServico.SETOR_CHOICES
+    ]
+    return secoes_setor, ordens_finalizadas
+
+
 @login_required
 def home(request):
     morador = _get_user_morador(request.user)
@@ -1650,10 +1672,12 @@ def manutencao(request):
     ordens = OrdemServico.objects.all().order_by('setor', '-numero')
     for ordem in ordens:
         ordem.executado_por_exibicao = morador_apelidos.get(ordem.executado_por, ordem.executado_por)
+    secoes_setor, ordens_finalizadas = _organizar_ordens_por_setor(ordens)
 
     context = {
         'os_form': os_form,
-        'ordens': ordens,
+        'secoes_setor': secoes_setor,
+        'ordens_finalizadas': ordens_finalizadas,
         'can_edit_manutencao': can_edit_manutencao,
     }
     return render(request, 'core/manutencao.html', context)
@@ -1665,7 +1689,15 @@ def manutencao(request):
 )
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('setor', '-numero')
-    return render(request, 'core/lista_os.html', {'ordens': ordens})
+    secoes_setor, ordens_finalizadas = _organizar_ordens_por_setor(ordens)
+    return render(
+        request,
+        'core/lista_os.html',
+        {
+            'secoes_setor': secoes_setor,
+            'ordens_finalizadas': ordens_finalizadas,
+        },
+    )
 
 
 @setor_required(
