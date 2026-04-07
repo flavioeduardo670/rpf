@@ -210,6 +210,14 @@
                 <p>Registre festas, arrecadacao e gastos do setor de rock.</p>
                 <a href="{% url 'rock' %}" class="btn">Acessar modulo</a>
             </article>
+            {% if usuario_sem_vinculo %}
+            <article class="card">
+                <span class="chip">Ingressos</span>
+                <h2>Compras Rocks</h2>
+                <p>Escolha um rock, selecione lote e realize o pagamento para entrar na lista.</p>
+                <a href="{% url 'comprar_rocks' %}" class="btn">Comprar ingresso</a>
+            </article>
+            {% endif %}
 
             <article class="card">
                 <span class="chip">Suprimentos</span>
@@ -231,6 +239,12 @@
                 <h2>Configuracoes da Casa</h2>
                 <p>Edite cômodos, locais, setores e funções da casa em uma tela unica.</p>
                 <a href="{% url 'configurar_casa' %}" class="btn">Acessar configuracoes</a>
+            </article>
+            <article class="card">
+                <span class="chip">Permissoes</span>
+                <h2>Gerenciar acessos</h2>
+                <p>Defina os acessos de moradores e de usuarios sem vinculo com morador.</p>
+                <a href="{% url 'gerenciar_acessos' %}" class="btn">Acessar modulo</a>
             </article>
             {% endif %}
         </section>

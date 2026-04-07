@@ -4,6 +4,7 @@ from datetime import date, timedelta, datetime
 import calendar
 from collections import defaultdict
 import csv
+from urllib.parse import quote
 
 from django import forms
 from django.core.exceptions import PermissionDenied
@@ -15,6 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib.auth import login
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 
 from ..forms import (
@@ -28,6 +30,9 @@ from ..forms import (
     PerfilFotoForm,
     ProdutoForm,
     RockItemForm,
+    IngressoRockForm,
+    LoteIngressoRockForm,
+    CompraIngressoRockForm,
     RockEventoForm,
     EventoCalendarioForm,
     DescontoMensalForm,
@@ -36,6 +41,7 @@ from ..forms import (
     ContaFixaForm,
     CadastroForm,
     AcessoMoradorForm,
+    AcessoUsuarioForm,
     MoradorEdicaoForm,
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
@@ -57,12 +63,16 @@ from ..models import (
     Produto,
     RockEvento,
     RockItem,
+    IngressoRock,
+    LoteIngressoRock,
+    PedidoIngressoRock,
     EventoCalendario,
     Setor,
     DescontoMensal,
     PendenciaMensal,
     AjusteMorador,
     ContaFixa,
+    AcessoUsuario,
 )
 
 
@@ -91,6 +101,12 @@ AjusteMoradorFormSet = modelformset_factory(
 AcessoMoradorFormSet = modelformset_factory(
     Morador,
     form=AcessoMoradorForm,
+    extra=0,
+)
+
+AcessoUsuarioFormSet = modelformset_factory(
+    AcessoUsuario,
+    form=AcessoUsuarioForm,
     extra=0,
 )
 
@@ -123,7 +139,7 @@ def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, m
             if group_name and user.groups.filter(name=group_name).exists():
                 return view_func(request, *args, **kwargs)
 
-            morador = getattr(user, 'morador', None)
+            morador = _get_user_morador(user)
             can_view = False
             can_edit = False
 
@@ -135,6 +151,16 @@ def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, m
                     can_view = can_view or getattr(morador, morador_view_attr, False)
                 if morador_edit_attr:
                     can_edit = can_edit or getattr(morador, morador_edit_attr, False)
+            else:
+                acesso_usuario = getattr(user, 'acesso_usuario', None)
+                if acesso_usuario:
+                    if morador_attr:
+                        can_view = getattr(acesso_usuario, morador_attr, False)
+                        can_edit = can_view
+                    if morador_view_attr:
+                        can_view = can_view or getattr(acesso_usuario, morador_view_attr, False)
+                    if morador_edit_attr:
+                        can_edit = can_edit or getattr(acesso_usuario, morador_edit_attr, False)
 
             if request.method in ('GET', 'HEAD', 'OPTIONS'):
                 if can_view or can_edit:
@@ -153,13 +179,24 @@ def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, m
 def _can_edit(request, attr_name):
     if request.user.is_superuser:
         return True
-    morador = getattr(request.user, 'morador', None)
-    return bool(morador and getattr(morador, attr_name, False))
+    morador = _get_user_morador(request.user)
+    if morador:
+        return bool(getattr(morador, attr_name, False))
+    acesso_usuario = getattr(request.user, 'acesso_usuario', None)
+    return bool(acesso_usuario and getattr(acesso_usuario, attr_name, False))
+
+
+def _get_user_morador(user):
+    try:
+        return user.morador
+    except Morador.DoesNotExist:
+        return None
 
 
 @login_required
 def home(request):
-    return render(request, 'core/home.html')
+    morador = _get_user_morador(request.user)
+    return render(request, 'core/home.html', {'usuario_sem_vinculo': morador is None})
 
 
 @login_required
@@ -245,22 +282,38 @@ def gerenciar_acessos(request):
     if not request.user.is_superuser:
         raise PermissionDenied('Voce nao tem permissao para acessar este modulo.')
 
+    User = get_user_model()
     moradores_qs = Morador.objects.order_by('ordem_hierarquia', 'nome')
+    usuarios_sem_morador = User.objects.filter(morador__isnull=True, is_superuser=False).order_by('username')
+    for usuario in usuarios_sem_morador:
+        AcessoUsuario.objects.get_or_create(user=usuario)
+    acessos_usuarios_qs = AcessoUsuario.objects.select_related('user').filter(
+        user__in=usuarios_sem_morador
+    ).order_by('user__username')
+
     if request.method == 'POST':
         formset = AcessoMoradorFormSet(request.POST, queryset=moradores_qs)
-        if formset.is_valid():
+        usuario_formset = AcessoUsuarioFormSet(request.POST, queryset=acessos_usuarios_qs, prefix='usuarios')
+        if formset.is_valid() and usuario_formset.is_valid():
             formset.save()
+            usuario_formset.save()
             return redirect('gerenciar_acessos')
     else:
         formset = AcessoMoradorFormSet(queryset=moradores_qs)
+        usuario_formset = AcessoUsuarioFormSet(queryset=acessos_usuarios_qs, prefix='usuarios')
 
-    return render(request, 'core/gerenciar_acessos.html', {'formset': formset})
+    return render(
+        request,
+        'core/gerenciar_acessos.html',
+        {'formset': formset, 'usuario_formset': usuario_formset},
+    )
 
 
 @login_required
 def perfil(request):
-    morador = getattr(request.user, 'morador', None)
+    morador = _get_user_morador(request.user)
     ordens = []
+    novas_ordens = []
     if request.method == 'POST' and morador:
         foto_form = PerfilFotoForm(request.POST, request.FILES, instance=morador)
         if foto_form.is_valid():
@@ -271,6 +324,13 @@ def perfil(request):
 
     if morador:
         ordens = OrdemServico.objects.filter(executado_por=morador.nome).order_by('-data_inicio')
+        filtro_novas = ordens.filter(status='aberta')
+        if morador.ultima_visualizacao_os:
+            filtro_novas = filtro_novas.filter(data_inicio__gt=morador.ultima_visualizacao_os)
+
+        novas_ordens = list(filtro_novas)
+        morador.ultima_visualizacao_os = timezone.now()
+        morador.save(update_fields=['ultima_visualizacao_os'])
 
     return render(
         request,
@@ -280,6 +340,7 @@ def perfil(request):
             'morador': morador,
             'foto_form': foto_form,
             'ordens': ordens,
+            'novas_ordens': novas_ordens,
         },
     )
 
@@ -290,7 +351,7 @@ def moradores(request):
     if request.user.is_superuser:
         allowed_ids = set(moradores_qs.values_list('id', flat=True))
     else:
-        morador = getattr(request.user, 'morador', None)
+        morador = _get_user_morador(request.user)
         allowed_ids = {morador.id} if morador else set()
 
     def apply_permissions(formset):
@@ -1069,7 +1130,7 @@ def rock(request):
         evento_form = RockEventoForm()
         itens_formset = RockItemFormSet()
 
-    eventos = RockEvento.objects.prefetch_related('itens').order_by('-data')
+    eventos = RockEvento.objects.prefetch_related('itens', 'lotes').order_by('-data')
     consumos_rock = (
         ConsumoEstoque.objects.filter(setor='rock', rock_evento__isnull=False)
         .select_related('rock_evento', 'produto')
@@ -1099,6 +1160,7 @@ def rock(request):
     for evento in eventos:
         evento_total = total_por_rock.get(evento.id) or Decimal('0.00')
         setattr(evento, 'total_gasto', evento_total)
+        setattr(evento, 'lotes_resumo', list(evento.lotes.all()))
         total_gasto += evento_total
 
     return render(
@@ -1146,6 +1208,223 @@ def editar_rock(request, evento_id):
         request,
         'core/editar_rock.html',
         {'evento_form': evento_form, 'itens_formset': itens_formset, 'evento': evento},
+    )
+
+
+def _texto_pdf(valor):
+    return str(valor).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _gerar_pdf_simples(titulo, linhas):
+    conteudo = [f"BT /F1 12 Tf 40 800 Td ({_texto_pdf(titulo)}) Tj"]
+    y = 780
+    for linha in linhas:
+        conteudo.append(f"1 0 0 1 40 {y} Tm ({_texto_pdf(linha)}) Tj")
+        y -= 16
+        if y < 40:
+            break
+    conteudo.append("ET")
+    stream = "\n".join(conteudo).encode('latin-1', errors='replace')
+
+    objetos = []
+    objetos.append(b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n")
+    objetos.append(b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n")
+    objetos.append(
+        b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n"
+    )
+    objetos.append(b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n")
+    objetos.append(f"5 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1') + stream + b"\nendstream endobj\n")
+
+    pdf = b"%PDF-1.4\n"
+    offsets = [0]
+    for obj in objetos:
+        offsets.append(len(pdf))
+        pdf += obj
+    xref_start = len(pdf)
+    pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1')
+    pdf += b"0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
+    pdf += (
+        f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF"
+    ).encode('latin-1')
+    return pdf
+
+
+@setor_required(
+    group_name='Rock',
+    morador_view_attr='acesso_rock_visualizar',
+    morador_edit_attr='acesso_rock_editar',
+)
+def ingressos_rock(request, evento_id):
+    evento = get_object_or_404(RockEvento, id=evento_id)
+    can_edit_rock = _can_edit(request, 'acesso_rock_editar')
+    ingressos = IngressoRock.objects.filter(rock_evento=evento).order_by('nome')
+
+    if request.method == 'POST':
+        if not can_edit_rock:
+            raise PermissionDenied('Voce nao tem permissao para editar ingressos.')
+        if 'excluir_ingresso' in request.POST:
+            ingresso = get_object_or_404(IngressoRock, id=request.POST.get('excluir_ingresso'), rock_evento=evento)
+            ingresso.delete()
+            evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
+            evento.save(update_fields=['quantidade_pessoas'])
+            return redirect('ingressos_rock', evento_id=evento.id)
+        form = IngressoRockForm(request.POST)
+        if form.is_valid():
+            ingresso = form.save(commit=False)
+            ingresso.rock_evento = evento
+            ingresso.save()
+            evento.quantidade_pessoas = IngressoRock.objects.filter(rock_evento=evento).count()
+            evento.save(update_fields=['quantidade_pessoas'])
+            return redirect('ingressos_rock', evento_id=evento.id)
+    else:
+        form = IngressoRockForm()
+
+    total_recebido = sum((ingresso.valor_total for ingresso in ingressos), Decimal('0.00'))
+    return render(
+        request,
+        'core/ingressos_rock.html',
+        {
+            'evento': evento,
+            'form': form,
+            'ingressos': ingressos,
+            'can_edit_rock': can_edit_rock,
+            'total_recebido': total_recebido,
+        },
+    )
+
+
+@setor_required(
+    group_name='Rock',
+    morador_view_attr='acesso_rock_visualizar',
+    morador_edit_attr='acesso_rock_editar',
+)
+def exportar_ingressos_rock_pdf(request, evento_id):
+    evento = get_object_or_404(RockEvento, id=evento_id)
+    ingressos = IngressoRock.objects.filter(rock_evento=evento).order_by('nome')
+    linhas = [f"Evento: {evento.nome} | Data: {evento.data} | Pessoas: {ingressos.count()}"]
+    for idx, ingresso in enumerate(ingressos, start=1):
+        linhas.append(
+            f"{idx}. {ingresso.nome} | Qtd: {ingresso.quantidade_ingressos} | "
+            f"Total: R$ {ingresso.valor_total} | {ingresso.get_status_pagamento_display()}"
+        )
+    pdf_bytes = _gerar_pdf_simples(f"Lista de ingressos - {evento.nome}", linhas)
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="ingressos_rock_{evento.id}.pdf"'
+    return response
+
+
+@setor_required(
+    group_name='Rock',
+    morador_edit_attr='acesso_rock_editar',
+)
+def lotes_rock(request, evento_id):
+    evento = get_object_or_404(RockEvento, id=evento_id)
+    lotes = LoteIngressoRock.objects.filter(rock_evento=evento).order_by('id')
+
+    if request.method == 'POST':
+        if 'excluir_lote' in request.POST:
+            lote = get_object_or_404(LoteIngressoRock, id=request.POST.get('excluir_lote'), rock_evento=evento)
+            lote.delete()
+            return redirect('lotes_rock', evento_id=evento.id)
+
+        form = LoteIngressoRockForm(request.POST)
+        if form.is_valid():
+            lote = form.save(commit=False)
+            lote.rock_evento = evento
+            lote.save()
+            return redirect('lotes_rock', evento_id=evento.id)
+    else:
+        form = LoteIngressoRockForm()
+
+    return render(
+        request,
+        'core/lotes_rock.html',
+        {'evento': evento, 'form': form, 'lotes': lotes},
+    )
+
+
+@login_required
+def comprar_rocks(request):
+    morador = _get_user_morador(request.user)
+    eventos = RockEvento.objects.prefetch_related('lotes').order_by('-data')
+    lotes_disponiveis = LoteIngressoRock.objects.filter(
+        quantidade_total__gt=F('quantidade_vendida')
+    ).select_related('rock_evento').order_by('rock_evento__data', 'id')
+
+    pedido_pagamento = None
+    qr_code_url = None
+    compra_form = CompraIngressoRockForm(lotes_queryset=lotes_disponiveis)
+
+    if request.method == 'POST' and 'iniciar_compra' in request.POST:
+        compra_form = CompraIngressoRockForm(request.POST, lotes_queryset=lotes_disponiveis)
+        if compra_form.is_valid():
+            lote = compra_form.cleaned_data['lote']
+            quantidade = compra_form.cleaned_data['quantidade']
+            valor_total = lote.preco * quantidade
+            pedido_pagamento = PedidoIngressoRock.objects.create(
+                rock_evento=lote.rock_evento,
+                lote=lote,
+                usuario=request.user,
+                nome_comprador=compra_form.cleaned_data['nome_comprador'],
+                telefone=compra_form.cleaned_data['telefone'],
+                quantidade=quantidade,
+                valor_total=valor_total,
+            )
+
+    if request.method == 'POST' and 'confirmar_pagamento' in request.POST:
+        pedido_pagamento = get_object_or_404(
+            PedidoIngressoRock,
+            id=request.POST.get('confirmar_pagamento'),
+            usuario=request.user,
+            status='aguardando_pagamento',
+        )
+        lote = pedido_pagamento.lote
+        if pedido_pagamento.quantidade > lote.quantidade_disponivel:
+            raise PermissionDenied('Quantidade indisponivel para este lote.')
+        pedido_pagamento.status = 'pago'
+        pedido_pagamento.pago_em = timezone.now()
+        pedido_pagamento.save(update_fields=['status', 'pago_em'])
+        lote.quantidade_vendida = lote.quantidade_vendida + pedido_pagamento.quantidade
+        lote.save(update_fields=['quantidade_vendida'])
+        IngressoRock.objects.create(
+            rock_evento=pedido_pagamento.rock_evento,
+            nome=pedido_pagamento.nome_comprador,
+            telefone=pedido_pagamento.telefone,
+            quantidade_ingressos=pedido_pagamento.quantidade,
+            valor_unitario=(pedido_pagamento.valor_total / pedido_pagamento.quantidade),
+            status_pagamento='pago',
+            observacao=f"Lote: {pedido_pagamento.lote.nome}",
+        )
+        total_pessoas = sum(
+            IngressoRock.objects.filter(rock_evento=pedido_pagamento.rock_evento).values_list('quantidade_ingressos', flat=True)
+        )
+        pedido_pagamento.rock_evento.quantidade_pessoas = total_pessoas
+        pedido_pagamento.rock_evento.save(update_fields=['quantidade_pessoas'])
+        return redirect('comprar_rocks')
+
+    if pedido_pagamento:
+        mensagem = (
+            f"Pagamento ingresso rock | Evento {pedido_pagamento.rock_evento.nome} | "
+            f"Lote {pedido_pagamento.lote.nome} | Valor R$ {pedido_pagamento.valor_total}"
+        )
+        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(mensagem)}"
+
+    meus_pedidos = PedidoIngressoRock.objects.filter(usuario=request.user).order_by('-criado_em')[:10]
+
+    return render(
+        request,
+        'core/comprar_rocks.html',
+        {
+            'morador': morador,
+            'eventos': eventos,
+            'compra_form': compra_form,
+            'pedido_pagamento': pedido_pagamento,
+            'qr_code_url': qr_code_url,
+            'meus_pedidos': meus_pedidos,
+        },
     )
 
 

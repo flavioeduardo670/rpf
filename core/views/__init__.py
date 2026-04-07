@@ -23,6 +23,10 @@ from .legacy import (
     perfil,
     rock,
     editar_rock,
+    lotes_rock,
+    ingressos_rock,
+    exportar_ingressos_rock_pdf,
+    comprar_rocks,
     exportar_compras_csv,
     exportar_moradores_csv,
 )

@@ -7,6 +7,7 @@ from django.db.models import Case, IntegerField, When
 from .models import (
     ChoiceList,
     ChoiceOption,
+    AcessoUsuario,
     EventoCalendario,
     FormFieldConfig,
     Morador,
@@ -21,6 +22,8 @@ from .models import (
     Setor,
     RockEvento,
     RockItem,
+    IngressoRock,
+    LoteIngressoRock,
     DescontoMensal,
     PendenciaMensal,
     AjusteMorador,
@@ -385,6 +388,47 @@ class RockItemForm(forms.ModelForm):
         return cleaned
 
 
+class IngressoRockForm(forms.ModelForm):
+    class Meta:
+        model = IngressoRock
+        fields = ['nome', 'telefone', 'quantidade_ingressos', 'valor_unitario', 'status_pagamento', 'observacao']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['quantidade_ingressos'].widget = forms.NumberInput(attrs={'min': '1'})
+        self.fields['valor_unitario'].widget = forms.NumberInput(attrs={'step': '0.01', 'min': '0'})
+
+
+class LoteIngressoRockForm(forms.ModelForm):
+    class Meta:
+        model = LoteIngressoRock
+        fields = ['nome', 'quantidade_total', 'preco']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['quantidade_total'].widget = forms.NumberInput(attrs={'min': '1'})
+        self.fields['preco'].widget = forms.NumberInput(attrs={'step': '0.01', 'min': '0'})
+
+
+class CompraIngressoRockForm(forms.Form):
+    lote = forms.ModelChoiceField(queryset=LoteIngressoRock.objects.none(), label='Lote')
+    nome_comprador = forms.CharField(max_length=150, label='Nome')
+    telefone = forms.CharField(max_length=30, required=False, label='Telefone')
+    quantidade = forms.IntegerField(min_value=1, initial=1, label='Quantidade de ingressos')
+
+    def __init__(self, *args, lotes_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['lote'].queryset = lotes_queryset or LoteIngressoRock.objects.none()
+
+    def clean(self):
+        cleaned = super().clean()
+        lote = cleaned.get('lote')
+        quantidade = cleaned.get('quantidade') or 0
+        if lote and quantidade > lote.quantidade_disponivel:
+            raise forms.ValidationError('Quantidade solicitada maior que o disponivel no lote.')
+        return cleaned
+
+
 class EventoCalendarioForm(forms.ModelForm):
     class Meta:
         model = EventoCalendario
@@ -443,39 +487,47 @@ class ContaFixaForm(forms.ModelForm):
 
 
 class CadastroForm(UserCreationForm):
-    morador = forms.ModelChoiceField(
-        queryset=Morador.objects.none(),
-        required=True,
-        label='Morador',
-    )
     email = forms.EmailField(required=False, label='Email')
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = ['username', 'email', 'morador', 'password1', 'password2']
+        fields = ['username', 'email', 'password1', 'password2']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['morador'].queryset = Morador.objects.filter(
-            ativo=True,
-            user__isnull=True,
-        ).order_by('ordem_hierarquia', 'nome')
-        self.fields['morador'].label_from_instance = lambda m: (m.apelido or m.nome)
         apply_form_config(self, 'cadastro_form')
 
     def save(self, commit=True):
         user = super().save(commit=commit)
-        morador = self.cleaned_data.get('morador')
-        if morador:
-            morador.user = user
-            if commit:
-                morador.save(update_fields=['user'])
+        if commit:
+            AcessoUsuario.objects.get_or_create(user=user)
         return user
 
 
 class AcessoMoradorForm(forms.ModelForm):
     class Meta:
         model = Morador
+        fields = [
+            'acesso_financeiro_visualizar',
+            'acesso_financeiro_editar',
+            'acesso_compras_visualizar',
+            'acesso_compras_editar',
+            'acesso_estoque_visualizar',
+            'acesso_estoque_editar',
+            'acesso_manutencao_visualizar',
+            'acesso_manutencao_editar',
+            'acesso_rock_visualizar',
+            'acesso_rock_editar',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_form_config(self, 'acesso_morador_form')
+
+
+class AcessoUsuarioForm(forms.ModelForm):
+    class Meta:
+        model = AcessoUsuario
         fields = [
             'acesso_financeiro_visualizar',
             'acesso_financeiro_editar',

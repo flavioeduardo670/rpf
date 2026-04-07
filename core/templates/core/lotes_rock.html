@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotes do Rock</title>
+</head>
+<body>
+    <h1>Lotes de ingressos - {{ evento.nome }}</h1>
+    <a href="{% url 'rock' %}">Voltar</a>
+
+    <h2>Lotes cadastrados</h2>
+    <table border="1" cellpadding="6">
+        <tr>
+            <th>Nome do lote</th>
+            <th>Quantidade</th>
+            <th>Vendidos</th>
+            <th>Disponiveis</th>
+            <th>Preco</th>
+            <th>Acoes</th>
+        </tr>
+        {% for lote in lotes %}
+        <tr>
+            <td>{{ lote.nome }}</td>
+            <td>{{ lote.quantidade_total }}</td>
+            <td>{{ lote.quantidade_vendida }}</td>
+            <td>{{ lote.quantidade_disponivel }}</td>
+            <td>R$ {{ lote.preco }}</td>
+            <td>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" name="excluir_lote" value="{{ lote.id }}">Excluir</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">Nenhum lote cadastrado.</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>Novo lote</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Salvar lote</button>
+    </form>
+</body>
+</html>
