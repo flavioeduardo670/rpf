@@ -150,3 +150,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
+PIX_PSP_BASE_URL = os.getenv('PIX_PSP_BASE_URL', '')
+PIX_PSP_API_TOKEN = os.getenv('PIX_PSP_API_TOKEN', '')
+PIX_PSP_TIMEOUT = int(os.getenv('PIX_PSP_TIMEOUT', '10'))
+PIX_WEBHOOK_SECRET = os.getenv('PIX_WEBHOOK_SECRET', '')
