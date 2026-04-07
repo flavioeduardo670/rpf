@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib.auth import login
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 
 from ..forms import (
@@ -36,6 +37,7 @@ from ..forms import (
     ContaFixaForm,
     CadastroForm,
     AcessoMoradorForm,
+    AcessoUsuarioForm,
     MoradorEdicaoForm,
 )
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
@@ -63,6 +65,7 @@ from ..models import (
     PendenciaMensal,
     AjusteMorador,
     ContaFixa,
+    AcessoUsuario,
 )
 
 
@@ -91,6 +94,12 @@ AjusteMoradorFormSet = modelformset_factory(
 AcessoMoradorFormSet = modelformset_factory(
     Morador,
     form=AcessoMoradorForm,
+    extra=0,
+)
+
+AcessoUsuarioFormSet = modelformset_factory(
+    AcessoUsuario,
+    form=AcessoUsuarioForm,
     extra=0,
 )
 
@@ -135,6 +144,16 @@ def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, m
                     can_view = can_view or getattr(morador, morador_view_attr, False)
                 if morador_edit_attr:
                     can_edit = can_edit or getattr(morador, morador_edit_attr, False)
+            else:
+                acesso_usuario = getattr(user, 'acesso_usuario', None)
+                if acesso_usuario:
+                    if morador_attr:
+                        can_view = getattr(acesso_usuario, morador_attr, False)
+                        can_edit = can_view
+                    if morador_view_attr:
+                        can_view = can_view or getattr(acesso_usuario, morador_view_attr, False)
+                    if morador_edit_attr:
+                        can_edit = can_edit or getattr(acesso_usuario, morador_edit_attr, False)
 
             if request.method in ('GET', 'HEAD', 'OPTIONS'):
                 if can_view or can_edit:
@@ -154,7 +173,10 @@ def _can_edit(request, attr_name):
     if request.user.is_superuser:
         return True
     morador = getattr(request.user, 'morador', None)
-    return bool(morador and getattr(morador, attr_name, False))
+    if morador:
+        return bool(getattr(morador, attr_name, False))
+    acesso_usuario = getattr(request.user, 'acesso_usuario', None)
+    return bool(acesso_usuario and getattr(acesso_usuario, attr_name, False))
 
 
 @login_required
@@ -245,16 +267,31 @@ def gerenciar_acessos(request):
     if not request.user.is_superuser:
         raise PermissionDenied('Voce nao tem permissao para acessar este modulo.')
 
+    User = get_user_model()
     moradores_qs = Morador.objects.order_by('ordem_hierarquia', 'nome')
+    usuarios_sem_morador = User.objects.filter(morador__isnull=True, is_superuser=False).order_by('username')
+    for usuario in usuarios_sem_morador:
+        AcessoUsuario.objects.get_or_create(user=usuario)
+    acessos_usuarios_qs = AcessoUsuario.objects.select_related('user').filter(
+        user__in=usuarios_sem_morador
+    ).order_by('user__username')
+
     if request.method == 'POST':
         formset = AcessoMoradorFormSet(request.POST, queryset=moradores_qs)
-        if formset.is_valid():
+        usuario_formset = AcessoUsuarioFormSet(request.POST, queryset=acessos_usuarios_qs, prefix='usuarios')
+        if formset.is_valid() and usuario_formset.is_valid():
             formset.save()
+            usuario_formset.save()
             return redirect('gerenciar_acessos')
     else:
         formset = AcessoMoradorFormSet(queryset=moradores_qs)
+        usuario_formset = AcessoUsuarioFormSet(queryset=acessos_usuarios_qs, prefix='usuarios')
 
-    return render(request, 'core/gerenciar_acessos.html', {'formset': formset})
+    return render(
+        request,
+        'core/gerenciar_acessos.html',
+        {'formset': formset, 'usuario_formset': usuario_formset},
+    )
 
 
 @login_required

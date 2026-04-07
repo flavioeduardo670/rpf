@@ -34,6 +34,8 @@
         <form method="post">
             {% csrf_token %}
             {{ formset.management_form }}
+            {{ usuario_formset.management_form }}
+            <h2 style="margin:0 0 10px;">Acessos de moradores</h2>
             <div class="table-wrap">
                 <table>
                     <tr>
@@ -70,6 +72,44 @@
                     </tr>
                     {% empty %}
                     <tr><td colspan="12" class="center">Nenhum morador cadastrado.</td></tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <h2 style="margin:18px 0 10px;">Acessos de usuarios sem vinculo de morador</h2>
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Usuario</th>
+                        <th class="center">Financeiro V</th>
+                        <th class="center">Financeiro E</th>
+                        <th class="center">Compras V</th>
+                        <th class="center">Compras E</th>
+                        <th class="center">Estoque V</th>
+                        <th class="center">Estoque E</th>
+                        <th class="center">Manutencao V</th>
+                        <th class="center">Manutencao E</th>
+                        <th class="center">Rock V</th>
+                        <th class="center">Rock E</th>
+                    </tr>
+                    {% for form in usuario_formset %}
+                    <tr>
+                        <td>
+                            {{ form.instance.user.username }}
+                            {{ form.id }}
+                        </td>
+                        <td class="center">{{ form.acesso_financeiro_visualizar }}</td>
+                        <td class="center">{{ form.acesso_financeiro_editar }}</td>
+                        <td class="center">{{ form.acesso_compras_visualizar }}</td>
+                        <td class="center">{{ form.acesso_compras_editar }}</td>
+                        <td class="center">{{ form.acesso_estoque_visualizar }}</td>
+                        <td class="center">{{ form.acesso_estoque_editar }}</td>
+                        <td class="center">{{ form.acesso_manutencao_visualizar }}</td>
+                        <td class="center">{{ form.acesso_manutencao_editar }}</td>
+                        <td class="center">{{ form.acesso_rock_visualizar }}</td>
+                        <td class="center">{{ form.acesso_rock_editar }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="11" class="center">Nenhum usuario sem morador.</td></tr>
                     {% endfor %}
                 </table>
             </div>
