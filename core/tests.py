@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.test.utils import override_settings
 from django.utils import timezone
 from decimal import Decimal
+from io import BytesIO
+from PIL import Image
 import shutil
 import tempfile
 
@@ -99,6 +101,13 @@ class PerfilTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='perfil_user', password='123456')
 
+    @staticmethod
+    def _build_test_image_bytes():
+        imagem = Image.new('RGB', (1, 1), color='white')
+        stream = BytesIO()
+        imagem.save(stream, format='PNG')
+        return stream.getvalue()
+
     def test_perfil_requires_login(self):
         response = self.client.get(reverse('perfil'))
         self.assertEqual(response.status_code, 302)
@@ -117,7 +126,8 @@ class PerfilTests(TestCase):
     def test_perfil_salva_foto(self):
         morador = Morador.objects.create(nome='Perfil Morador', user=self.user, ativo=True)
         self.client.force_login(self.user)
-        upload = SimpleUploadedFile('foto.txt', b'conteudo-foto', content_type='text/plain')
+        imagem_png_1x1 = self._build_test_image_bytes()
+        upload = SimpleUploadedFile('foto.png', imagem_png_1x1, content_type='image/png')
 
         response = self.client.post(reverse('perfil'), {'foto_perfil': upload})
 
@@ -125,6 +135,24 @@ class PerfilTests(TestCase):
         self.assertEqual(response.url, reverse('perfil'))
         morador.refresh_from_db()
         self.assertTrue(bool(morador.foto_perfil))
+
+    def test_perfil_bloqueia_extensoes_nao_permitidas(self):
+        morador = Morador.objects.create(nome='Perfil Morador', user=self.user, ativo=True)
+        self.client.force_login(self.user)
+
+        imagem_png_1x1 = self._build_test_image_bytes()
+        upload_txt = SimpleUploadedFile('arquivo.txt', imagem_png_1x1, content_type='image/png')
+        response_txt = self.client.post(reverse('perfil'), {'foto_perfil': upload_txt})
+        self.assertEqual(response_txt.status_code, 200)
+        self.assertContains(response_txt, 'Nao foi possivel salvar a foto')
+
+        upload_exe = SimpleUploadedFile('arquivo.exe', imagem_png_1x1, content_type='image/png')
+        response_exe = self.client.post(reverse('perfil'), {'foto_perfil': upload_exe})
+        self.assertEqual(response_exe.status_code, 200)
+        self.assertContains(response_exe, 'Nao foi possivel salvar a foto')
+
+        morador.refresh_from_db()
+        self.assertFalse(bool(morador.foto_perfil))
 
 
 class FinanceiroRateioTests(TestCase):

@@ -30,7 +30,7 @@ class Morador(models.Model):
     peso_quarto = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     curso = models.CharField(max_length=120, blank=True, null=True)
     funcoes = models.TextField(blank=True, null=True)
-    foto_perfil = models.FileField(upload_to='perfil_fotos/', null=True, blank=True)
+    foto_perfil = models.ImageField(upload_to='perfil_fotos/', null=True, blank=True)
     ordem_hierarquia = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField(default=True)
     ultima_visualizacao_os = models.DateTimeField(blank=True, null=True)
