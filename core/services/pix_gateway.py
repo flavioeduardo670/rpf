@@ -3,10 +3,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import base64
+from io import BytesIO
 from decimal import Decimal
 from typing import Any
 from urllib import error, request
-from urllib.parse import quote
+
+import segno
 from django.conf import settings
 
 
@@ -44,6 +47,16 @@ def _gerar_payload_pix(chave_pix: str, valor: Decimal, txid: str) -> str:
     return payload + '6304' + _pix_crc16(payload)
 
 
+def _gerar_qr_code_data_uri(payload_pix: str) -> str:
+    if not payload_pix:
+        return ''
+    qr = segno.make(payload_pix, error='m')
+    stream = BytesIO()
+    qr.save(stream, kind='png', scale=8, border=2, dark='#000000', light='#FFFFFF')
+    encoded = base64.b64encode(stream.getvalue()).decode('ascii')
+    return f'data:image/png;base64,{encoded}'
+
+
 def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
     txid = f"RPF{pedido.id:08d}"
     if not chave_pix:
@@ -52,6 +65,7 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
             'payload_pix': '',
             'status_gateway': 'erro_configuracao',
             'qr_code_url': '',
+            'qr_code_data_uri': '',
             'provider_payload': {'erro': 'chave_pix_nao_configurada'},
         }
 
@@ -60,7 +74,8 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
         'txid': txid,
         'payload_pix': payload_pix,
         'status_gateway': 'aguardando',
-        'qr_code_url': f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(payload_pix)}",
+        'qr_code_url': '',
+        'qr_code_data_uri': _gerar_qr_code_data_uri(payload_pix),
         'provider_payload': {
             'modo': 'local',
             'payload_pix': payload_pix,
@@ -92,7 +107,8 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
             'txid': data.get('txid') or txid,
             'payload_pix': data.get('payload_pix') or payload_pix,
             'status_gateway': data.get('status', 'aguardando'),
-            'qr_code_url': data.get('qr_code_url') or fallback['qr_code_url'],
+            'qr_code_url': '',
+            'qr_code_data_uri': fallback['qr_code_data_uri'],
             'provider_payload': data,
         }
     except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):

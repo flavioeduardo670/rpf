@@ -1411,7 +1411,7 @@ def comprar_rocks(request):
     ).select_related('rock_evento').order_by('rock_evento__data', 'id')
 
     pedido_pagamento = None
-    qr_code_url = None
+    qr_code_data_uri = ''
     pix_payload = ''
     compra_form = CompraIngressoRockForm(lotes_queryset=lotes_disponiveis)
 
@@ -1435,14 +1435,14 @@ def comprar_rocks(request):
             pedido_pagamento.payload_pix = cobranca.get('payload_pix', '')
             pedido_pagamento.status_gateway = cobranca.get('status_gateway', '')
             pedido_pagamento.save(update_fields=['txid', 'payload_pix', 'status_gateway'])
-            qr_code_url = cobranca.get('qr_code_url')
+            qr_code_data_uri = cobranca.get('qr_code_data_uri', '')
             pix_payload = pedido_pagamento.payload_pix
             messages.success(request, 'Pedido criado. Aguarde a confirmacao automatica do PSP apos o pagamento.')
         else:
             messages.error(request, 'Nao foi possivel iniciar a compra. Confira os dados informados.')
 
     if pedido_pagamento:
-        qr_code_url = qr_code_url or ''
+        qr_code_data_uri = qr_code_data_uri or ''
         pix_payload = pix_payload or pedido_pagamento.payload_pix
 
     meus_pedidos = PedidoIngressoRock.objects.filter(usuario=request.user).order_by('-criado_em')[:10]
@@ -1455,7 +1455,7 @@ def comprar_rocks(request):
             'eventos': eventos,
             'compra_form': compra_form,
             'pedido_pagamento': pedido_pagamento,
-            'qr_code_url': qr_code_url,
+            'qr_code_data_uri': qr_code_data_uri,
             'pix_recebimentos': pix_recebimentos,
             'pix_payload': pix_payload,
             'meus_pedidos': meus_pedidos,
