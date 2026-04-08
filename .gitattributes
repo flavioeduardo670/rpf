@@ -1,0 +1,9 @@
+* text=auto
+
+# Evita diffs "binários" em documentação e código-fonte.
+*.md text
+*.py text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf

@@ -28,5 +28,5 @@ urlpatterns = [
     path('', include('core.urls')),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG and settings.MEDIA_STORAGE_BACKEND == 'local':
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
