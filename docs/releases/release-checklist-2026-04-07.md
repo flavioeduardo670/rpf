@@ -1,5 +1,7 @@
 # Release checklist — 2026-04-07
 
+> Documento legado de execução. Para novas releases, usar `docs/releases/checklist-template.md` com evidências obrigatórias e decisão formal de Go/No-Go.
+
 ## Contexto
 - Ambiente de execução local: `/workspace/rpf`.
 - Objetivo: executar checklist de release, rodar suíte de testes, smoke manual em páginas críticas e gerar changelog com impacto por área + rollback.
