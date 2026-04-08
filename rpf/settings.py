@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from urllib.parse import urlparse
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -41,11 +42,59 @@ elif DEBUG:
     # Em desenvolvimento, permite acesso pela rede local.
     ALLOWED_HOSTS = ['*']
 else:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    raise ValueError('Defina DJANGO_ALLOWED_HOSTS no ambiente para executar em produção.')
 
-csrf_trusted_env = os.getenv('CSRF_TRUSTED_ORIGINS')
+
+def _normalize_origin(raw_origin: str) -> str:
+    origin = raw_origin.strip()
+    if not origin:
+        return ''
+    if '://' not in origin:
+        origin = f'https://{origin}'
+    parsed = urlparse(origin)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        raise ValueError(
+            f'Origem CSRF inválida: "{raw_origin}". Use formato "https://dominio".'
+        )
+    return f'{parsed.scheme}://{parsed.netloc}'
+
+
+csrf_origins = []
+csrf_trusted_env = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 if csrf_trusted_env:
-    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_trusted_env.split(',') if origin.strip()]
+    csrf_origins.extend(
+        _normalize_origin(origin)
+        for origin in csrf_trusted_env.split(',')
+        if origin.strip()
+    )
+
+render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if render_external_hostname:
+    csrf_origins.append(_normalize_origin(render_external_hostname))
+
+CSRF_TRUSTED_ORIGINS = sorted(set(csrf_origins))
+
+if not DEBUG:
+    invalid_non_https_origins = [
+        origin for origin in CSRF_TRUSTED_ORIGINS
+        if urlparse(origin).scheme != 'https'
+    ]
+    if invalid_non_https_origins:
+        raise ValueError(
+            'Em produção, CSRF_TRUSTED_ORIGINS deve conter apenas origens HTTPS.'
+        )
+
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Inicie com 86400 (1 dia) e eleve para 31536000 (1 ano) após validar HTTPS.
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '86400'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Ative preload quando o domínio e subdomínios estiverem prontos para HSTS.
+    SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'False').lower() == 'true'
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SESSION_COOKIE_HTTPONLY = True
 
 
 # Application definition
