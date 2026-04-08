@@ -28,6 +28,8 @@
         form p { margin:0 0 10px; }
         input[type="file"] { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
         .errorlist { margin:0 0 8px; padding-left:18px; font-size:.82rem; }
+        .form-error-box { border:1px solid #d9534f; background:#fff1f1; color:#8a1f1d; border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+        .field-help { margin:-4px 0 8px; color:#555; font-size:.82rem; }
         @media (max-width:760px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
@@ -72,8 +74,22 @@
         {% if morador %}
         <form method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
             {% csrf_token %}
-            {{ foto_form.non_field_errors }}
-            {{ foto_form.as_p }}
+            {% if foto_form.non_field_errors %}
+            <div class="form-error-box">
+                {{ foto_form.non_field_errors }}
+            </div>
+            {% endif %}
+            <p>
+                <label for="{{ foto_form.foto_perfil.id_for_label }}">{{ foto_form.foto_perfil.label }}</label>
+                {{ foto_form.foto_perfil }}
+            </p>
+            <p class="field-help">Formatos aceitos: JPG, JPEG, PNG e WEBP. Tamanho maximo: 2MB.</p>
+            {% if foto_form.foto_perfil.errors %}
+            <div class="form-error-box">
+                <strong>Nao foi possivel salvar a foto:</strong>
+                {{ foto_form.foto_perfil.errors }}
+            </div>
+            {% endif %}
             <button type="submit" class="btn">Salvar foto</button>
         </form>
         <div class="grid">
