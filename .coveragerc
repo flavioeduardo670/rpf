@@ -1,0 +1,11 @@
+[run]
+branch = True
+source = core
+
+[report]
+skip_empty = True
+show_missing = True
+
+[paths]
+source =
+    core
