@@ -65,7 +65,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Executar testes
-        run: python manage.py test
+        run: |
+          coverage run --rcfile=.coveragerc manage.py test
+          coverage report
+          coverage report \
+            --include='core/views/pix.py,core/services/rock.py,core/views/estoque.py' \
+            --fail-under=80
 
   deploy_staging:
     name: Deploy em staging
