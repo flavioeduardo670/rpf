@@ -1,7 +1,10 @@
 from collections import OrderedDict
+import os
+import uuid
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
+from django.utils.text import get_valid_filename
 from django.utils import timezone
 from django.db.models import Case, F, IntegerField, When
 from .models import (
@@ -349,6 +352,10 @@ class ConfiguracaoFinanceiraForm(forms.ModelForm):
 
 
 class PerfilFotoForm(forms.ModelForm):
+    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+    ALLOWED_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+    MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+
     class Meta:
         model = Morador
         fields = ['foto_perfil']
@@ -357,6 +364,28 @@ class PerfilFotoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         apply_form_config(self, 'perfil_foto_form')
+
+    def clean_foto_perfil(self):
+        foto = self.cleaned_data.get('foto_perfil')
+        if not foto:
+            return foto
+
+        original_name = foto.name or 'foto-perfil'
+        _, ext = os.path.splitext(original_name)
+        ext = ext.lower()
+        if ext not in self.ALLOWED_EXTENSIONS:
+            raise forms.ValidationError('Use uma imagem JPG, JPEG, PNG ou WEBP.')
+
+        content_type = (getattr(foto, 'content_type', '') or '').lower()
+        if content_type not in self.ALLOWED_CONTENT_TYPES:
+            raise forms.ValidationError('O arquivo enviado nao e uma imagem valida.')
+
+        if foto.size > self.MAX_FILE_SIZE:
+            raise forms.ValidationError('A imagem deve ter no maximo 2MB.')
+
+        nome_base = get_valid_filename(os.path.splitext(original_name)[0]) or 'foto-perfil'
+        foto.name = f'{nome_base}-{uuid.uuid4().hex[:8]}{ext}'
+        return foto
 
 
 class RockEventoForm(forms.ModelForm):
