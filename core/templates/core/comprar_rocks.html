@@ -180,8 +180,8 @@
                 {% if pix_recebimentos %}
                 <p><strong>PIX de recebimentos:</strong> {{ pix_recebimentos }}</p>
                 {% endif %}
-                {% if qr_code_url and pix_payload %}
-                <button type="button" class="btn app-btn" id="abrir-qrcode" data-qr-url="{{ qr_code_url }}" data-pix-payload="{{ pix_payload }}">Abrir QR Code para pagamento</button>
+                {% if qr_code_data_uri and pix_payload %}
+                <button type="button" class="btn app-btn" id="abrir-qrcode" data-qr-data-uri="{{ qr_code_data_uri }}" data-pix-payload="{{ pix_payload }}">Abrir QR Code para pagamento</button>
                 {% endif %}
                 <p class="muted">Apos o pagamento, a confirmacao e automatica via webhook do PSP.</p>
                 {% endif %}
@@ -216,7 +216,7 @@
         const btnQr = document.getElementById('abrir-qrcode');
         if (btnQr) {
             btnQr.addEventListener('click', () => {
-                const qrUrl = btnQr.dataset.qrUrl;
+                const qrDataUri = btnQr.dataset.qrDataUri;
                 const payload = btnQr.dataset.pixPayload;
                 const popup = window.open('', 'pix-qrcode', 'width=420,height=620');
                 if (!popup) {
@@ -237,7 +237,7 @@
                     </head>
                     <body>
                         <h2>Pagamento PIX</h2>
-                        <img src="${qrUrl}" alt="QR Code PIX">
+                        <img src="${qrDataUri}" alt="QR Code PIX">
                         <p>Codigo PIX copia e cola:</p>
                         <textarea readonly>${payload}</textarea>
                     </body>

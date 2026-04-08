@@ -12,10 +12,12 @@ import tempfile
 
 from .models import (
     ConfiguracaoFinanceira,
+    LoteIngressoRock,
     Morador,
     MovimentacaoEstoque,
     NotaFiscal,
     NotaParcela,
+    RockEvento,
     Produto,
     Setor,
 )
@@ -439,3 +441,41 @@ class MigracaoViewsPorDominioRoutesTests(TestCase):
         self.client.force_login(self.rock_user)
         rock_response = self.client.get(reverse('rock'))
         self.assertEqual(rock_response.status_code, 200)
+
+
+class PixQrCodeInternoTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='comprador_pix', password='123456')
+        self.client.force_login(self.user)
+        ConfiguracaoFinanceira.objects.create(conta_recebimentos_pix='chave-pix-teste@rpf.com')
+        self.evento = RockEvento.objects.create(
+            nome='Rock Teste QR',
+            tipo='nosso',
+            quantidade_pessoas=100,
+            data='2026-04-08',
+            valor_arrecadado=0,
+        )
+        self.lote = LoteIngressoRock.objects.create(
+            rock_evento=self.evento,
+            nome='Lote 1',
+            quantidade_total=50,
+            quantidade_vendida=0,
+            preco=Decimal('25.00'),
+        )
+
+    def test_compra_rocks_nao_usa_qr_code_url_externo_publico(self):
+        response = self.client.post(
+            reverse('comprar_rocks'),
+            {
+                'iniciar_compra': '1',
+                'lote': str(self.lote.id),
+                'quantidade': '2',
+                'nome_comprador': 'Comprador Teste',
+                'telefone': '11999999999',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'api.qrserver.com')
+        self.assertContains(response, 'data:image/png;base64,')
+        self.assertContains(response, 'Abrir QR Code para pagamento')
