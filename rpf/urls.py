@@ -19,9 +19,11 @@ from django.http import HttpResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from core.views.health import healthz
 
 urlpatterns = [
     path('favicon.ico', lambda request: HttpResponse(status=204)),
+    path('healthz', healthz, name='healthz'),
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
 ]

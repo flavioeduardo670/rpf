@@ -4,6 +4,7 @@ from datetime import date, timedelta, datetime
 import calendar
 from collections import defaultdict
 import csv
+import logging
 
 from django import forms
 from django.core.exceptions import PermissionDenied
@@ -127,6 +128,8 @@ RockItemFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+logger = logging.getLogger('core.views.legacy')
 
 
 
@@ -1416,6 +1419,10 @@ def comprar_rocks(request):
     compra_form = CompraIngressoRockForm(lotes_queryset=lotes_disponiveis)
 
     if request.method == 'POST' and 'iniciar_compra' in request.POST:
+        logger.info(
+            'Iniciando fluxo de compra de ingresso Rock',
+            extra={'event': 'pix.purchase.start', 'user_id': request.user.id},
+        )
         compra_form = CompraIngressoRockForm(request.POST, lotes_queryset=lotes_disponiveis)
         if compra_form.is_valid():
             lote = compra_form.cleaned_data['lote']
@@ -1430,15 +1437,39 @@ def comprar_rocks(request):
                 quantidade=quantidade,
                 valor_total=valor_total,
             )
+            logger.info(
+                'Pedido de ingresso criado',
+                extra={
+                    'event': 'pix.purchase.order_created',
+                    'pedido_id': pedido_pagamento.id,
+                    'lote_id': lote.id,
+                    'evento_id': lote.rock_evento_id,
+                    'quantidade': quantidade,
+                    'valor_total': valor_total,
+                },
+            )
             cobranca = criar_cobranca_pix(pedido=pedido_pagamento, chave_pix=pix_recebimentos)
             pedido_pagamento.txid = cobranca.get('txid', '')
             pedido_pagamento.payload_pix = cobranca.get('payload_pix', '')
             pedido_pagamento.status_gateway = cobranca.get('status_gateway', '')
             pedido_pagamento.save(update_fields=['txid', 'payload_pix', 'status_gateway'])
+            logger.info(
+                'Cobranca PIX criada para pedido de ingresso',
+                extra={
+                    'event': 'pix.purchase.charge_created',
+                    'pedido_id': pedido_pagamento.id,
+                    'txid': pedido_pagamento.txid,
+                    'status_gateway': pedido_pagamento.status_gateway,
+                },
+            )
             qr_code_data_uri = cobranca.get('qr_code_data_uri', '')
             pix_payload = pedido_pagamento.payload_pix
             messages.success(request, 'Pedido criado. Aguarde a confirmacao automatica do PSP apos o pagamento.')
         else:
+            logger.warning(
+                'Falha de validacao ao iniciar compra de ingresso',
+                extra={'event': 'pix.purchase.validation_error', 'errors': compra_form.errors.get_json_data()},
+            )
             messages.error(request, 'Nao foi possivel iniciar a compra. Confira os dados informados.')
 
     if pedido_pagamento:

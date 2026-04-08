@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 from urllib.parse import urlparse
 import dj_database_url
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -205,3 +207,54 @@ PIX_PSP_BASE_URL = os.getenv('PIX_PSP_BASE_URL', '')
 PIX_PSP_API_TOKEN = os.getenv('PIX_PSP_API_TOKEN', '')
 PIX_PSP_TIMEOUT = int(os.getenv('PIX_PSP_TIMEOUT', '10'))
 PIX_WEBHOOK_SECRET = os.getenv('PIX_WEBHOOK_SECRET', '')
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'structured': {
+            '()': 'rpf.logging.JsonFormatter',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'structured',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'core.views': {
+            'handlers': ['console'],
+            'level': os.getenv('CORE_VIEWS_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'core.services': {
+            'handlers': ['console'],
+            'level': os.getenv('CORE_SERVICES_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.getenv('ROOT_LOG_LEVEL', 'WARNING'),
+    },
+}
+
+
+SENTRY_DSN = os.getenv('SENTRY_DSN', '').strip()
+SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', 'development').strip()
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
+        integrations=[DjangoIntegration()],
+        send_default_pii=False,
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.0')),
+        profiles_sample_rate=float(os.getenv('SENTRY_PROFILES_SAMPLE_RATE', '0.0')),
+    )
