@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import base64
+import logging
 from io import BytesIO
 from decimal import Decimal
 from typing import Any
@@ -11,6 +12,8 @@ from urllib import error, request
 
 import segno
 from django.conf import settings
+
+logger = logging.getLogger('core.services.pix_gateway')
 
 
 def _pix_tlv(pid: str, value: Any) -> str:
@@ -60,6 +63,10 @@ def _gerar_qr_code_data_uri(payload_pix: str) -> str:
 def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
     txid = f"RPF{pedido.id:08d}"
     if not chave_pix:
+        logger.error(
+            'Chave PIX nao configurada para criar cobranca',
+            extra={'event': 'pix.charge.configuration_error', 'pedido_id': pedido.id, 'txid': txid},
+        )
         return {
             'txid': txid,
             'payload_pix': '',
@@ -85,6 +92,10 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
     base_url = getattr(settings, 'PIX_PSP_BASE_URL', '').strip()
     token = getattr(settings, 'PIX_PSP_API_TOKEN', '').strip()
     if not base_url or not token:
+        logger.warning(
+            'Gateway PIX nao configurado. Usando modo local',
+            extra={'event': 'pix.charge.local_mode', 'pedido_id': pedido.id, 'txid': txid},
+        )
         return fallback
 
     try:
@@ -103,6 +114,15 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
         )
         with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
             data = json.loads(response.read().decode('utf-8'))
+        logger.info(
+            'Cobranca PIX criada via PSP',
+            extra={
+                'event': 'pix.charge.created',
+                'pedido_id': pedido.id,
+                'txid': data.get('txid') or txid,
+                'status_gateway': data.get('status', 'aguardando'),
+            },
+        )
         return {
             'txid': data.get('txid') or txid,
             'payload_pix': data.get('payload_pix') or payload_pix,
@@ -112,6 +132,10 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
             'provider_payload': data,
         }
     except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        logger.exception(
+            'Falha ao criar cobranca no PSP. Aplicando fallback local',
+            extra={'event': 'pix.charge.gateway_error', 'pedido_id': pedido.id, 'txid': txid},
+        )
         return fallback
 
 
@@ -119,6 +143,10 @@ def consultar_status_por_txid(txid: str) -> dict[str, Any]:
     base_url = getattr(settings, 'PIX_PSP_BASE_URL', '').strip()
     token = getattr(settings, 'PIX_PSP_API_TOKEN', '').strip()
     if not base_url or not token:
+        logger.warning(
+            'Consulta de status PIX sem configuracao de gateway',
+            extra={'event': 'pix.status.configuration_missing', 'txid': txid},
+        )
         return {'txid': txid, 'status': 'desconhecido'}
 
     try:
@@ -129,12 +157,20 @@ def consultar_status_por_txid(txid: str) -> dict[str, Any]:
         )
         with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
             data = json.loads(response.read().decode('utf-8'))
+        logger.info(
+            'Status PIX consultado com sucesso',
+            extra={'event': 'pix.status.checked', 'txid': data.get('txid', txid), 'status_gateway': data.get('status', 'desconhecido')},
+        )
         return {
             'txid': data.get('txid', txid),
             'status': data.get('status', 'desconhecido'),
             'provider_payload': data,
         }
     except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        logger.exception(
+            'Falha ao consultar status PIX no PSP',
+            extra={'event': 'pix.status.gateway_error', 'txid': txid},
+        )
         return {'txid': txid, 'status': 'desconhecido'}
 
 
