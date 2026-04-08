@@ -479,3 +479,19 @@ class PixQrCodeInternoTests(TestCase):
         self.assertNotContains(response, 'api.qrserver.com')
         self.assertContains(response, 'data:image/png;base64,')
         self.assertContains(response, 'Abrir QR Code para pagamento')
+from django.urls import resolve
+
+
+class ViewsRefactorRoutingTests(TestCase):
+    def test_rotas_principais_apontam_para_modulos_refatorados(self):
+        expected = {
+            '/': 'core.views.auth_cadastro',
+            '/financeiro/': 'core.views.financeiro',
+            '/compras/': 'core.views.financeiro',
+            '/almoxarifado/': 'core.views.estoque',
+            '/os/': 'core.views.manutencao',
+            '/rock/': 'core.views.rock',
+        }
+        for path, module_name in expected.items():
+            with self.subTest(path=path):
+                self.assertEqual(resolve(path).func.__module__, module_name)
