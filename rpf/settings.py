@@ -108,6 +108,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',
     'core'
 ]
 
@@ -187,11 +188,83 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_STRATEGY = os.getenv('DJANGO_STATIC_STRATEGY', 'whitenoise').strip().lower()
+if STATIC_STRATEGY not in {'whitenoise', 'cdn'}:
+    raise ValueError('DJANGO_STATIC_STRATEGY deve ser "whitenoise" ou "cdn".')
+
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-MEDIA_URL = '/media/'
+STATIC_URL = '/static/'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+if STATIC_STRATEGY == 'cdn':
+    static_cdn_url = os.getenv('DJANGO_STATIC_CDN_URL', '').strip()
+    if not static_cdn_url:
+        raise ValueError('Defina DJANGO_STATIC_CDN_URL para usar DJANGO_STATIC_STRATEGY=cdn.')
+    STATIC_URL = static_cdn_url.rstrip('/') + '/'
+
+MEDIA_STORAGE_BACKEND = os.getenv('DJANGO_MEDIA_BACKEND', 'local').strip().lower()
+if MEDIA_STORAGE_BACKEND not in {'local', 's3'}:
+    raise ValueError('DJANGO_MEDIA_BACKEND deve ser "local" ou "s3".')
+
 MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+
+if MEDIA_STORAGE_BACKEND == 's3':
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '').strip()
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '').strip()
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '').strip()
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', '').strip() or None
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', '').strip() or None
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN', '').strip()
+    AWS_S3_SIGNATURE_VERSION = os.getenv('AWS_S3_SIGNATURE_VERSION', 's3v4').strip()
+    AWS_QUERYSTRING_AUTH = os.getenv('AWS_QUERYSTRING_AUTH', 'False').lower() == 'true'
+    AWS_DEFAULT_ACL = None
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_LOCATION = os.getenv('AWS_MEDIA_LOCATION', 'media').strip().strip('/')
+    AWS_OBJECT_PARAMETERS = {
+        'CacheControl': os.getenv('AWS_MEDIA_CACHE_CONTROL', 'max-age=86400'),
+    }
+
+    missing_s3_config = [
+        key
+        for key, value in (
+            ('AWS_ACCESS_KEY_ID', AWS_ACCESS_KEY_ID),
+            ('AWS_SECRET_ACCESS_KEY', AWS_SECRET_ACCESS_KEY),
+            ('AWS_STORAGE_BUCKET_NAME', AWS_STORAGE_BUCKET_NAME),
+        )
+        if not value
+    ]
+    if missing_s3_config:
+        raise ValueError(
+            'Configuração de mídia S3 incompleta. Variáveis ausentes: '
+            + ', '.join(missing_s3_config)
+        )
+
+    media_base_url = os.getenv('AWS_MEDIA_URL', '').strip()
+    if media_base_url:
+        MEDIA_URL = media_base_url.rstrip('/') + '/'
+    elif AWS_S3_CUSTOM_DOMAIN:
+        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN.rstrip("/")}/{AWS_LOCATION}/'
+    elif AWS_S3_ENDPOINT_URL:
+        MEDIA_URL = f'{AWS_S3_ENDPOINT_URL.rstrip("/")}/{AWS_STORAGE_BUCKET_NAME}/{AWS_LOCATION}/'
+    else:
+        bucket_region = f'.{AWS_S3_REGION_NAME}' if AWS_S3_REGION_NAME else ''
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3{bucket_region}.amazonaws.com/{AWS_LOCATION}/'
+
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'location': AWS_LOCATION,
+        },
+    }
+
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB por requisicao
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2MB por arquivo em memoria
 
