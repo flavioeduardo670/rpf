@@ -269,6 +269,7 @@ class EstoqueTests(TestCase):
         self.assertEqual(self.produto.quantidade, 2)
         self.assertEqual(MovimentacaoEstoque.objects.count(), 0)
 
+
     def test_cadastra_produto_com_setor(self):
         self.client.force_login(self.user)
         response = self.client.post(
@@ -285,6 +286,23 @@ class EstoqueTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Produto.objects.filter(nome='Martelo').exists())
+
+
+class CadastroPublicoTests(TestCase):
+    def test_usuario_anonimo_nao_consegue_criar_conta_via_cadastro(self):
+        total_antes = User.objects.count()
+
+        response = self.client.post(
+            '/cadastro/',
+            {
+                'username': 'novo_usuario',
+                'password1': 'SenhaSegura@123',
+                'password2': 'SenhaSegura@123',
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(User.objects.count(), total_antes)
 
 
 class AdminUserVinculoTests(TestCase):

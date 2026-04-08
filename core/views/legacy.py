@@ -10,11 +10,10 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Case, When, OuterRef, Subquery
 from django.forms import inlineformset_factory, modelformset_factory
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.contrib.auth import login
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -289,19 +288,7 @@ def calendario(request):
 
 
 def cadastro(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-
-    if request.method == 'POST':
-        form = CadastroForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('home')
-    else:
-        form = CadastroForm()
-
-    return render(request, 'core/cadastro.html', {'form': form})
+    raise Http404('Cadastro publico desativado.')
 
 
 @login_required
