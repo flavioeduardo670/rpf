@@ -538,6 +538,7 @@ class PendenciaMensalItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['motivo'].required = False
         apply_form_config(self, 'pendencia_mensal_item_form')
 
 
