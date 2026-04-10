@@ -66,6 +66,12 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Comprovante')
         self.assertContains(response, 'name="comprovante"')
+        self.assertContains(response, 'Status')
+
+    def test_financeiro_marca_status_pago_quando_aluguel_zero(self):
+        response = self.client.get(reverse('financeiro') + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pago')
 
     def test_anexar_comprovante_pagamento(self):
         arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
@@ -79,3 +85,13 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 302)
         comprovante = ComprovantePagamentoMorador.objects.get(morador=self.morador, mes_referencia=self.mes)
         self.assertTrue(comprovante.arquivo.name.endswith('.pdf'))
+
+    def test_financeiro_marca_status_pago_quando_tem_comprovante(self):
+        ComprovantePagamentoMorador.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            arquivo=SimpleUploadedFile('anexo.pdf', b'pdf', content_type='application/pdf'),
+        )
+        response = self.client.get(reverse('financeiro') + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pago')

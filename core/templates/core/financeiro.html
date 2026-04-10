@@ -275,6 +275,7 @@
                 <th>Desconto</th>
                 <th>Extra</th>
                 <th>Total</th>
+                <th>Status</th>
                 <th>Comprovante</th>
             </tr>
             {% for item in rateio_moradores %}
@@ -289,6 +290,7 @@
                 <td>R$ {{ item.desconto|floatformat:2 }}</td>
                 <td>R$ {{ item.extra|floatformat:2 }}</td>
                 <td>R$ {{ item.valor|floatformat:2 }}</td>
+                <td>{% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
                 <td>
                     {% if item.comprovante %}
                     <a class="btn btn-invert" href="{{ item.comprovante.arquivo.url }}" target="_blank" rel="noopener">Ver anexo</a>

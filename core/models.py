@@ -278,6 +278,27 @@ class ComprovantePagamentoMorador(models.Model):
         return f"{self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
 
 
+class NotificacaoMorador(models.Model):
+    TIPO_CHOICES = [
+        ('lembrete_aluguel', 'Lembrete de aluguel'),
+    ]
+
+    morador = models.ForeignKey(Morador, on_delete=models.CASCADE, related_name='notificacoes')
+    mes_referencia = models.DateField()
+    tipo = models.CharField(max_length=40, choices=TIPO_CHOICES, default='lembrete_aluguel')
+    titulo = models.CharField(max_length=120)
+    mensagem = models.TextField(blank=True, default='')
+    lida = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+        unique_together = ('morador', 'mes_referencia', 'tipo')
+
+    def __str__(self):
+        return f"{self.morador.nome} - {self.titulo}"
+
+
 # =====================================================
 # MÓDULO: ESTOQUE
 # =====================================================
