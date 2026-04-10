@@ -21,6 +21,7 @@ from core.forms import (
 from core.models import (
     AjusteMorador,
     Comodo,
+    ComprovantePagamentoMorador,
     ConfiguracaoFinanceira,
     ContaFixa,
     LocalArmazenamento,
@@ -168,6 +169,16 @@ def financeiro(request):
 
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
     resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    comprovantes_map = {
+        item.morador_id: item
+        for item in ComprovantePagamentoMorador.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+        ).select_related('morador')
+    }
+    for item in resumo['rateio_moradores']:
+        item['comprovante'] = comprovantes_map.get(item['morador'].id)
+
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
     total_expr = ExpressionWrapper(
         Case(
@@ -200,7 +211,7 @@ def financeiro(request):
             prefix='ajuste',
         ),
         'fixas_formset': ContaFixaFormSet(queryset=ContaFixa.objects.all()),
-        'rateio_colspan': 7 + len(resumo['contas_fixas']),
+        'rateio_colspan': 8 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,
         **resumo,
     })
@@ -241,6 +252,25 @@ def pagar_parcela(request, parcela_id):
         parcela.status = 'pago'
         parcela.save(update_fields=['status'])
     return redirect('financeiro')
+
+
+@require_POST
+@setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
+def anexar_comprovante_pagamento(request, morador_id):
+    morador = get_object_or_404(Morador, id=morador_id, ativo=True)
+    arquivo = request.FILES.get('comprovante')
+    mes_param = request.POST.get('mes')
+
+    if not arquivo or not mes_param:
+        return redirect('financeiro')
+
+    mes_referencia = resolver_mes_referencia(mes_param)
+    ComprovantePagamentoMorador.objects.update_or_create(
+        morador=morador,
+        mes_referencia=mes_referencia,
+        defaults={'arquivo': arquivo},
+    )
+    return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
 
 
 @setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
