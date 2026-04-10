@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,9 @@
         .empty { color:var(--muted); text-align:center; }
         .setor-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0 8px; }
         .setor-header h2 { margin:0; font-size:1.1rem; }
-        .toggle-btn { border:1px solid #111; background:#fff; color:#111; padding:7px 11px; border-radius:999px; cursor:pointer; font-weight:700; }
+        .toggle-btn { display:inline-flex; align-items:center; gap:8px; border:1px solid #111; background:#fff; color:#111; padding:7px 11px; border-radius:999px; cursor:pointer; font-weight:700; }
+        .toggle-btn .arrow { font-size:.85rem; transition:transform .2s ease; }
+        .toggle-btn[aria-expanded="false"] .arrow { transform:rotate(-90deg); }
         .is-hidden { display:none; }
         @media (max-width:760px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .actions{width:100%; flex-direction:column;} .btn{width:100%; text-align:center;} }
     </style>
@@ -38,7 +40,7 @@
     {% for secao in secoes_setor %}
     <div class="setor-header">
         <h2>{{ secao.label }}</h2>
-        <button type="button" class="toggle-btn" data-target="setor-{{ secao.setor }}" data-label-show="Mostrar {{ secao.label }}" data-label-hide="Ocultar {{ secao.label }}">Ocultar {{ secao.label }}</button>
+        <button type="button" class="toggle-btn" data-target="setor-{{ secao.setor }}" data-label-show="Mostrar {{ secao.label }}" data-label-hide="Ocultar {{ secao.label }}" aria-expanded="true"><span class="arrow" aria-hidden="true">▾</span><span class="label">Ocultar {{ secao.label }}</span></button>
     </div>
     <div class="panel" id="setor-{{ secao.setor }}">
         <table>
@@ -62,9 +64,9 @@
 
     <div class="setor-header">
         <h2>OSs finalizadas</h2>
-        <button type="button" class="toggle-btn" data-target="setor-finalizadas" data-label-show="Mostrar OSs finalizadas" data-label-hide="Ocultar OSs finalizadas">Ocultar OSs finalizadas</button>
+        <button type="button" class="toggle-btn" data-target="setor-finalizadas" data-label-show="Mostrar OSs finalizadas" data-label-hide="Ocultar OSs finalizadas" aria-expanded="false"><span class="arrow" aria-hidden="true">▾</span><span class="label">Mostrar OSs finalizadas</span></button>
     </div>
-    <div class="panel" id="setor-finalizadas">
+    <div class="panel is-hidden" id="setor-finalizadas">
         <table>
             <tr><th>Numero</th><th>Setor</th><th>Descricao</th><th>Observacao</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
             {% for os in ordens_finalizadas %}
@@ -90,7 +92,11 @@
             const target = document.getElementById(button.dataset.target);
             if (!target) return;
             const oculto = target.classList.toggle('is-hidden');
-            button.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
+            button.setAttribute('aria-expanded', String(!oculto));
+            const label = button.querySelector('.label');
+            if (label) {
+                label.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
+            }
         });
     });
 </script>
