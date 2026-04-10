@@ -191,6 +191,7 @@
                     <tbody id="pendencia-body">
                     {% for form in pendencia_formset %}
                     <tr>
+                        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
                         <td>{{ form.tipo }}</td>
                         <td>{{ form.valor }}</td>
                         <td>{{ form.motivo }}</td>
@@ -238,6 +239,7 @@
                     <tbody id="ajuste-body">
                     {% for form in ajuste_formset %}
                     <tr>
+                        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
                         <td>{{ form.morador }}</td>
                         <td>{{ form.tipo }}</td>
                         <td>{{ form.valor }}</td>
@@ -321,6 +323,7 @@
 </div>
 <template id="ajuste-template">
     <tr>
+        {% for hidden in ajuste_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
         <td>{{ ajuste_formset.empty_form.morador }}</td>
         <td>{{ ajuste_formset.empty_form.tipo }}</td>
         <td>{{ ajuste_formset.empty_form.valor }}</td>
@@ -333,6 +336,7 @@
 </template>
 <template id="pendencia-template">
     <tr>
+        {% for hidden in pendencia_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
         <td>{{ pendencia_formset.empty_form.tipo }}</td>
         <td>{{ pendencia_formset.empty_form.valor }}</td>
         <td>{{ pendencia_formset.empty_form.motivo }}</td>
