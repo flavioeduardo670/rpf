@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.db.models import Sum
 from django.utils import timezone
 
-from core.models import AjusteMorador, ConfiguracaoFinanceira, ContaFixa, DescontoMensal, Morador, NotaParcela, PendenciaMensal, PendenciaMensalItem
+from core.models import AjusteMorador, ConfiguracaoFinanceira, ContaFixa, Morador, NotaParcela, PendenciaMensalItem
 
 
 def resolver_mes_referencia(mes_param):
@@ -46,13 +46,8 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     pendencias_items = list(PendenciaMensalItem.objects.filter(mes_referencia=mes_referencia).order_by('id'))
     desconto_itens_total = sum((item.valor for item in pendencias_items if item.tipo == 'desconto'), Decimal('0.00'))
     pendencia_itens_total = sum((item.valor for item in pendencias_items if item.tipo == 'extra'), Decimal('0.00'))
-    desconto_obj = DescontoMensal.objects.filter(mes_referencia=mes_referencia).first()
-    pendencia_obj = PendenciaMensal.objects.filter(mes_referencia=mes_referencia).first()
-    desconto_total_mes = desconto_itens_total if pendencias_items else (desconto_obj.valor_total if desconto_obj else Decimal('0.00'))
-    pendencia_total_mes = (
-        (pendencia_itens_total if pendencias_items else (pendencia_obj.valor_total if pendencia_obj else Decimal('0.00')))
-        if incluir_pendencia else Decimal('0.00')
-    )
+    desconto_total_mes = desconto_itens_total
+    pendencia_total_mes = pendencia_itens_total if incluir_pendencia else Decimal('0.00')
 
     total_rateio = (
         valor_aluguel
