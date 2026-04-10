@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django import forms
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -21,6 +23,7 @@ from core.forms import (
 from core.models import (
     AjusteMorador,
     Comodo,
+    ComprovantePagamentoMorador,
     ConfiguracaoFinanceira,
     ContaFixa,
     LocalArmazenamento,
@@ -38,6 +41,7 @@ from core.services.estoque import garantir_setores_e_locais_base
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
 
 from .common import can_edit, setor_required
+from .common import get_user_morador
 
 
 ContaFixaFormSet = forms.modelformset_factory(ContaFixa, form=ContaFixaForm, extra=1, can_delete=True)
@@ -168,6 +172,17 @@ def financeiro(request):
 
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
     resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    comprovantes_map = {
+        item.morador_id: item
+        for item in ComprovantePagamentoMorador.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+        ).select_related('morador')
+    }
+    for item in resumo['rateio_moradores']:
+        item['comprovante'] = comprovantes_map.get(item['morador'].id)
+        item['status_pagamento'] = 'pago' if item['comprovante'] or item['aluguel'] <= 0 else 'pendente'
+
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
     total_expr = ExpressionWrapper(
         Case(
@@ -200,7 +215,7 @@ def financeiro(request):
             prefix='ajuste',
         ),
         'fixas_formset': ContaFixaFormSet(queryset=ContaFixa.objects.all()),
-        'rateio_colspan': 7 + len(resumo['contas_fixas']),
+        'rateio_colspan': 9 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,
         **resumo,
     })
@@ -241,6 +256,33 @@ def pagar_parcela(request, parcela_id):
         parcela.status = 'pago'
         parcela.save(update_fields=['status'])
     return redirect('financeiro')
+
+
+@login_required
+@require_POST
+def anexar_comprovante_pagamento(request, morador_id):
+    morador_logado = get_user_morador(request.user)
+    can_edit_financeiro = can_edit(request, 'acesso_financeiro_editar')
+    if not can_edit_financeiro and (not morador_logado or morador_logado.id != morador_id):
+        raise PermissionDenied('Você não pode anexar comprovante para este morador.')
+
+    morador = get_object_or_404(Morador, id=morador_id, ativo=True)
+    arquivo = request.FILES.get('comprovante')
+    mes_param = request.POST.get('mes')
+    next_view = request.POST.get('next', 'financeiro')
+
+    if not arquivo or not mes_param:
+        return redirect(next_view if next_view in ('financeiro', 'perfil') else 'financeiro')
+
+    mes_referencia = resolver_mes_referencia(mes_param)
+    ComprovantePagamentoMorador.objects.update_or_create(
+        morador=morador,
+        mes_referencia=mes_referencia,
+        defaults={'arquivo': arquivo},
+    )
+    if next_view == 'perfil':
+        return redirect('perfil')
+    return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
 
 
 @setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
