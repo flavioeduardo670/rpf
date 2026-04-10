@@ -218,15 +218,23 @@ class PendenciaMensal(models.Model):
 
 
 class PendenciaMensalItem(models.Model):
+    TIPO_CHOICES = [
+        ('extra', 'Extra'),
+        ('desconto', 'Desconto'),
+    ]
+
     mes_referencia = models.DateField()
-    descricao = models.CharField(max_length=200)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='extra')
+    motivo = models.CharField(max_length=200, default='')
+    descricao = models.CharField(max_length=200, blank=True, default='')
     valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         ordering = ['id']
 
     def __str__(self):
-        return f"{self.descricao} ({self.mes_referencia.strftime('%m/%Y')})"
+        descricao = self.motivo or self.descricao or 'Sem motivo'
+        return f"{descricao} ({self.mes_referencia.strftime('%m/%Y')})"
 
 
 class ParcelaRateioExclusao(models.Model):

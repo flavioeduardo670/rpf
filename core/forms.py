@@ -533,8 +533,12 @@ class PendenciaMensalForm(forms.ModelForm):
 class PendenciaMensalItemForm(forms.ModelForm):
     class Meta:
         model = PendenciaMensalItem
-        fields = ['descricao', 'valor']
-        labels = {'descricao': 'Descricao', 'valor': 'Valor'}
+        fields = ['tipo', 'valor', 'motivo']
+        labels = {'tipo': 'Tipo', 'valor': 'Valor', 'motivo': 'Motivo'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_form_config(self, 'pendencia_mensal_item_form')
 
 
 class AjusteMoradorForm(forms.ModelForm):
