@@ -195,12 +195,40 @@
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
-            {{ pendencia_form.valor_total.label_tag }}
-            {{ pendencia_form.valor_total }}
+            {{ pendencia_formset.management_form }}
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Excluir</th>
+                    </tr>
+                    <tbody id="pendencia-body">
+                    {% for form in pendencia_formset %}
+                    <tr>
+                        <td>{{ form.descricao }}</td>
+                        <td>{{ form.valor }}</td>
+                        <td>
+                            <button type="button" class="btn btn-invert" data-remove-pendencia>Excluir</button>
+                            <span style="display:none;">{{ form.DELETE }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-invert" id="add-pendencia">Adicionar pendência</button>
             <button type="submit" name="pendencia_submit" class="btn">Salvar pendência</button>
         </form>
         {% else %}
-        <p>Pendencia atual: <strong>R$ {{ pendencia_total_mes|floatformat:2 }}</strong></p>
+        <p>Pendência atual: <strong>R$ {{ pendencia_total_mes|floatformat:2 }}</strong></p>
+        <ul>
+            {% for pendencia in pendencias_items %}
+            <li>{{ pendencia.descricao }} — R$ {{ pendencia.valor|floatformat:2 }}</li>
+            {% empty %}
+            <li>Nenhuma pendência registrada no mês.</li>
+            {% endfor %}
+        </ul>
         {% endif %}
     </section>
 
@@ -280,15 +308,25 @@
     <h2 class="section-title">Notas fiscais</h2>
     <div class="table-wrap">
         <table>
-            <tr><th>Descricao</th><th>Fornecedor</th><th>Valor unitario</th><th>Total</th><th>Vencimento</th></tr>
+            <tr><th>Descricao</th><th>Fornecedor</th><th>Valor unitario</th><th>Total</th><th>Valor da parcela (mês)</th><th>Vencimento</th><th>Ações</th></tr>
             {% for nota in notas %}
             <tr>
-                <td>{{ nota.descricao }}</td>
-                <td>{{ nota.fornecedor }}</td>
-                <td>R$ {{ nota.valor|floatformat:2 }}</td>
+                <td>{{ nota.nota.descricao }}</td>
+                <td>{{ nota.nota.fornecedor }}</td>
+                <td>R$ {{ nota.nota.valor|floatformat:2 }}</td>
                 <td>R$ {{ nota.total_valor|floatformat:2 }}</td>
-                <td>{{ nota.data_vencimento }}</td>
+                <td>R$ {{ nota.valor|floatformat:2 }}</td>
+                <td>{{ nota.vencimento }}</td>
+                <td>
+                    {% if can_edit_financeiro %}
+                    <a class="btn btn-invert" href="{% url 'editar_rateio_parcela' nota.id %}?mes={{ mes_referencia|date:'Y-m' }}">Editar rateio</a>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
             </tr>
+            {% empty %}
+            <tr><td colspan="7" class="empty">Nenhuma nota fiscal para o mês selecionado.</td></tr>
             {% endfor %}
         </table>
     </div>
@@ -305,11 +343,25 @@
         </td>
     </tr>
 </template>
+<template id="pendencia-template">
+    <tr>
+        <td>{{ pendencia_formset.empty_form.descricao }}</td>
+        <td>{{ pendencia_formset.empty_form.valor }}</td>
+        <td>
+            <button type="button" class="btn btn-invert" data-remove-pendencia>Excluir</button>
+            <span style="display:none;">{{ pendencia_formset.empty_form.DELETE }}</span>
+        </td>
+    </tr>
+</template>
 <script>
 const ajusteBody = document.getElementById('ajuste-body');
 const addAjusteBtn = document.getElementById('add-ajuste');
 const ajusteTemplate = document.getElementById('ajuste-template');
-const ajusteTotalForms = document.getElementById('id_ajustemorador_set-TOTAL_FORMS') || document.querySelector('input[name$=\"-TOTAL_FORMS\"]');
+const ajusteTotalForms = document.getElementById('id_ajuste-TOTAL_FORMS');
+const pendenciaBody = document.getElementById('pendencia-body');
+const addPendenciaBtn = document.getElementById('add-pendencia');
+const pendenciaTemplate = document.getElementById('pendencia-template');
+const pendenciaTotalForms = document.getElementById('id_pendencia-TOTAL_FORMS');
 
 const addAjusteRow = () => {
     if (!ajusteBody || !ajusteTemplate || !ajusteTotalForms) return;
@@ -347,6 +399,44 @@ if (ajusteBody) {
 }
 if (addAjusteBtn) {
     addAjusteBtn.addEventListener('click', addAjusteRow);
+}
+
+const addPendenciaRow = () => {
+    if (!pendenciaBody || !pendenciaTemplate || !pendenciaTotalForms) return;
+    const formCount = Number.parseInt(pendenciaTotalForms.value, 10) || pendenciaBody.querySelectorAll('tr').length;
+    const clone = pendenciaTemplate.content.cloneNode(true);
+    clone.querySelectorAll('input, select, textarea').forEach(input => {
+        input.name = input.name.replace('__prefix__', formCount);
+        input.id = input.id.replace('__prefix__', formCount);
+        if (input.type === 'checkbox') {
+            input.checked = false;
+        } else {
+            input.value = '';
+        }
+    });
+    pendenciaBody.appendChild(clone);
+    pendenciaTotalForms.value = formCount + 1;
+};
+
+const removePendenciaRow = (row) => {
+    const deleteInput = row.querySelector('input[type=\"checkbox\"]');
+    if (deleteInput) {
+        deleteInput.checked = true;
+        row.style.display = 'none';
+    } else {
+        row.remove();
+    }
+};
+
+if (pendenciaBody) {
+    pendenciaBody.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-remove-pendencia]');
+        if (!btn) return;
+        removePendenciaRow(btn.closest('tr'));
+    });
+}
+if (addPendenciaBtn) {
+    addPendenciaBtn.addEventListener('click', addPendenciaRow);
 }
 </script>
 </body>

@@ -15,6 +15,7 @@ urlpatterns = [
     path('financeiro/notas/<int:nota_id>/pagar/', views.pagar_nota, name='pagar_nota'),
     path('financeiro/parcelas/<int:parcela_id>/pagar/', views.pagar_parcela, name='pagar_parcela'),
     path('financeiro/parcelas/<int:parcela_id>/editar/', views.editar_parcela, name='editar_parcela'),
+    path('financeiro/parcelas/<int:parcela_id>/rateio/', views.editar_rateio_parcela, name='editar_rateio_parcela'),
     path('compras/', views.compras, name='compras'),
     path('configuracoes/formularios/', views.configurar_formularios, name='configurar_formularios'),
     path('configuracoes/listas/', views.configurar_listas, name='configurar_listas'),

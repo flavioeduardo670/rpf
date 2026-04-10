@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django import forms
-from django.contrib import messages
 from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,7 +14,7 @@ from core.forms import (
     ConfiguracaoFinanceiraForm,
     ContaFixaForm,
     DescontoMensalForm,
-    PendenciaMensalForm,
+    PendenciaMensalItemForm,
     apply_form_config,
     get_choice_options,
 )
@@ -26,8 +25,11 @@ from core.models import (
     ContaFixa,
     LocalArmazenamento,
     Mensalidade,
+    Morador,
     NotaFiscal,
     NotaParcela,
+    ParcelaRateioExclusao,
+    PendenciaMensalItem,
     Produto,
     RockEvento,
     Setor,
@@ -40,6 +42,7 @@ from .common import can_edit, setor_required
 
 ContaFixaFormSet = forms.modelformset_factory(ContaFixa, form=ContaFixaForm, extra=1, can_delete=True)
 AjusteMoradorFormSet = forms.modelformset_factory(AjusteMorador, form=AjusteMoradorForm, extra=1, can_delete=True)
+PendenciaMensalItemFormSet = forms.modelformset_factory(PendenciaMensalItem, form=PendenciaMensalItemForm, extra=1, can_delete=True)
 
 
 class ParcelaForm(forms.ModelForm):
@@ -121,7 +124,11 @@ def financeiro(request):
                 DescontoMensal.objects.update_or_create(mes_referencia=mes, defaults={'valor_total': form.cleaned_data['valor_total']})
                 return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
         elif 'ajuste_submit' in request.POST:
-            fs = AjusteMoradorFormSet(request.POST, queryset=AjusteMorador.objects.none())
+            fs = AjusteMoradorFormSet(
+                request.POST,
+                queryset=AjusteMorador.objects.filter(mes_referencia=datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)),
+                prefix='ajuste',
+            )
             if fs.is_valid():
                 mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
                 for ajuste in fs.save(commit=False):
@@ -132,10 +139,18 @@ def financeiro(request):
                 return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
         elif 'pendencia_submit' in request.POST:
             mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
-            form = PendenciaMensalForm(request.POST)
-            if form.is_valid():
-                from core.models import PendenciaMensal
-                PendenciaMensal.objects.update_or_create(mes_referencia=mes, defaults={'valor_total': form.cleaned_data['valor_total']})
+            fs = PendenciaMensalItemFormSet(
+                request.POST,
+                queryset=PendenciaMensalItem.objects.filter(mes_referencia=mes),
+                prefix='pendencia',
+            )
+            if fs.is_valid():
+                itens = fs.save(commit=False)
+                for item in itens:
+                    item.mes_referencia = mes
+                    item.save()
+                for obj in fs.deleted_objects:
+                    obj.delete()
                 return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
         elif 'fixas_submit' in request.POST:
             fs = ContaFixaFormSet(request.POST, queryset=ContaFixa.objects.all())
@@ -154,20 +169,36 @@ def financeiro(request):
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
     resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-    total_expr = ExpressionWrapper(Case(When(quantidade__gt=0, then=F('quantidade') * F('valor')), default=F('valor'), output_field=DecimalField(max_digits=12, decimal_places=2)), output_field=DecimalField(max_digits=12, decimal_places=2))
-    notas = NotaFiscal.objects.filter(parcelas__mes_referencia=mes_referencia, setor='compras').distinct().annotate(total_valor=total_expr).order_by('-data_vencimento')
+    total_expr = ExpressionWrapper(
+        Case(
+            When(nota__quantidade__gt=0, then=F('nota__quantidade') * F('nota__valor')),
+            default=F('nota__valor'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+    parcelas_notas = NotaParcela.objects.filter(
+        mes_referencia=mes_referencia,
+        nota__setor='compras',
+    ).select_related('nota').annotate(total_valor=total_expr).order_by('-vencimento', '-id')
     return render(request, 'core/financeiro.html', {
         'total_recebido': total_recebido,
         'saldo': total_recebido - resumo['total_despesas'],
-        'notas': notas,
+        'notas': parcelas_notas,
         'configuracao_form': configuracao_form,
         'parcelas_abertas': resumo['parcelas_rateio'].filter(status='pendente').order_by('vencimento', 'id'),
         'mes_referencia': mes_referencia,
         'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
         'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
         'desconto_form': DescontoMensalForm(),
-        'pendencia_form': PendenciaMensalForm(),
-        'ajuste_formset': AjusteMoradorFormSet(queryset=AjusteMorador.objects.none()),
+        'pendencia_formset': PendenciaMensalItemFormSet(
+            queryset=PendenciaMensalItem.objects.filter(mes_referencia=mes_referencia).order_by('id'),
+            prefix='pendencia',
+        ),
+        'ajuste_formset': AjusteMoradorFormSet(
+            queryset=AjusteMorador.objects.filter(mes_referencia=mes_referencia).order_by('id'),
+            prefix='ajuste',
+        ),
         'fixas_formset': ContaFixaFormSet(queryset=ContaFixa.objects.all()),
         'rateio_colspan': 7 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,
@@ -220,6 +251,31 @@ def editar_parcela(request, parcela_id):
         form.save()
         return redirect('financeiro')
     return render(request, 'core/editar_parcela.html', {'form': form, 'parcela': parcela})
+
+
+@setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
+def editar_rateio_parcela(request, parcela_id):
+    parcela = get_object_or_404(NotaParcela.objects.select_related('nota'), id=parcela_id)
+    moradores_ativos = list(Morador.objects.filter(ativo=True).order_by('ordem_hierarquia', 'nome'))
+    if request.method == 'POST':
+        selecionados = {int(mid) for mid in request.POST.getlist('moradores_rateio') if mid.isdigit()}
+        ativos_ids = {morador.id for morador in moradores_ativos}
+        if not selecionados:
+            selecionados = set(ativos_ids)
+        excluidos = ativos_ids - selecionados
+        ParcelaRateioExclusao.objects.filter(parcela=parcela).exclude(morador_id__in=excluidos).delete()
+        existentes = set(ParcelaRateioExclusao.objects.filter(parcela=parcela).values_list('morador_id', flat=True))
+        for morador_id in excluidos - existentes:
+            ParcelaRateioExclusao.objects.create(parcela=parcela, morador_id=morador_id)
+        mes_param = request.POST.get('mes_param')
+        return redirect(f"{redirect('financeiro').url}?mes={mes_param}") if mes_param else redirect('financeiro')
+
+    excluidos_ids = set(ParcelaRateioExclusao.objects.filter(parcela=parcela).values_list('morador_id', flat=True))
+    moradores_contexto = [{'morador': morador, 'selecionado': morador.id not in excluidos_ids} for morador in moradores_ativos]
+    return render(request, 'core/editar_rateio_parcela.html', {
+        'parcela': parcela,
+        'moradores_contexto': moradores_contexto,
+    })
 
 
 def _primeiro_vencimento(data_emissao):

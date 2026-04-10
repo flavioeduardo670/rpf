@@ -29,6 +29,7 @@ from .models import (
     LoteIngressoRock,
     DescontoMensal,
     PendenciaMensal,
+    PendenciaMensalItem,
     AjusteMorador,
     ContaFixa,
 )
@@ -527,6 +528,13 @@ class PendenciaMensalForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         apply_form_config(self, 'pendencia_mensal_form')
+
+
+class PendenciaMensalItemForm(forms.ModelForm):
+    class Meta:
+        model = PendenciaMensalItem
+        fields = ['descricao', 'valor']
+        labels = {'descricao': 'Descricao', 'valor': 'Valor'}
 
 
 class AjusteMoradorForm(forms.ModelForm):
