@@ -39,3 +39,23 @@ class FinanceiroTemplateTests(TestCase):
         html = response.content.decode('utf-8')
         self.assertIn(f'name="ajuste-0-id" value="{self.ajuste.id}"', html)
         self.assertIn(f'name="pendencia-0-id" value="{self.pendencia.id}"', html)
+
+    def test_financeiro_permite_salvar_pendencia_sem_motivo(self):
+        response = self.client.post(
+            reverse('financeiro'),
+            data={
+                'mes_referencia': '2026-05-01',
+                'pendencia_submit': '1',
+                'pendencia-TOTAL_FORMS': '1',
+                'pendencia-INITIAL_FORMS': '1',
+                'pendencia-MIN_NUM_FORMS': '0',
+                'pendencia-MAX_NUM_FORMS': '1000',
+                'pendencia-0-id': str(self.pendencia.id),
+                'pendencia-0-tipo': 'extra',
+                'pendencia-0-valor': '54.32',
+                'pendencia-0-motivo': '',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.pendencia.refresh_from_db()
+        self.assertEqual(self.pendencia.motivo, '')
