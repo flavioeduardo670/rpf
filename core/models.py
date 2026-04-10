@@ -264,6 +264,20 @@ class AjusteMorador(models.Model):
         return f"{self.morador.nome} - {self.tipo}"
 
 
+class ComprovantePagamentoMorador(models.Model):
+    morador = models.ForeignKey(Morador, on_delete=models.CASCADE, related_name='comprovantes_pagamento')
+    mes_referencia = models.DateField()
+    arquivo = models.FileField(upload_to='comprovantes_pagamento/%Y/%m/')
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('morador', 'mes_referencia')
+        ordering = ['-mes_referencia', '-enviado_em']
+
+    def __str__(self):
+        return f"{self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
+
+
 # =====================================================
 # MÓDULO: ESTOQUE
 # =====================================================

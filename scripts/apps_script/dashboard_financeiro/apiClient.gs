@@ -3,6 +3,13 @@ const ERP_CONFIG = {
   BEARER_TOKEN: 'SEU_TOKEN_AQUI',
   TIMEZONE: 'America/Sao_Paulo',
   PAGE_SIZE: 200,
+  HTTP_MAX_RETRIES: 3,
+  HTTP_RETRY_SLEEP_MS: 800,
+  ALERT_THRESHOLDS: {
+    INADIMPLENCIA_PCT: 8,
+    SALDO_DIA_MINIMO: 0,
+    DESVIO_CAIXA_PERCENTUAL: 20,
+  },
   SHEETS: {
     RECEBER: 'base_receber',
     PAGAR: 'base_pagar',
@@ -11,26 +18,53 @@ const ERP_CONFIG = {
     PAINEL: 'painel',
     PAINEL_DADOS: 'painel_dados',
     EXECUCAO: 'painel_execucao',
+    ALERTAS: 'painel_alertas',
   },
 };
 
 function apiGet(path, queryParams) {
   const url = buildUrl(path, queryParams || {});
-  const response = UrlFetchApp.fetch(url, {
-    method: 'get',
-    muteHttpExceptions: true,
-    headers: {
-      Authorization: 'Bearer ' + ERP_CONFIG.BEARER_TOKEN,
-      Accept: 'application/json',
-    },
-  });
+  return fetchJsonWithRetry_(url, path);
+}
 
-  const status = response.getResponseCode();
-  if (status < 200 || status >= 300) {
-    throw new Error('Erro API [' + status + '] ' + path + ' => ' + response.getContentText());
+function fetchJsonWithRetry_(url, path) {
+  const maxRetries = Number(ERP_CONFIG.HTTP_MAX_RETRIES || 1);
+  const sleepMs = Number(ERP_CONFIG.HTTP_RETRY_SLEEP_MS || 0);
+  let attempt = 1;
+  let lastError = null;
+
+  while (attempt <= maxRetries) {
+    try {
+      const response = UrlFetchApp.fetch(url, {
+        method: 'get',
+        muteHttpExceptions: true,
+        headers: {
+          Authorization: 'Bearer ' + ERP_CONFIG.BEARER_TOKEN,
+          Accept: 'application/json',
+        },
+      });
+
+      const status = response.getResponseCode();
+      if (status >= 200 && status < 300) {
+        return JSON.parse(response.getContentText());
+      }
+
+      if (status === 429 || status >= 500) {
+        lastError = new Error('Erro transitório API [' + status + '] ' + path);
+      } else {
+        throw new Error('Erro API [' + status + '] ' + path + ' => ' + response.getContentText());
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < maxRetries && sleepMs > 0) {
+      Utilities.sleep(sleepMs * attempt);
+    }
+    attempt += 1;
   }
 
-  return JSON.parse(response.getContentText());
+  throw new Error('Falha após ' + maxRetries + ' tentativa(s): ' + String(lastError));
 }
 
 function fetchAllPages(path, baseParams) {
