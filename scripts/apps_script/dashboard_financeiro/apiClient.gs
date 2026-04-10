@@ -1,10 +1,19 @@
 const ERP_CONFIG = {
   BASE_URL: 'https://SEU-ERP.exemplo.com/api',
   BEARER_TOKEN: 'SEU_TOKEN_AQUI',
+  // Opcional: se preenchido, usa Script Properties ao invés de hardcode.
+  BEARER_TOKEN_PROPERTY_KEY: 'ERP_BEARER_TOKEN',
   TIMEZONE: 'America/Sao_Paulo',
   PAGE_SIZE: 200,
   HTTP_MAX_RETRIES: 3,
   HTTP_RETRY_SLEEP_MS: 800,
+  FASE4: {
+    LOCK_TIMEOUT_MS: 25000,
+    OVERLAP_DAYS: 2,
+    FULL_SYNC_DAYS: 60,
+    SYNC_STATE_PROPERTY_KEY: 'FINANCEIRO_LAST_SUCCESS_DATE',
+    LAST_STATUS_PROPERTY_KEY: 'FINANCEIRO_LAST_STATUS',
+  },
   ALERT_THRESHOLDS: {
     INADIMPLENCIA_PCT: 8,
     SALDO_DIA_MINIMO: 0,
@@ -19,6 +28,7 @@ const ERP_CONFIG = {
     PAINEL_DADOS: 'painel_dados',
     EXECUCAO: 'painel_execucao',
     ALERTAS: 'painel_alertas',
+    ESTADO_SYNC: 'painel_estado_sync',
   },
 };
 
@@ -39,7 +49,7 @@ function fetchJsonWithRetry_(url, path) {
         method: 'get',
         muteHttpExceptions: true,
         headers: {
-          Authorization: 'Bearer ' + ERP_CONFIG.BEARER_TOKEN,
+          Authorization: 'Bearer ' + getBearerToken_(),
           Accept: 'application/json',
         },
       });
@@ -116,4 +126,18 @@ function buildUrl(path, params) {
     });
 
   return base + normalizedPath + (entries.length ? '?' + entries.join('&') : '');
+}
+
+function getBearerToken_() {
+  const propertyKey = ERP_CONFIG.BEARER_TOKEN_PROPERTY_KEY;
+  if (propertyKey) {
+    const fromProperty = PropertiesService.getScriptProperties().getProperty(propertyKey);
+    if (fromProperty) return fromProperty;
+  }
+
+  if (!ERP_CONFIG.BEARER_TOKEN) {
+    throw new Error('Token Bearer não configurado. Defina ERP_CONFIG.BEARER_TOKEN ou Script Properties.');
+  }
+
+  return ERP_CONFIG.BEARER_TOKEN;
 }

@@ -66,6 +66,7 @@ function atualizarPainelFase2(data) {
   escreverResumoExecucaoNoPainelDados_(painelDados, data.resumoExecucao);
   escreverAgingNoPainelDados_(painelDados, data.agingReceber || {});
   escreverDesvioNoPainelDados_(painelDados, data.desvioFluxo || {});
+  escreverConciliacaoNoPainelDados_(painelDados, data.conciliacao || {});
 
   gerarGraficoFluxoNoPainel_(data.serieFluxo.length);
   escreverTop10NoPainel_(data.top10Atraso);
@@ -74,13 +75,11 @@ function atualizarPainelFase2(data) {
 function escreverSerieFluxoNoPainelDados_(sheet, serieFluxo) {
   const header = ['data', 'entradas_previstas', 'saidas_previstas', 'entradas_realizadas', 'saidas_realizadas', 'saldo_dia'];
   sheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
-
   if (!serieFluxo.length) return;
 
   const rows = serieFluxo.map(function (item) {
     return [item.data, item.entradas_previstas, item.saidas_previstas, item.entradas_realizadas, item.saidas_realizadas, item.saldo_dia];
   });
-
   sheet.getRange(2, 1, rows.length, header.length).setValues(rows);
 }
 
@@ -88,7 +87,6 @@ function escreverTop10AtrasoNoPainelDados_(sheet, top10) {
   const startCol = 8;
   const header = ['cliente', 'qtd_titulos', 'valor_em_atraso'];
   sheet.getRange(1, startCol, 1, header.length).setValues([header]).setFontWeight('bold');
-
   if (!top10.length) return;
 
   const rows = top10.map(function (item) {
@@ -135,6 +133,20 @@ function escreverDesvioNoPainelDados_(sheet, desvio) {
     ['previsto_liquido', desvio.previsto_liquido || 0],
     ['realizado_liquido', desvio.realizado_liquido || 0],
     ['desvio_percentual', desvio.desvio_percentual || 0],
+  ];
+
+  sheet.getRange(1, startCol, rows.length, 2).setValues(rows);
+  sheet.getRange(1, startCol, 1, 2).setFontWeight('bold');
+}
+
+function escreverConciliacaoNoPainelDados_(sheet, conciliacao) {
+  const startCol = 21;
+  const rows = [
+    ['conciliacao', 'valor'],
+    ['aberto_receber', conciliacao.aberto_receber || 0],
+    ['aberto_pagar', conciliacao.aberto_pagar || 0],
+    ['diferenca_resultado_kpi', conciliacao.diferenca_resultado_kpi || 0],
+    ['saldo_fluxo_agregado', conciliacao.saldo_fluxo_agregado || 0],
   ];
 
   sheet.getRange(1, startCol, rows.length, 2).setValues(rows);
@@ -191,6 +203,21 @@ function escreverAlertas(alertas) {
     });
 }
 
+function escreverEstadoSincronizacao(estado) {
+  const sheet = getOrCreateSheet_(ERP_CONFIG.SHEETS.ESTADO_SYNC);
+  const rows = [
+    ['chave', 'valor'],
+    ['periodo_inicio', estado.periodo_inicio || ''],
+    ['periodo_fim', estado.periodo_fim || ''],
+    ['status', estado.status || 'desconhecido'],
+    ['atualizado_em', estado.atualizado_em || formatDateTime(new Date())],
+    ['checkpoint', estado.checkpoint || ''],
+  ];
+  sheet.clear();
+  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+  sheet.getRange(1, 1, 1, 2).setFontWeight('bold');
+}
+
 function registrarExecucao(resumo) {
   const sheet = getOrCreateSheet_(ERP_CONFIG.SHEETS.EXECUCAO);
   const header = [
@@ -229,9 +256,7 @@ function writeSheetRows_(sheetName, headers, rows, mapper) {
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
 
-  if (!rows.length) {
-    return;
-  }
+  if (!rows.length) return;
 
   const values = rows.map(mapper);
   sheet.getRange(2, 1, values.length, headers.length).setValues(values);

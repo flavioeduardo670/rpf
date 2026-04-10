@@ -1,27 +1,20 @@
 function sincronizarFinanceiroMvp() {
   const periodo = periodoPadraoUltimos30Dias();
-
-  const receber = fetchAllPages('/financeiro/receber', periodo).map(normalizarReceber);
-  const pagar = fetchAllPages('/financeiro/pagar', periodo).map(normalizarPagar);
-  const fluxo = fetchAllPages('/financeiro/fluxo-caixa', periodo).map(normalizarFluxo);
-  const kpisPayload = apiGet('/financeiro/kpis', periodo);
-  const kpis = [normalizarKpis(kpisPayload)];
-
-  escreverBaseReceber(receber);
-  escreverBasePagar(pagar);
-  escreverBaseFluxo(fluxo);
-  escreverBaseKpis(kpis);
-  atualizarPainelComKpis(kpis[0]);
+  const resultado = executarSincronizacaoCore_(periodo, {
+    registrarExecucao: false,
+    atualizarAlertas: false,
+    escreverEstado: false,
+  });
+  atualizarPainelComKpis(resultado.kpis);
 }
 
 function sincronizarFinanceiroFase2() {
-  const exec = sincronizarFinanceiroFase3({
+  return sincronizarFinanceiroFase3({
     dias: 30,
     registrarExecucao: false,
     atualizarAlertas: false,
+    escreverEstado: false,
   });
-
-  return exec;
 }
 
 function sincronizarFinanceiroFase3(options) {
@@ -29,11 +22,61 @@ function sincronizarFinanceiroFase3(options) {
     dias: 30,
     registrarExecucao: true,
     atualizarAlertas: true,
+    escreverEstado: false,
   }, options || {});
 
+  const periodo = opts.periodo || periodoRelativoDias(opts.dias);
+  return executarSincronizacaoCore_(periodo, opts);
+}
+
+function sincronizarFinanceiroFase4(options) {
+  const opts = Object.assign({
+    fullRefresh: false,
+    diasFallback: ERP_CONFIG.FASE4.FULL_SYNC_DAYS,
+    registrarExecucao: true,
+    atualizarAlertas: true,
+    persistirCheckpoint: true,
+    overlapDays: ERP_CONFIG.FASE4.OVERLAP_DAYS,
+  }, options || {});
+
+  const lock = LockService.getScriptLock();
+  const lockTimeoutMs = Number(ERP_CONFIG.FASE4.LOCK_TIMEOUT_MS || 25000);
+  if (!lock.tryLock(lockTimeoutMs)) {
+    throw new Error('Sincronização já em andamento. Tente novamente em instantes.');
+  }
+
+  try {
+    const periodo = resolverPeriodoFase4_(opts);
+    const resultado = executarSincronizacaoCore_(periodo, {
+      registrarExecucao: opts.registrarExecucao,
+      atualizarAlertas: opts.atualizarAlertas,
+      escreverEstado: true,
+    });
+
+    if (opts.persistirCheckpoint) {
+      salvarCheckpointFase4_(resultado.resumoExecucao.atualizado_em, 'sucesso');
+    }
+
+    return Object.assign({}, resultado, {
+      modo: 'fase4',
+      checkpoint: carregarCheckpointFase4_(),
+    });
+  } catch (error) {
+    salvarCheckpointFase4_(formatDateISO(new Date()), 'erro: ' + String(error));
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function executarSincronizacaoCore_(periodo, opts) {
+  const options = Object.assign({
+    registrarExecucao: true,
+    atualizarAlertas: true,
+    escreverEstado: false,
+  }, opts || {});
+
   const inicioExecucao = new Date();
-  const periodo = periodoRelativoDias(opts.dias);
-  let erro = null;
 
   try {
     const receber = fetchAllPages('/financeiro/receber', periodo).map(normalizarReceber);
@@ -47,7 +90,8 @@ function sincronizarFinanceiroFase3(options) {
     const resumoExecucao = montarResumoExecucao(receber, pagar, fluxo, inicioExecucao);
     const agingReceber = calcularAgingReceber(receber, new Date());
     const desvioFluxo = calcularDesvioFluxo(serieFluxo);
-    const alertas = construirAlertas(kpis, serieFluxo, desvioFluxo);
+    const conciliacao = calcularConciliacaoFinanceira(kpis, receber, pagar, fluxo);
+    const alertas = construirAlertas(kpis, serieFluxo, desvioFluxo, conciliacao);
 
     escreverBaseReceber(receber);
     escreverBasePagar(pagar);
@@ -61,13 +105,24 @@ function sincronizarFinanceiroFase3(options) {
       resumoExecucao: resumoExecucao,
       agingReceber: agingReceber,
       desvioFluxo: desvioFluxo,
+      conciliacao: conciliacao,
     });
 
-    if (opts.atualizarAlertas) {
+    if (options.atualizarAlertas) {
       escreverAlertas(alertas);
     }
 
-    if (opts.registrarExecucao) {
+    if (options.escreverEstado) {
+      escreverEstadoSincronizacao({
+        periodo_inicio: periodo.data_inicio,
+        periodo_fim: periodo.data_fim,
+        status: 'sucesso',
+        atualizado_em: resumoExecucao.atualizado_em,
+        checkpoint: carregarCheckpointFase4_(),
+      });
+    }
+
+    if (options.registrarExecucao) {
       registrarExecucao(Object.assign({}, resumoExecucao, {
         status_execucao: 'sucesso',
         erro: '',
@@ -79,9 +134,10 @@ function sincronizarFinanceiroFase3(options) {
       periodo: periodo,
       resumoExecucao: resumoExecucao,
       alertas: alertas,
+      kpis: kpis,
+      conciliacao: conciliacao,
     };
   } catch (e) {
-    erro = e;
     const resumoErro = {
       atualizado_em: formatDateTime(new Date()),
       inicio_execucao: formatDateTime(inicioExecucao),
@@ -93,12 +149,54 @@ function sincronizarFinanceiroFase3(options) {
       erro: String(e),
     };
 
-    if (opts.registrarExecucao) {
+    if (options.registrarExecucao) {
       registrarExecucao(resumoErro);
     }
 
-    throw erro;
+    if (options.escreverEstado) {
+      escreverEstadoSincronizacao({
+        periodo_inicio: periodo.data_inicio,
+        periodo_fim: periodo.data_fim,
+        status: 'erro',
+        atualizado_em: resumoErro.atualizado_em,
+        checkpoint: carregarCheckpointFase4_(),
+      });
+    }
+
+    throw e;
   }
+}
+
+function resolverPeriodoFase4_(opts) {
+  if (opts.fullRefresh) {
+    return periodoRelativoDias(opts.diasFallback);
+  }
+
+  const checkpoint = carregarCheckpointFase4_();
+  if (!checkpoint) {
+    return periodoRelativoDias(opts.diasFallback);
+  }
+
+  const fim = new Date();
+  const inicio = new Date(checkpoint + 'T00:00:00');
+  const overlap = Math.max(0, Number(opts.overlapDays || 0));
+  inicio.setDate(inicio.getDate() - overlap);
+
+  return {
+    data_inicio: formatDateISO(inicio),
+    data_fim: formatDateISO(fim),
+  };
+}
+
+function carregarCheckpointFase4_() {
+  const key = ERP_CONFIG.FASE4.SYNC_STATE_PROPERTY_KEY;
+  return PropertiesService.getScriptProperties().getProperty(key);
+}
+
+function salvarCheckpointFase4_(dataIso, status) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty(ERP_CONFIG.FASE4.SYNC_STATE_PROPERTY_KEY, String(dataIso || ''));
+  props.setProperty(ERP_CONFIG.FASE4.LAST_STATUS_PROPERTY_KEY, String(status || ''));
 }
 
 function periodoPadraoUltimos30Dias() {
@@ -194,17 +292,11 @@ function calcularTop10ClientesEmAtraso(receberRows, hoje) {
   receberRows.forEach(function (item) {
     const emAtrasoPorStatus = item.status === 'vencido';
     const emAtrasoPorData = item.vencimento && item.vencimento < hojeIso && item.valor_aberto > 0;
-
     if (!emAtrasoPorStatus && !emAtrasoPorData) return;
 
     const chaveCliente = item.cliente || 'Sem cliente';
-
     if (!mapa[chaveCliente]) {
-      mapa[chaveCliente] = {
-        cliente: chaveCliente,
-        qtd_titulos: 0,
-        valor_em_atraso: 0,
-      };
+      mapa[chaveCliente] = { cliente: chaveCliente, qtd_titulos: 0, valor_em_atraso: 0 };
     }
 
     mapa[chaveCliente].qtd_titulos += 1;
@@ -213,21 +305,13 @@ function calcularTop10ClientesEmAtraso(receberRows, hoje) {
 
   return Object.keys(mapa)
     .map(function (key) { return mapa[key]; })
-    .sort(function (a, b) {
-      return b.valor_em_atraso - a.valor_em_atraso;
-    })
+    .sort(function (a, b) { return b.valor_em_atraso - a.valor_em_atraso; })
     .slice(0, 10);
 }
 
 function calcularAgingReceber(receberRows, hoje) {
   const hojeDt = new Date(formatDateISO(hoje));
-  const buckets = {
-    a_vencer: 0,
-    atraso_1_30: 0,
-    atraso_31_60: 0,
-    atraso_61_90: 0,
-    atraso_91_mais: 0,
-  };
+  const buckets = { a_vencer: 0, atraso_1_30: 0, atraso_31_60: 0, atraso_61_90: 0, atraso_91_mais: 0 };
 
   receberRows.forEach(function (item) {
     if (item.valor_aberto <= 0 || !item.vencimento) return;
@@ -235,17 +319,11 @@ function calcularAgingReceber(receberRows, hoje) {
     const vencDt = new Date(item.vencimento);
     const diff = Math.floor((hojeDt.getTime() - vencDt.getTime()) / (24 * 60 * 60 * 1000));
 
-    if (diff < 0) {
-      buckets.a_vencer += item.valor_aberto;
-    } else if (diff <= 30) {
-      buckets.atraso_1_30 += item.valor_aberto;
-    } else if (diff <= 60) {
-      buckets.atraso_31_60 += item.valor_aberto;
-    } else if (diff <= 90) {
-      buckets.atraso_61_90 += item.valor_aberto;
-    } else {
-      buckets.atraso_91_mais += item.valor_aberto;
-    }
+    if (diff < 0) buckets.a_vencer += item.valor_aberto;
+    else if (diff <= 30) buckets.atraso_1_30 += item.valor_aberto;
+    else if (diff <= 60) buckets.atraso_31_60 += item.valor_aberto;
+    else if (diff <= 90) buckets.atraso_61_90 += item.valor_aberto;
+    else buckets.atraso_91_mais += item.valor_aberto;
   });
 
   return buckets;
@@ -255,62 +333,56 @@ function calcularDesvioFluxo(serieFluxo) {
   const acumulado = serieFluxo.reduce(function (acc, item) {
     const previsto = item.entradas_previstas - item.saidas_previstas;
     const realizado = item.entradas_realizadas - item.saidas_realizadas;
-
     acc.previsto += previsto;
     acc.realizado += realizado;
     return acc;
   }, { previsto: 0, realizado: 0 });
 
   const base = Math.abs(acumulado.previsto) || 1;
-  const desvioPercentual = ((acumulado.realizado - acumulado.previsto) / base) * 100;
-
   return {
     previsto_liquido: acumulado.previsto,
     realizado_liquido: acumulado.realizado,
-    desvio_percentual: desvioPercentual,
+    desvio_percentual: ((acumulado.realizado - acumulado.previsto) / base) * 100,
   };
 }
 
-function construirAlertas(kpis, serieFluxo, desvioFluxo) {
+function calcularConciliacaoFinanceira(kpis, receberRows, pagarRows, fluxoRows) {
+  const abertoReceber = receberRows.reduce(function (acc, item) { return acc + item.valor_aberto; }, 0);
+  const abertoPagar = pagarRows.reduce(function (acc, item) { return acc + item.valor_aberto; }, 0);
+  const saldoFluxo = fluxoRows.reduce(function (acc, item) { return acc + item.saldo_dia; }, 0);
+
+  return {
+    aberto_receber: abertoReceber,
+    aberto_pagar: abertoPagar,
+    diferenca_resultado_kpi: kpis.resultado_mes - (kpis.receita_mes - kpis.despesa_mes),
+    saldo_fluxo_agregado: saldoFluxo,
+  };
+}
+
+function construirAlertas(kpis, serieFluxo, desvioFluxo, conciliacao) {
   const alertas = [];
 
   if (kpis.inadimplencia_percentual >= ERP_CONFIG.ALERT_THRESHOLDS.INADIMPLENCIA_PCT) {
-    alertas.push({
-      severidade: 'alta',
-      codigo: 'inadimplencia_alta',
-      mensagem: 'Inadimplência acima do limite configurado.',
-      valor: kpis.inadimplencia_percentual,
-    });
+    alertas.push({ severidade: 'alta', codigo: 'inadimplencia_alta', mensagem: 'Inadimplência acima do limite configurado.', valor: kpis.inadimplencia_percentual });
   }
 
   const diasSaldoNegativo = serieFluxo.filter(function (item) {
     return item.saldo_dia < ERP_CONFIG.ALERT_THRESHOLDS.SALDO_DIA_MINIMO;
   }).length;
   if (diasSaldoNegativo > 0) {
-    alertas.push({
-      severidade: 'media',
-      codigo: 'saldo_negativo',
-      mensagem: 'Existe saldo diário negativo no período.',
-      valor: diasSaldoNegativo,
-    });
+    alertas.push({ severidade: 'media', codigo: 'saldo_negativo', mensagem: 'Existe saldo diário negativo no período.', valor: diasSaldoNegativo });
   }
 
   if (Math.abs(desvioFluxo.desvio_percentual) >= ERP_CONFIG.ALERT_THRESHOLDS.DESVIO_CAIXA_PERCENTUAL) {
-    alertas.push({
-      severidade: 'media',
-      codigo: 'desvio_fluxo',
-      mensagem: 'Desvio previsto x realizado acima do limite.',
-      valor: desvioFluxo.desvio_percentual,
-    });
+    alertas.push({ severidade: 'media', codigo: 'desvio_fluxo', mensagem: 'Desvio previsto x realizado acima do limite.', valor: desvioFluxo.desvio_percentual });
+  }
+
+  if (Math.abs(conciliacao.diferenca_resultado_kpi) > 0.01) {
+    alertas.push({ severidade: 'media', codigo: 'conciliacao_kpi', mensagem: 'Diferença entre KPI de resultado e cálculo receita-despesa.', valor: conciliacao.diferenca_resultado_kpi });
   }
 
   if (!alertas.length) {
-    alertas.push({
-      severidade: 'info',
-      codigo: 'sem_alertas',
-      mensagem: 'Sem alertas críticos no período.',
-      valor: 0,
-    });
+    alertas.push({ severidade: 'info', codigo: 'sem_alertas', mensagem: 'Sem alertas críticos no período.', valor: 0 });
   }
 
   return alertas;
@@ -347,15 +419,7 @@ function normalizeStatus(status) {
   const current = String(status || '').trim().toLowerCase();
   if (!current) return 'desconhecido';
 
-  const aliases = {
-    aberto: 'aberto',
-    parcial: 'parcial',
-    pago: 'pago',
-    vencido: 'vencido',
-    overdue: 'vencido',
-    paid: 'pago',
-  };
-
+  const aliases = { aberto: 'aberto', parcial: 'parcial', pago: 'pago', vencido: 'vencido', overdue: 'vencido', paid: 'pago' };
   return aliases[current] || current;
 }
 

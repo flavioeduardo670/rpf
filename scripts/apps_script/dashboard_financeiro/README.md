@@ -1,6 +1,6 @@
 # Dashboard Financeiro — ERP → API → Google Apps Script → Google Sheets
 
-Este pacote cobre três fases evolutivas.
+Este pacote cobre quatro fases evolutivas.
 
 ## Fase 1
 
@@ -17,17 +17,26 @@ Este pacote cobre três fases evolutivas.
 
 ## Fase 3
 
-1. **Orquestração robusta** com `sincronizarFinanceiroFase3(options)`.
-2. **Retry HTTP** para erros transitórios (429/5xx).
-3. **Alertas operacionais** (`painel_alertas`) com limiares configuráveis.
-4. **Log de execução** (`painel_execucao`) com duração e status.
-5. **Novas análises**: aging de contas a receber e desvio previsto x realizado de fluxo.
+1. Orquestração robusta com `sincronizarFinanceiroFase3(options)`.
+2. Retry HTTP para erros transitórios (429/5xx).
+3. Alertas operacionais (`painel_alertas`) com limiares configuráveis.
+4. Log de execução (`painel_execucao`) com duração e status.
+5. Análises de aging e desvio previsto x realizado.
+
+## Fase 4
+
+1. **Sincronização incremental** com checkpoint via Script Properties.
+2. **Controle de concorrência** com `LockService` para evitar dupla execução.
+3. **Modo full refresh** opcional (`fullRefresh: true`) com fallback de dias configurável.
+4. **Estado de sync** em aba dedicada (`painel_estado_sync`).
+5. **Conciliação financeira adicional** (`aberto_receber`, `aberto_pagar`, diferença de KPI e saldo agregado de fluxo).
+6. Suporte a token em Script Properties (`ERP_BEARER_TOKEN`) para não deixar segredo no código.
 
 ## Estrutura
 
 - `apiClient.gs`: autenticação, retry, paginação e chamadas HTTP para a API do ERP.
-- `financeiroService.gs`: normalização, agregações e orquestrações das fases 1/2/3.
-- `dashboardWriter.gs`: gravação de abas base, renderização do painel e persistência de alertas/log.
+- `financeiroService.gs`: normalização, agregações e orquestrações das fases 1/2/3/4.
+- `dashboardWriter.gs`: gravação de abas base, renderização do painel e persistência operacional.
 
 ## Endpoints esperados
 
@@ -47,10 +56,15 @@ Parâmetros comuns:
 
 1. Crie um projeto no Google Apps Script vinculado à planilha.
 2. Copie os três arquivos `.gs` para o projeto.
-3. Ajuste `ERP_CONFIG` (URL, token, timezone, limiares e nomes de abas).
-4. Execute `sincronizarFinanceiroFase3()`.
-5. (Opcional) Para janela customizada: `sincronizarFinanceiroFase3({ dias: 45 })`.
-6. (Opcional) Crie gatilho diário para atualização automática.
+3. Ajuste `ERP_CONFIG` (URL, token, timezone, limiares e abas).
+4. (Recomendado) configure o token em Script Properties com a chave `ERP_BEARER_TOKEN`.
+5. Execute `sincronizarFinanceiroFase4()`.
+
+Exemplos:
+
+- Incremental padrão: `sincronizarFinanceiroFase4()`
+- Full refresh: `sincronizarFinanceiroFase4({ fullRefresh: true })`
+- Janela fallback customizada: `sincronizarFinanceiroFase4({ diasFallback: 90 })`
 
 ## Abas criadas/atualizadas
 
@@ -62,10 +76,11 @@ Parâmetros comuns:
 - `painel_dados`
 - `painel_alertas`
 - `painel_execucao`
+- `painel_estado_sync`
 
 ## Observações
 
 - O script usa paginação para evitar timeout no Apps Script.
 - Datas são normalizadas para `YYYY-MM-DD`.
 - Valores monetários são convertidos para número decimal com ponto.
-- O painel é reescrito a cada execução para manter consistência dos dados.
+- A fase 4 persiste checkpoint de sucesso para acelerar execuções agendadas.
