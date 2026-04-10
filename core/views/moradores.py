@@ -7,7 +7,8 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from core.forms import MoradorEdicaoForm, PerfilFotoForm
-from core.models import Morador, OrdemServico
+from core.models import ComprovantePagamentoMorador, Morador, NotificacaoMorador, OrdemServico
+from core.services.financeiro import resolver_mes_referencia
 
 from .common import get_user_morador
 
@@ -30,8 +31,25 @@ def perfil(request):
     if morador:
         ordens = OrdemServico.objects.filter(executado_por=morador.nome).order_by('-data_inicio')[:20]
         novas_ordens = OrdemServico.objects.filter(status='aberta').exclude(executado_por=morador.nome).order_by('-data_inicio')[:10]
+        notificacoes = NotificacaoMorador.objects.filter(morador=morador).order_by('-criado_em')[:10]
+        comprovantes = {
+            c.mes_referencia: c
+            for c in ComprovantePagamentoMorador.objects.filter(morador=morador)
+        }
+        for notificacao in notificacoes:
+            notificacao.comprovante = comprovantes.get(notificacao.mes_referencia)
+            notificacao.status_pagamento = 'pago' if notificacao.comprovante else 'pendente'
+    else:
+        notificacoes = []
 
-    return render(request, 'core/perfil.html', {'morador': morador, 'foto_form': foto_form, 'ordens': ordens, 'novas_ordens': novas_ordens})
+    return render(request, 'core/perfil.html', {
+        'morador': morador,
+        'foto_form': foto_form,
+        'ordens': ordens,
+        'novas_ordens': novas_ordens,
+        'notificacoes': notificacoes,
+        'mes_referencia_padrao': resolver_mes_referencia(None),
+    })
 
 
 @login_required

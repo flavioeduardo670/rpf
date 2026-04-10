@@ -14,6 +14,16 @@ urlpatterns = [
     path('financeiro/exportar/', views.exportar_financeiro_csv, name='exportar_financeiro_csv'),
     path('financeiro/notas/<int:nota_id>/pagar/', views.pagar_nota, name='pagar_nota'),
     path('financeiro/parcelas/<int:parcela_id>/pagar/', views.pagar_parcela, name='pagar_parcela'),
+    path(
+        'financeiro/moradores/<int:morador_id>/comprovante/',
+        views.anexar_comprovante_pagamento,
+        name='anexar_comprovante_pagamento',
+    ),
+    path(
+        'financeiro/comprovantes/<int:comprovante_id>/ver/',
+        views.ver_comprovante_pagamento,
+        name='ver_comprovante_pagamento',
+    ),
     path('financeiro/parcelas/<int:parcela_id>/editar/', views.editar_parcela, name='editar_parcela'),
     path('financeiro/parcelas/<int:parcela_id>/rateio/', views.editar_rateio_parcela, name='editar_rateio_parcela'),
     path('compras/', views.compras, name='compras'),

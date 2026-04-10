@@ -163,6 +163,45 @@
 
     {% if morador %}
     <section class="panel">
+        <h2>Notificações de aluguel</h2>
+        {% if notificacoes %}
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Criada em</th>
+                    <th>Mês referência</th>
+                    <th>Mensagem</th>
+                    <th>Status</th>
+                    <th>Comprovante</th>
+                </tr>
+                {% for notif in notificacoes %}
+                <tr>
+                    <td>{{ notif.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td>{{ notif.mes_referencia|date:"m/Y" }}</td>
+                    <td>{{ notif.titulo }}</td>
+                    <td>{% if notif.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
+                    <td>
+                        {% if notif.comprovante %}
+                        <a class="btn" href="{% url 'ver_comprovante_pagamento' notif.comprovante.id %}" target="_blank" rel="noopener">Ver</a>
+                        {% endif %}
+                        <form method="post" enctype="multipart/form-data" action="{% url 'anexar_comprovante_pagamento' morador.id %}" style="margin-top:8px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="mes" value="{{ notif.mes_referencia|date:'Y-m' }}">
+                            <input type="hidden" name="next" value="perfil">
+                            <input type="file" name="comprovante" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                            <button type="submit" class="btn">{% if notif.comprovante %}Trocar{% else %}Anexar{% endif %}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% else %}
+        <p class="muted">Sem notificações de aluguel no momento.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
         <h2>Ordens de servico vinculadas</h2>
         {% if novas_ordens %}
         <div class="alert">

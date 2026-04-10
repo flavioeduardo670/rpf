@@ -2,10 +2,11 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth.models import Group, User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import AjusteMorador, Morador, PendenciaMensalItem
+from core.models import AjusteMorador, ComprovantePagamentoMorador, ConfiguracaoFinanceira, Morador, PendenciaMensalItem
 
 
 class FinanceiroTemplateTests(TestCase):
@@ -59,3 +60,48 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.pendencia.refresh_from_db()
         self.assertEqual(self.pendencia.motivo, '')
+
+    def test_financeiro_exibe_coluna_de_comprovante(self):
+        response = self.client.get(reverse('financeiro') + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Comprovante')
+        self.assertContains(response, 'name="comprovante"')
+        self.assertContains(response, 'Status')
+
+    def test_financeiro_marca_status_pago_quando_aluguel_zero(self):
+        ConfiguracaoFinanceira.objects.create(valor_aluguel=Decimal('0.50'))
+        response = self.client.get(reverse('financeiro') + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pago')
+
+    def test_anexar_comprovante_pagamento(self):
+        arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
+        response = self.client.post(
+            reverse('anexar_comprovante_pagamento', args=[self.morador.id]),
+            data={
+                'mes': '2026-05',
+                'comprovante': arquivo,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        comprovante = ComprovantePagamentoMorador.objects.get(morador=self.morador, mes_referencia=self.mes)
+        self.assertTrue(comprovante.arquivo.name.endswith('.pdf'))
+
+    def test_financeiro_marca_status_pago_quando_tem_comprovante(self):
+        ComprovantePagamentoMorador.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            arquivo=SimpleUploadedFile('anexo.pdf', b'pdf', content_type='application/pdf'),
+        )
+        response = self.client.get(reverse('financeiro') + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pago')
+
+    def test_ver_comprovante_pagamento_retorna_arquivo(self):
+        comprovante = ComprovantePagamentoMorador.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            arquivo=SimpleUploadedFile('anexo.pdf', b'pdf', content_type='application/pdf'),
+        )
+        response = self.client.get(reverse('ver_comprovante_pagamento', args=[comprovante.id]))
+        self.assertEqual(response.status_code, 200)

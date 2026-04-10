@@ -275,6 +275,8 @@
                 <th>Desconto</th>
                 <th>Extra</th>
                 <th>Total</th>
+                <th>Status</th>
+                <th>Comprovante</th>
             </tr>
             {% for item in rateio_moradores %}
             <tr>
@@ -288,6 +290,24 @@
                 <td>R$ {{ item.desconto|floatformat:2 }}</td>
                 <td>R$ {{ item.extra|floatformat:2 }}</td>
                 <td>R$ {{ item.valor|floatformat:2 }}</td>
+                <td>{% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
+                <td>
+                    {% if item.comprovante %}
+                    <a class="btn btn-invert" href="{% url 'ver_comprovante_pagamento' item.comprovante.id %}" target="_blank" rel="noopener">Ver anexo</a>
+                    {% endif %}
+                    {% if can_edit_financeiro %}
+                    <form method="post" enctype="multipart/form-data" action="{% url 'anexar_comprovante_pagamento' item.morador.id %}" style="margin-top:8px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="mes" value="{{ mes_referencia|date:'Y-m' }}">
+                        <input type="file" name="comprovante" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                        <button type="submit" class="btn btn-invert">
+                            {% if item.comprovante %}Trocar{% else %}Anexar{% endif %}
+                        </button>
+                    </form>
+                    {% elif not item.comprovante %}
+                    <span class="muted">Sem anexo</span>
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
             <tr><td colspan="{{ rateio_colspan }}" class="empty">Nenhum morador ativo cadastrado.</td></tr>

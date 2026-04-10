@@ -2,6 +2,7 @@ from .acessos import gerenciar_acessos
 from .auth_cadastro import cadastro, calendario, home
 from .financeiro import (
     compras,
+    anexar_comprovante_pagamento,
     editar_nota_compra,
     editar_parcela,
     editar_rateio_parcela,
@@ -10,6 +11,7 @@ from .financeiro import (
     financeiro,
     pagar_nota,
     pagar_parcela,
+    ver_comprovante_pagamento,
 )
 from .estoque import (
     almoxarifado,
