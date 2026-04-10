@@ -555,6 +555,17 @@ class OrdemServico(models.Model):
         default='aberta'
     )
 
+    @property
+    def executado_por_exibicao(self):
+        executado_por = (self.executado_por or '').strip()
+        if not executado_por:
+            return '-'
+
+        morador = Morador.objects.filter(nome=executado_por).only('apelido').first()
+        if morador and morador.apelido:
+            return morador.apelido
+        return executado_por
+
     # Indica se já foi gerada despesa no financeiro
     despesa_gerada = models.BooleanField(default=False)
 
