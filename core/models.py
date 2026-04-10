@@ -217,6 +217,29 @@ class PendenciaMensal(models.Model):
         return f"Pendencia {self.mes_referencia.strftime('%m/%Y')}"
 
 
+class PendenciaMensalItem(models.Model):
+    mes_referencia = models.DateField()
+    descricao = models.CharField(max_length=200)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.descricao} ({self.mes_referencia.strftime('%m/%Y')})"
+
+
+class ParcelaRateioExclusao(models.Model):
+    parcela = models.ForeignKey(NotaParcela, on_delete=models.CASCADE, related_name='rateio_exclusoes')
+    morador = models.ForeignKey(Morador, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('parcela', 'morador')
+
+    def __str__(self):
+        return f"Exclusao de {self.morador.nome} na parcela {self.parcela_id}"
+
+
 class AjusteMorador(models.Model):
     TIPO_CHOICES = [
         ('extra', 'Extra'),
@@ -554,6 +577,17 @@ class OrdemServico(models.Model):
         choices=STATUS_CHOICES,
         default='aberta'
     )
+
+    @property
+    def executado_por_exibicao(self):
+        executado_por = (self.executado_por or '').strip()
+        if not executado_por:
+            return '-'
+
+        morador = Morador.objects.filter(nome=executado_por).only('apelido').first()
+        if morador and morador.apelido:
+            return morador.apelido
+        return executado_por
 
     # Indica se já foi gerada despesa no financeiro
     despesa_gerada = models.BooleanField(default=False)

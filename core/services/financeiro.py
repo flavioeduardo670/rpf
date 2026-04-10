@@ -11,6 +11,7 @@ from core.models import (
     DescontoMensal,
     Morador,
     NotaParcela,
+    PendenciaMensalItem,
     PendenciaMensal,
 )
 
@@ -30,7 +31,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         mes_referencia=mes_referencia,
         nota__setor='compras',
         nota__cobrar_no_aluguel=True,
-    ).select_related('nota')
+    ).select_related('nota').prefetch_related('rateio_exclusoes')
     parcelas_consumo = parcelas_mes.filter(nota__tipo_item='Bem de Consumo').exclude(nota__categoria_compra='rock')
     parcelas_material = parcelas_mes.filter(nota__tipo_item='Bem Material').exclude(nota__categoria_compra='rock')
     parcelas_rateio = parcelas_mes.filter(
@@ -49,10 +50,13 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     valor_fixas_total = sum((conta.valor for conta in contas_fixas), Decimal('0.00'))
 
     desconto_obj = DescontoMensal.objects.filter(mes_referencia=mes_referencia).first()
+    pendencias_items = list(PendenciaMensalItem.objects.filter(mes_referencia=mes_referencia).order_by('id'))
+    pendencia_itens_total = sum((item.valor for item in pendencias_items), Decimal('0.00'))
     pendencia_obj = PendenciaMensal.objects.filter(mes_referencia=mes_referencia).first()
     desconto_total_mes = desconto_obj.valor_total if desconto_obj else Decimal('0.00')
     pendencia_total_mes = (
-        pendencia_obj.valor_total if pendencia_obj and incluir_pendencia else Decimal('0.00')
+        (pendencia_itens_total if pendencias_items else (pendencia_obj.valor_total if pendencia_obj else Decimal('0.00')))
+        if incluir_pendencia else Decimal('0.00')
     )
 
     total_rateio = (
@@ -81,6 +85,30 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     ajustes_mes = AjusteMorador.objects.filter(mes_referencia=mes_referencia)
     total_peso_ativos = sum((m.peso_quarto or Decimal('0.00')) for m in moradores_ativos) or Decimal('0.00')
 
+    caixinha_por_morador_map = {morador.id: Decimal('0.00') for morador in moradores_ativos}
+    parcelas_material_por_morador_map = {morador.id: Decimal('0.00') for morador in moradores_ativos}
+
+    def _distribuir_por_inclusao(parcela, acumulador):
+        excluidos_ids = {item.morador_id for item in parcela.rateio_exclusoes.all()}
+        participantes = [morador.id for morador in moradores_ativos if morador.id not in excluidos_ids]
+        if not participantes:
+            participantes = [morador.id for morador in moradores_ativos]
+            if not participantes:
+                return
+        valor_total = parcela.valor or Decimal('0.00')
+        valor_base = (valor_total / len(participantes)).quantize(Decimal('0.01'))
+        restante = valor_total
+        for index, morador_id in enumerate(participantes, start=1):
+            valor = valor_base if index < len(participantes) else restante.quantize(Decimal('0.01'))
+            acumulador[morador_id] += valor
+            restante -= valor
+
+    for parcela in parcelas_consumo:
+        _distribuir_por_inclusao(parcela, caixinha_por_morador_map)
+
+    for parcela in parcelas_material:
+        _distribuir_por_inclusao(parcela, parcelas_material_por_morador_map)
+
     rateio_moradores = []
     for morador in moradores_ativos:
         if total_peso_ativos > 0:
@@ -96,11 +124,13 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
 
         desconto_total = (desconto_por_morador + desconto_individual).quantize(Decimal('0.01'))
         extras_total = (extra_total + pendencia_por_morador).quantize(Decimal('0.01'))
+        caixinha_morador = caixinha_por_morador_map.get(morador.id, Decimal('0.00')).quantize(Decimal('0.01'))
+        parcelas_morador = parcelas_material_por_morador_map.get(morador.id, Decimal('0.00')).quantize(Decimal('0.01'))
         valor_total = (
             aluguel_share
             + valor_variavel_por_morador
-            + caixinha_por_morador
-            + parcelas_por_morador
+            + caixinha_morador
+            + parcelas_morador
             + pendencia_por_morador
             - desconto_por_morador
             - desconto_individual
@@ -116,8 +146,8 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
                     _dividir_total(conta.valor) if total_moradores_ativos > 0 else Decimal('0.00')
                     for conta in contas_fixas
                 ],
-                'caixinha': caixinha_por_morador,
-                'parcelas': parcelas_por_morador,
+                'caixinha': caixinha_morador,
+                'parcelas': parcelas_morador,
                 'desconto': desconto_total,
                 'extra': extras_total,
                 'valor': valor_total,
@@ -136,6 +166,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         'valor_fixas_total': valor_fixas_total,
         'desconto_total_mes': desconto_total_mes,
         'pendencia_total_mes': pendencia_total_mes,
+        'pendencias_items': pendencias_items,
         'total_rateio': total_rateio,
         'moradores_ativos': moradores_ativos,
         'total_moradores_ativos': total_moradores_ativos,
@@ -147,4 +178,3 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         'pendencia_por_morador': pendencia_por_morador,
         'rateio_moradores': rateio_moradores,
     }
-

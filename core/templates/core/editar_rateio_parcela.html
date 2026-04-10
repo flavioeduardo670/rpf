@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar rateio da parcela</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:860px; margin:0 auto; }
+        .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); }
+        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .btn.light { background:#fff; color:#111; }
+        .actions { display:flex; gap:8px; margin-top:14px; }
+        .list { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px 14px; margin-top:10px; }
+        label { display:flex; align-items:center; gap:8px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <section class="card">
+        <h1>Editar rateio da parcela</h1>
+        <p><strong>Item:</strong> {{ parcela.nota.descricao }}</p>
+        <p><strong>Parcela:</strong> {{ parcela.numero }} • <strong>Mês:</strong> {{ parcela.mes_referencia|date:"m/Y" }} • <strong>Valor:</strong> R$ {{ parcela.valor|floatformat:2 }}</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="mes_param" value="{{ request.GET.mes|default:'' }}">
+            <p>Selecione quem participa do rateio desta parcela:</p>
+            <div class="list">
+                {% for item in moradores_contexto %}
+                <label>
+                    <input type="checkbox" name="moradores_rateio" value="{{ item.morador.id }}" {% if item.selecionado %}checked{% endif %}>
+                    {{ item.morador.apelido|default:item.morador.nome }}
+                </label>
+                {% endfor %}
+            </div>
+            <div class="actions">
+                <button type="submit" class="btn">Salvar rateio</button>
+                <a href="{% url 'financeiro' %}{% if request.GET.mes %}?mes={{ request.GET.mes }}{% endif %}" class="btn light">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+</body>
+</html>

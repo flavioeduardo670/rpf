@@ -4,6 +4,7 @@ from .financeiro import (
     compras,
     editar_nota_compra,
     editar_parcela,
+    editar_rateio_parcela,
     exportar_compras_csv,
     exportar_financeiro_csv,
     financeiro,
