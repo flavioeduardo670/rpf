@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import Sum
@@ -23,7 +23,10 @@ def resolver_mes_referencia(mes_param):
             return date(ano, mes, 1)
         except ValueError:
             pass
-    return timezone.localdate().replace(day=1)
+    hoje = timezone.localdate()
+    if hoje.day >= 11:
+        return (hoje.replace(day=1) + timedelta(days=32)).replace(day=1)
+    return hoje.replace(day=1)
 
 
 def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):

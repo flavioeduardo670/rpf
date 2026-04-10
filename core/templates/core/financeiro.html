@@ -173,7 +173,6 @@
         <article class="card"><p class="label">Valor medio por morador</p><p class="value">R$ {{ valor_por_morador|floatformat:2 }}</p></article>
     </section>
 
-    <h2 class="section-title">Aluguel do Mês {{ mes_referencia|date:"m/Y" }}</h2>
     <section class="config-wrap">
         <h2>Desconto do mês</h2>
         {% if can_edit_financeiro %}
@@ -217,7 +216,7 @@
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="btn btn-invert" id="add-pendencia">Adicionar pendência</button>
+            <button type="button" class="btn btn-invert" id="add-pendencia">Adicionar outra pendência</button>
             <button type="submit" name="pendencia_submit" class="btn">Salvar pendência</button>
         </form>
         {% else %}
@@ -272,6 +271,7 @@
         {% endif %}
     </section>
 
+    <h2 class="section-title">Divisão do aluguel dos moradores — mês {{ mes_referencia|date:"m/Y" }}</h2>
     <div class="table-wrap">
         <table>
             <tr>
