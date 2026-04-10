@@ -174,22 +174,7 @@
     </section>
 
     <section class="config-wrap">
-        <h2>Desconto do mês</h2>
-        {% if can_edit_financeiro %}
-        <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m-d' }}">
-            {{ desconto_form.valor_total.label_tag }}
-            {{ desconto_form.valor_total }}
-            <button type="submit" name="desconto_submit" class="btn">Salvar desconto</button>
-        </form>
-        {% else %}
-        <p>Desconto atual: <strong>R$ {{ desconto_total_mes|floatformat:2 }}</strong></p>
-        {% endif %}
-    </section>
-
-    <section class="config-wrap">
-        <h2>Pendência do mês</h2>
+        <h2>Pendências e descontos do mês</h2>
         {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
@@ -198,15 +183,17 @@
             <div class="table-wrap">
                 <table>
                     <tr>
-                        <th>Descrição</th>
+                        <th>Tipo</th>
                         <th>Valor</th>
+                        <th>Motivo</th>
                         <th>Excluir</th>
                     </tr>
                     <tbody id="pendencia-body">
                     {% for form in pendencia_formset %}
                     <tr>
-                        <td>{{ form.descricao }}</td>
+                        <td>{{ form.tipo }}</td>
                         <td>{{ form.valor }}</td>
+                        <td>{{ form.motivo }}</td>
                         <td>
                             <button type="button" class="btn btn-invert" data-remove-pendencia>Excluir</button>
                             <span style="display:none;">{{ form.DELETE }}</span>
@@ -216,16 +203,17 @@
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="btn btn-invert" id="add-pendencia">Adicionar outra pendência</button>
-            <button type="submit" name="pendencia_submit" class="btn">Salvar pendência</button>
+            <button type="button" class="btn btn-invert" id="add-pendencia">Adicionar linha</button>
+            <button type="submit" name="pendencia_submit" class="btn">Salvar pendências e descontos</button>
         </form>
         {% else %}
-        <p>Pendência atual: <strong>R$ {{ pendencia_total_mes|floatformat:2 }}</strong></p>
+        <p>Extras atuais: <strong>R$ {{ pendencia_total_mes|floatformat:2 }}</strong></p>
+        <p>Descontos atuais: <strong>R$ {{ desconto_total_mes|floatformat:2 }}</strong></p>
         <ul>
             {% for pendencia in pendencias_items %}
-            <li>{{ pendencia.descricao }} — R$ {{ pendencia.valor|floatformat:2 }}</li>
+            <li>{{ pendencia.get_tipo_display }} — {{ pendencia.motivo|default:pendencia.descricao }} — R$ {{ pendencia.valor|floatformat:2 }}</li>
             {% empty %}
-            <li>Nenhuma pendência registrada no mês.</li>
+            <li>Nenhuma linha registrada no mês.</li>
             {% endfor %}
         </ul>
         {% endif %}
@@ -345,8 +333,9 @@
 </template>
 <template id="pendencia-template">
     <tr>
-        <td>{{ pendencia_formset.empty_form.descricao }}</td>
+        <td>{{ pendencia_formset.empty_form.tipo }}</td>
         <td>{{ pendencia_formset.empty_form.valor }}</td>
+        <td>{{ pendencia_formset.empty_form.motivo }}</td>
         <td>
             <button type="button" class="btn btn-invert" data-remove-pendencia>Excluir</button>
             <span style="display:none;">{{ pendencia_formset.empty_form.DELETE }}</span>
