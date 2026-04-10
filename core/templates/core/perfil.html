@@ -182,7 +182,7 @@
                     <td>{% if notif.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
                     <td>
                         {% if notif.comprovante %}
-                        <a class="btn" href="{{ notif.comprovante.arquivo.url }}" target="_blank" rel="noopener">Ver</a>
+                        <a class="btn" href="{% url 'ver_comprovante_pagamento' notif.comprovante.id %}" target="_blank" rel="noopener">Ver</a>
                         {% endif %}
                         <form method="post" enctype="multipart/form-data" action="{% url 'anexar_comprovante_pagamento' morador.id %}" style="margin-top:8px;">
                             {% csrf_token %}

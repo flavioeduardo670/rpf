@@ -19,6 +19,11 @@ urlpatterns = [
         views.anexar_comprovante_pagamento,
         name='anexar_comprovante_pagamento',
     ),
+    path(
+        'financeiro/comprovantes/<int:comprovante_id>/ver/',
+        views.ver_comprovante_pagamento,
+        name='ver_comprovante_pagamento',
+    ),
     path('financeiro/parcelas/<int:parcela_id>/editar/', views.editar_parcela, name='editar_parcela'),
     path('financeiro/parcelas/<int:parcela_id>/rateio/', views.editar_rateio_parcela, name='editar_rateio_parcela'),
     path('compras/', views.compras, name='compras'),

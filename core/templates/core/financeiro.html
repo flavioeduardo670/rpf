@@ -293,7 +293,7 @@
                 <td>{% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
                 <td>
                     {% if item.comprovante %}
-                    <a class="btn btn-invert" href="{{ item.comprovante.arquivo.url }}" target="_blank" rel="noopener">Ver anexo</a>
+                    <a class="btn btn-invert" href="{% url 'ver_comprovante_pagamento' item.comprovante.id %}" target="_blank" rel="noopener">Ver anexo</a>
                     {% endif %}
                     {% if can_edit_financeiro %}
                     <form method="post" enctype="multipart/form-data" action="{% url 'anexar_comprovante_pagamento' item.morador.id %}" style="margin-top:8px;">

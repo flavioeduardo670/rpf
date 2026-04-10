@@ -11,6 +11,7 @@ from .financeiro import (
     financeiro,
     pagar_nota,
     pagar_parcela,
+    ver_comprovante_pagamento,
 )
 from .estoque import (
     almoxarifado,

@@ -6,7 +6,7 @@ from django import forms
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, When
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -181,7 +181,8 @@ def financeiro(request):
     }
     for item in resumo['rateio_moradores']:
         item['comprovante'] = comprovantes_map.get(item['morador'].id)
-        item['status_pagamento'] = 'pago' if item['comprovante'] or item['aluguel'] <= 0 else 'pendente'
+        divida_morador = item['valor'] if item['valor'] is not None else Decimal('0.00')
+        item['status_pagamento'] = 'pago' if item['comprovante'] or divida_morador <= Decimal('1.00') else 'pendente'
 
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
     total_expr = ExpressionWrapper(
@@ -283,6 +284,22 @@ def anexar_comprovante_pagamento(request, morador_id):
     if next_view == 'perfil':
         return redirect('perfil')
     return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
+
+
+@login_required
+def ver_comprovante_pagamento(request, comprovante_id):
+    comprovante = get_object_or_404(ComprovantePagamentoMorador.objects.select_related('morador'), id=comprovante_id)
+    morador_logado = get_user_morador(request.user)
+    can_view_financeiro = can_edit(request, 'acesso_financeiro_visualizar') or can_edit(request, 'acesso_financeiro_editar')
+
+    if not can_view_financeiro and (not morador_logado or morador_logado.id != comprovante.morador_id):
+        raise PermissionDenied('Você não pode visualizar este comprovante.')
+
+    return FileResponse(
+        comprovante.arquivo.open('rb'),
+        as_attachment=False,
+        filename=comprovante.arquivo.name.split('/')[-1],
+    )
 
 
 @setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
