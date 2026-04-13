@@ -264,7 +264,7 @@
 
     <h2 class="section-title">Divisão do aluguel dos moradores — mês {{ mes_referencia|date:"m/Y" }}</h2>
     <div class="table-wrap">
-        <table>
+        <table data-enable-hierarchy-sort="true" data-hierarchy-sort-label="Ordem de hierarquia">
             <tr>
                 <th>Morador</th>
                 <th>Aluguel</th>
@@ -280,7 +280,7 @@
                 <th>Comprovante</th>
             </tr>
             {% for item in rateio_moradores %}
-            <tr>
+            <tr data-hierarquia="{{ item.morador.ordem_hierarquia }}">
                 <td>{{ item.morador.apelido|default:item.morador.nome }}</td>
                 <td>R$ {{ item.aluguel|floatformat:2 }}</td>
                 {% for valor in item.fixas_detalhe %}

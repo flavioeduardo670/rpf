@@ -38,7 +38,10 @@
     }));
 
     const body = table.tBodies[0] || table;
-    const originalRows = Array.from(body.querySelectorAll('tr')).filter((row) => row.cells.length > 1);
+    const dataRows = table.tBodies.length
+      ? Array.from(table.tBodies).flatMap((tbody) => Array.from(tbody.rows))
+      : Array.from(table.querySelectorAll('tr')).filter((row) => row !== headerRow);
+    const originalRows = dataRows.filter((row) => row.cells.length > 1);
     if (!originalRows.length) return;
 
     const controls = document.createElement('div');
@@ -66,12 +69,20 @@
       colSelect.appendChild(option);
     });
 
+    const hierarchySortEnabled = table.dataset.enableHierarchySort === 'true';
+    if (hierarchySortEnabled) {
+      const hierarchyOption = document.createElement('option');
+      hierarchyOption.value = '__hierarquia__';
+      hierarchyOption.textContent = table.dataset.hierarchySortLabel || 'Ordem de hierarquia';
+      colSelect.appendChild(hierarchyOption);
+    }
+
     const searchInput = controls.querySelector('.table-tools__search');
     const directionSelect = controls.querySelector('.table-tools__direction');
 
     const applyState = () => {
       const query = normalize(searchInput.value).toLowerCase();
-      const columnIndex = Number(colSelect.value || 0);
+      const sortSelection = colSelect.value || '0';
       const direction = directionSelect.value === 'desc' ? -1 : 1;
 
       const filtered = originalRows.filter((row) => {
@@ -80,6 +91,17 @@
       });
 
       filtered.sort((a, b) => {
+        if (sortSelection === '__hierarquia__') {
+          const aHierarchy = Number(a.dataset.hierarquia);
+          const bHierarchy = Number(b.dataset.hierarquia);
+          const av = Number.isNaN(aHierarchy) ? Number.MAX_SAFE_INTEGER : aHierarchy;
+          const bv = Number.isNaN(bHierarchy) ? Number.MAX_SAFE_INTEGER : bHierarchy;
+          if (av < bv) return -1 * direction;
+          if (av > bv) return 1 * direction;
+          return 0;
+        }
+
+        const columnIndex = Number(sortSelection);
         const av = parseSortableValue(getCellText(a, columnIndex));
         const bv = parseSortableValue(getCellText(b, columnIndex));
         if (av.value < bv.value) return -1 * direction;
