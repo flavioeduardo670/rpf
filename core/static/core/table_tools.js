@@ -88,6 +88,7 @@
       });
 
       body.querySelectorAll('tr').forEach((row) => {
+        if (row === headerRow) return;
         if (row.cells.length > 1) row.style.display = 'none';
       });
       filtered.forEach((row) => {
