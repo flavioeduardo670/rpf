@@ -37,6 +37,7 @@ Este pacote cobre quatro fases evolutivas.
 - `apiClient.gs`: autenticação, retry, paginação e chamadas HTTP para a API do ERP.
 - `financeiroService.gs`: normalização, agregações e orquestrações das fases 1/2/3/4.
 - `dashboardWriter.gs`: gravação de abas base, renderização do painel e persistência operacional.
+- `../rpf_system_api.gs`: cliente Apps Script para o **sistema RPF (Django)** via login + exportação CSV autenticada.
 
 ## Endpoints esperados
 
@@ -59,6 +60,28 @@ Parâmetros comuns:
 3. Ajuste `ERP_CONFIG` (URL, token, timezone, limiares e abas).
 4. (Recomendado) configure o token em Script Properties com a chave `ERP_BEARER_TOKEN`.
 5. Execute `sincronizarFinanceiroFase4()`.
+
+### Consumir API/exports do próprio sistema RPF (Django)
+
+Se você quiser consumir os dados do sistema RPF diretamente (sem endpoints `/api/financeiro/*`), use o script:
+
+- `scripts/apps_script/rpf_system_api.gs`
+
+Esse script:
+
+1. Faz login em `/login/` (captura CSRF + cookie de sessão).
+2. Baixa CSVs autenticados:
+   - `/moradores/exportar/`
+   - `/financeiro/exportar/?mes=YYYY-MM`
+   - `/compras/exportar/`
+   - `/almoxarifado/exportar/`
+   - `/almoxarifado/consumo/exportar/`
+3. Escreve tudo em abas da planilha.
+
+Funções principais:
+
+- `sincronizarRpfCsvs()` → sincroniza todos os CSVs.
+- `sincronizarFinanceiroPorMesRpf('2026-04')` → sincroniza só o financeiro por mês.
 
 Exemplos:
 
