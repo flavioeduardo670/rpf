@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, When
@@ -295,8 +296,26 @@ def ver_comprovante_pagamento(request, comprovante_id):
     if not can_view_financeiro and (not morador_logado or morador_logado.id != comprovante.morador_id):
         raise PermissionDenied('Você não pode visualizar este comprovante.')
 
+    destino = 'perfil' if (morador_logado and morador_logado.id == comprovante.morador_id and not can_view_financeiro) else 'financeiro'
+    if destino == 'financeiro':
+        destino = f"{redirect('financeiro').url}?mes={comprovante.mes_referencia.strftime('%Y-%m')}"
+
+    if not comprovante.arquivo or not comprovante.arquivo.name:
+        messages.error(request, 'Comprovante não encontrado para este registro.')
+        return redirect(destino)
+
+    if not comprovante.arquivo.storage.exists(comprovante.arquivo.name):
+        messages.error(request, 'Arquivo do comprovante não está mais disponível.')
+        return redirect(destino)
+
+    try:
+        arquivo = comprovante.arquivo.open('rb')
+    except (FileNotFoundError, OSError):
+        messages.error(request, 'Não foi possível abrir o arquivo do comprovante.')
+        return redirect(destino)
+
     return FileResponse(
-        comprovante.arquivo.open('rb'),
+        arquivo,
         as_attachment=False,
         filename=comprovante.arquivo.name.split('/')[-1],
     )

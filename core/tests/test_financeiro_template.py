@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -105,3 +106,14 @@ class FinanceiroTemplateTests(TestCase):
         )
         response = self.client.get(reverse('ver_comprovante_pagamento', args=[comprovante.id]))
         self.assertEqual(response.status_code, 200)
+
+    def test_ver_comprovante_pagamento_redireciona_quando_arquivo_sumiu(self):
+        comprovante = ComprovantePagamentoMorador.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            arquivo=SimpleUploadedFile('anexo.pdf', b'pdf', content_type='application/pdf'),
+        )
+        with patch.object(comprovante.arquivo.storage, 'exists', return_value=False):
+            response = self.client.get(reverse('ver_comprovante_pagamento', args=[comprovante.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('financeiro'), response.url)
