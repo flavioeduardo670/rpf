@@ -1,6 +1,8 @@
+{% load static %}
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro</title>
@@ -19,7 +21,7 @@
         .errorlist { margin:0 0 10px; padding-left:18px; font-size:.88rem; }
     </style>
 </head>
-<body>
+<body class="app-body">
     <div class="card">
         <h1>Criar cadastro</h1>
         <p>Preencha os dados para criar seu acesso.</p>

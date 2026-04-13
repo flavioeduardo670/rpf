@@ -1,6 +1,8 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar rateio da parcela</title>
@@ -17,7 +19,7 @@
         label { display:flex; align-items:center; gap:8px; }
     </style>
 </head>
-<body>
+<body class="app-body">
 <div class="wrap">
     <section class="card">
         <h1>Editar rateio da parcela</h1>
