@@ -1,6 +1,8 @@
+{% load static %}
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuracoes da Casa</title>
@@ -25,7 +27,7 @@
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn{width:100%; text-align:center;} .grid{grid-template-columns:1fr;} }
     </style>
 </head>
-<body>
+<body class="app-body">
 <div class="wrap">
     <div class="top">
         <h1>Configuracoes da Casa</h1>
