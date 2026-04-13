@@ -1,6 +1,9 @@
+{% load static %}
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
+    <script defer src="{% static 'core/table_tools.js' %}"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Almoxarifado</title>
@@ -43,7 +46,7 @@
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .grid{grid-template-columns:1fr;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
-<body>
+<body class="app-body">
 <div class="wrap">
     <div class="top">
         <h1>Almoxarifado</h1>
