@@ -1,19 +1,16 @@
 :root {
     --app-panel: #ffffff;
-    --app-panel-soft: #f9fbff;
-    --app-ink: #101828;
-    --app-muted: #667085;
-    --app-line: #d0d5dd;
-    --app-line-strong: #98a2b3;
-    --app-light: #f2f4f7;
-    --app-dark: #111827;
-    --app-primary: #2563eb;
-    --app-primary-strong: #1d4ed8;
-    --app-success: #16a34a;
-    --app-danger: #dc2626;
-    --app-warning: #d97706;
+    --app-panel-soft: #f7f7f7;
+    --app-ink: #151515;
+    --app-muted: #666666;
+    --app-line: #d4d4d4;
+    --app-line-strong: #a3a3a3;
+    --app-light: #f1f1f1;
+    --app-dark: #111111;
+    --app-primary: #2b2b2b;
+    --app-primary-strong: #000000;
     --app-radius: 14px;
-    --app-shadow: 0 12px 30px rgba(15, 23, 42, 0.10);
+    --app-shadow: 0 12px 30px rgba(0, 0, 0, 0.10);
 }
 
 * { box-sizing: border-box; }
@@ -22,21 +19,20 @@
     margin: 0;
     min-height: 100vh;
     color: var(--app-ink);
-    background: radial-gradient(circle at top right, #dbeafe 0%, transparent 35%), linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    background: radial-gradient(circle at top right, #f5f5f5 0%, transparent 35%), linear-gradient(180deg, #fafafa 0%, #ececec 100%);
     font-family: "Inter", "Trebuchet MS", "Segoe UI", sans-serif;
     line-height: 1.45;
 }
 
 h1, h2, h3, h4 {
-    color: #0f172a;
+    color: #111111;
     line-height: 1.2;
     margin-top: 0;
 }
 
-p, li, label, small { color: #334155; }
+p, li, label, small { color: #3f3f3f; }
 
 a { color: var(--app-primary); }
-
 a:hover { color: var(--app-primary-strong); }
 
 .app-wrap {
@@ -79,7 +75,7 @@ button:hover,
 input[type="submit"]:hover,
 input[type="button"]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.20);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.20);
 }
 
 .app-btn--outline {
@@ -114,8 +110,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-    border-color: var(--app-primary);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    border-color: #6b6b6b;
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.12);
 }
 
 .app-table-wrap {
@@ -136,7 +132,7 @@ table {
 th,
 td {
     padding: 10px 11px;
-    border-bottom: 1px solid #e4e7ec;
+    border-bottom: 1px solid #e5e5e5;
     text-align: left;
     vertical-align: middle;
 }
@@ -144,7 +140,7 @@ td {
 .app-table th,
 th {
     background: var(--app-light);
-    color: #344054;
+    color: #3a3a3a;
     font-size: .78rem;
     text-transform: uppercase;
     letter-spacing: .6px;
@@ -161,32 +157,28 @@ th {
 .message {
     padding: 10px 12px;
     border-radius: 10px;
-    border: 1px solid transparent;
+    border: 1px solid #d4d4d4;
     font-size: .92rem;
+    background: #f7f7f7;
+    color: #222;
 }
 
-.message.success {
-    background: #f0fdf4;
-    border-color: #86efac;
-    color: #14532d;
-}
-
-.message.error {
-    background: #fef2f2;
-    border-color: #fca5a5;
-    color: #7f1d1d;
-}
-
-.message.warning {
-    background: #fffbeb;
-    border-color: #fcd34d;
-    color: #78350f;
-}
-
+.message.success,
+.message.error,
+.message.warning,
 .message.info {
-    background: #eff6ff;
-    border-color: #93c5fd;
-    color: #1e3a8a;
+    background: #f7f7f7;
+    border-color: #cfcfcf;
+    color: #222;
+}
+
+.errorlist {
+    margin: 0 0 10px;
+    padding: 10px 12px 10px 28px;
+    border: 1px solid #bdbdbd;
+    border-radius: 10px;
+    background: #f4f4f4;
+    color: #222;
 }
 
 .errorlist {
