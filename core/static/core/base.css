@@ -118,6 +118,34 @@ textarea:focus {
     overflow: auto;
 }
 
+.table-tools {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.6fr) minmax(150px, 1fr) minmax(140px, .8fr);
+    gap: 10px;
+    margin: 0 0 10px;
+}
+
+.table-tools label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: .78rem;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: #202020;
+    font-weight: 800;
+}
+
+.table-tools input,
+.table-tools select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #bdbdbd;
+    border-radius: 8px;
+    background: #fff;
+    color: #111;
+}
+
 .app-table,
 table {
     width: 100%;
@@ -185,4 +213,5 @@ th {
     .app-wrap { padding: 14px; }
     .app-topbar { flex-direction: column; align-items: flex-start; }
     .app-btn, button, input[type="submit"], input[type="button"] { width: 100%; text-align: center; }
+    .table-tools { grid-template-columns: 1fr; }
 }
