@@ -1,0 +1,15 @@
+{% load static %}
+<aside class="rpf-shell__sidebar">
+    <div class="rpf-brand">
+        <img src="{% static 'core/brand/rpf_logo_icon.svg' %}" alt="RPF">
+        <span>ERP RPF</span>
+    </div>
+    <nav class="rpf-nav" aria-label="Principal">
+        <a class="rpf-nav__link" href="{% url 'home' %}">Início</a>
+        <a class="rpf-nav__link" href="{% url 'moradores' %}">Moradores</a>
+        <a class="rpf-nav__link" href="{% url 'financeiro' %}">Financeiro</a>
+        <a class="rpf-nav__link" href="{% url 'compras' %}">Compras</a>
+        <a class="rpf-nav__link" href="{% url 'almoxarifado' %}">Almoxarifado</a>
+        <a class="rpf-nav__link" href="{% url 'manutencao' %}">Ordens de Serviço</a>
+    </nav>
+</aside>
