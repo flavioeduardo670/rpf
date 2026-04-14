@@ -605,6 +605,39 @@ class AtaReuniao(models.Model):
         return self.identificador_formatado
 
 
+class AtaParticipante(models.Model):
+    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='participantes')
+    morador = models.ForeignKey(Morador, on_delete=models.PROTECT, related_name='participacoes_ata')
+    presente = models.BooleanField(default=True)
+    assinatura_status = models.CharField(max_length=255, blank=True, default='')
+
+    class Meta:
+        ordering = ['morador__ordem_hierarquia', 'morador__nome']
+
+    def __str__(self):
+        return f"{self.morador.nome} ({'Presente' if self.presente else 'Ausente'})"
+
+
+class AtaTopico(models.Model):
+    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='topicos')
+    ordem = models.PositiveIntegerField()
+    titulo_assunto = models.CharField(max_length=200)
+    desenvolvimento = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['ordem', 'id']
+        constraints = [
+            models.UniqueConstraint(fields=['ata', 'ordem'], name='unique_ata_topico_ordem'),
+        ]
+
+    def clean(self):
+        if self.ata_id and AtaTopico.objects.filter(ata_id=self.ata_id, ordem=self.ordem).exclude(pk=self.pk).exists():
+            raise ValidationError({'ordem': 'Ja existe um topico com essa ordem nesta ata.'})
+
+    def __str__(self):
+        return f"{self.ordem}. {self.titulo_assunto}"
+
+
 class Produto(models.Model):
     """
     Produto controlado no estoque.

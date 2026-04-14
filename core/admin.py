@@ -6,7 +6,9 @@ from django import forms
 
 from .models import (
     AcessoUsuario,
+    AtaParticipante,
     AtaReuniao,
+    AtaTopico,
     ConfiguracaoFinanceira,
     Morador,
     Mensalidade,
@@ -110,6 +112,20 @@ class ReuniaoAdmin(admin.ModelAdmin):
     ordering = ('-data', '-horario_marcado')
 
 
+class AtaParticipanteInline(admin.TabularInline):
+    model = AtaParticipante
+    extra = 0
+    autocomplete_fields = ('morador',)
+    fields = ('morador', 'presente', 'assinatura_status')
+
+
+class AtaTopicoInline(admin.StackedInline):
+    model = AtaTopico
+    extra = 0
+    fields = ('ordem', 'titulo_assunto', 'desenvolvimento')
+    ordering = ('ordem', 'id')
+
+
 @admin.register(AtaReuniao)
 class AtaReuniaoAdmin(admin.ModelAdmin):
     list_display = (
@@ -127,6 +143,7 @@ class AtaReuniaoAdmin(admin.ModelAdmin):
     search_fields = ('identificador_formatado', 'reuniao__local', 'reuniao__setor')
     autocomplete_fields = ('reuniao', 'criado_por')
     ordering = ('-ano', '-numero_sequencial')
+    inlines = (AtaParticipanteInline, AtaTopicoInline)
 
 
 @admin.register(ConfiguracaoFinanceira)
