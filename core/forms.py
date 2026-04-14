@@ -32,6 +32,7 @@ from .models import (
     PendenciaMensalItem,
     AjusteMorador,
     ContaFixa,
+    Reuniao,
 )
 
 
@@ -506,6 +507,27 @@ class EventoCalendarioForm(forms.ModelForm):
         widgets = {
             'data': forms.DateInput(attrs={'type': 'date'}),
         }
+
+
+class ReuniaoForm(forms.ModelForm):
+    class Meta:
+        model = Reuniao
+        fields = ['tipo', 'setor', 'data', 'horario_marcado', 'local']
+        labels = {
+            'tipo': 'Tipo',
+            'setor': 'Setor',
+            'data': 'Data',
+            'horario_marcado': 'Horario marcado',
+            'local': 'Local',
+        }
+        widgets = {
+            'data': forms.DateInput(attrs={'type': 'date'}),
+            'horario_marcado': forms.TimeInput(attrs={'type': 'time'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['setor'].required = False
 
 
 class DescontoMensalForm(forms.ModelForm):
