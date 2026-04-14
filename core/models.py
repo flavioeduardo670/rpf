@@ -50,6 +50,8 @@ class Morador(models.Model):
     acesso_manutencao_editar = models.BooleanField(default=False)
     acesso_rock_visualizar = models.BooleanField(default=False)
     acesso_rock_editar = models.BooleanField(default=False)
+    acesso_reunioes_visualizar = models.BooleanField(default=False)
+    acesso_reunioes_editar = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['ordem_hierarquia', 'nome']
@@ -71,6 +73,8 @@ class AcessoUsuario(models.Model):
     acesso_manutencao_editar = models.BooleanField(default=False)
     acesso_rock_visualizar = models.BooleanField(default=False)
     acesso_rock_editar = models.BooleanField(default=False)
+    acesso_reunioes_visualizar = models.BooleanField(default=False)
+    acesso_reunioes_editar = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username
