@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reuniões</title>
+    <style>
+        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:1280px; margin:0 auto; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+        h1 { margin:0; }
+        .btn, button { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
+        .btn-secondary { background:#fff; color:#111; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
+        .panel h2 { margin-top:0; }
+        form p { margin:0 0 12px; }
+        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
+        .table-wrap { overflow:auto; }
+        table { width:100%; min-width:940px; border-collapse:collapse; }
+        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:top; }
+        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
+        .empty { color:var(--muted); text-align:center; }
+        .messages { list-style:none; margin:0 0 14px; padding:0; display:grid; gap:8px; }
+        .messages li { border:1px solid #d7d7d7; background:#fff; border-radius:10px; padding:10px 12px; }
+        .actions form { margin:0; }
+        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
+    </style>
+</head>
+<body class="app-body">
+<div class="wrap">
+    <div class="top">
+        <h1>Reuniões</h1>
+        <a class="btn" href="{% url 'home' %}">Voltar ao inicio</a>
+    </div>
+
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <section class="panel">
+        <h2>Agendar reunião</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Agendar reunião</button>
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>Reuniões cadastradas</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Setor</th>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Local</th>
+                    <th>Status</th>
+                    <th>Ata</th>
+                    <th>Ações</th>
+                </tr>
+                {% for reuniao in reunioes %}
+                <tr>
+                    <td>{{ reuniao.get_tipo_display }}</td>
+                    <td>{{ reuniao.get_setor_display|default:'-' }}</td>
+                    <td>{{ reuniao.data|date:"d/m/Y" }}</td>
+                    <td>{{ reuniao.horario_marcado|time:"H:i" }}</td>
+                    <td>{{ reuniao.local }}</td>
+                    <td>{{ reuniao.get_status_display }}</td>
+                    <td>
+                        {% if reuniao.ata %}
+                        {{ reuniao.ata.identificador_formatado }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        {% if reuniao.status in status_permite_ata and not reuniao.ata %}
+                        <form method="post" action="{% url 'adicionar_ata_reuniao' reuniao.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-secondary">Adicionar ata</button>
+                        </form>
+                        {% elif reuniao.ata %}
+                        Ata cadastrada
+                        {% else %}
+                        Indisponível
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="empty">Nenhuma reunião cadastrada.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>
