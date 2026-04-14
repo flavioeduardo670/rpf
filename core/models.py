@@ -1,5 +1,8 @@
-from django.db import models
+from datetime import datetime, time
+
+from django.db import models, transaction
 from django.db.models.signals import post_save, pre_save
+from django.db.models import Q
 from django.dispatch import receiver
 from decimal import Decimal
 from django.utils import timezone
@@ -49,6 +52,8 @@ class Morador(models.Model):
     acesso_manutencao_editar = models.BooleanField(default=False)
     acesso_rock_visualizar = models.BooleanField(default=False)
     acesso_rock_editar = models.BooleanField(default=False)
+    acesso_reunioes_visualizar = models.BooleanField(default=False)
+    acesso_reunioes_editar = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['ordem_hierarquia', 'nome']
@@ -70,6 +75,8 @@ class AcessoUsuario(models.Model):
     acesso_manutencao_editar = models.BooleanField(default=False)
     acesso_rock_visualizar = models.BooleanField(default=False)
     acesso_rock_editar = models.BooleanField(default=False)
+    acesso_reunioes_visualizar = models.BooleanField(default=False)
+    acesso_reunioes_editar = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username
