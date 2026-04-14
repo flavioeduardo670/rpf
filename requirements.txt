@@ -9,3 +9,4 @@ sentry-sdk==2.27.0
 coverage==7.8.0
 django-storages==1.14.6
 boto3==1.39.7
+xhtml2pdf==0.2.17

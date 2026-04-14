@@ -1,0 +1,30 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Ata de Reunião{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:1000px; margin:20px auto;">
+    <h1>Ata da reunião</h1>
+    <p><strong>Reunião:</strong> {{ reuniao.get_tipo_display }} em {{ reuniao.data|date:"d/m/Y" }} - {{ reuniao.local }}</p>
+    <p><strong>Identificador:</strong> {{ ata.identificador_formatado }}</p>
+
+    {% if ata.arquivo_pdf %}
+        <p><a class="btn" href="{% url 'download_ata_pdf' ata.id %}">Baixar versão final (PDF)</a></p>
+    {% endif %}
+
+    {% if somente_leitura %}
+        <div class="alert alert-success">
+            Ata final já registrada em {{ ata.registrada_em|date:"d/m/Y H:i" }}. O conteúdo está bloqueado para edição.
+        </div>
+    {% else %}
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="submit" class="btn">Salvar rascunho</button>
+                <button type="submit" class="btn btn-primary" name="registrar_pdf" value="1">Gerar PDF e Registrar Ata</button>
+            </div>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

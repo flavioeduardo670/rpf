@@ -48,4 +48,6 @@ urlpatterns = [
     path('os/', views.manutencao, name='manutencao'),
     path('os/lista/', views.lista_os, name='lista_os'),
     path('os/editar/<int:numero>/', views.editar_os, name='editar_os'),
+    path('reunioes/<int:reuniao_id>/ata/', views.editar_ata_reuniao, name='editar_ata_reuniao'),
+    path('atas/<int:ata_id>/pdf/', views.download_ata_pdf, name='download_ata_pdf'),
 ]

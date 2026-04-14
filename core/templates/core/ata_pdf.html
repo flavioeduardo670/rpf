@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>{{ ata.identificador_formatado }}</title>
+    <style>
+        @page { size: A4; margin: 2cm; }
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
+        h1 { margin: 0 0 8px; font-size: 20px; }
+        h2 { margin: 20px 0 6px; font-size: 14px; }
+        .cabecalho { border-bottom: 1px solid #aaa; padding-bottom: 10px; }
+        .meta p { margin: 3px 0; }
+        ul { margin: 8px 0 0 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #aaa; padding: 6px; vertical-align: top; }
+        th { background: #efefef; }
+    </style>
+</head>
+<body>
+    <section class="cabecalho">
+        <h1>{{ ata.identificador_formatado }}</h1>
+        <div class="meta">
+            <p><strong>Tipo:</strong> {{ ata.reuniao.get_tipo_display }}</p>
+            {% if ata.reuniao.setor %}<p><strong>Setor:</strong> {{ ata.reuniao.get_setor_display }}</p>{% endif %}
+            <p><strong>Data:</strong> {{ ata.reuniao.data|date:"d/m/Y" }}</p>
+            <p><strong>Horário previsto:</strong> {{ ata.reuniao.horario_marcado|time:"H:i" }}</p>
+            <p><strong>Local:</strong> {{ ata.reuniao.local }}</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Participantes</h2>
+        <ul>
+            {% for participante in participantes %}
+                <li>{{ participante }}</li>
+            {% empty %}
+                <li>Sem participantes registrados.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h2>Tópicos discutidos</h2>
+        <ul>
+            {% for topico in topicos %}
+                <li>{{ topico }}</li>
+            {% empty %}
+                <li>Sem tópicos registrados.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h2>Plano de ação 5W2H</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>What</th>
+                    <th>Why</th>
+                    <th>Where</th>
+                    <th>When</th>
+                    <th>Who</th>
+                    <th>How</th>
+                    <th>How much</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens_5w2h %}
+                    <tr>
+                        <td>{{ item.what }}</td>
+                        <td>{{ item.why }}</td>
+                        <td>{{ item.where }}</td>
+                        <td>{{ item.when }}</td>
+                        <td>{{ item.who }}</td>
+                        <td>{{ item.how }}</td>
+                        <td>{{ item.how_much }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7">Sem itens 5W2H registrados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>
