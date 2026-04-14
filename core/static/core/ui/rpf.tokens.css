@@ -1,0 +1,27 @@
+:root {
+    --rpf-black: #0b0b0b;
+    --rpf-white: #ffffff;
+    --rpf-gray-100: #f5f5f5;
+    --rpf-gray-200: #e7e7e7;
+    --rpf-gray-300: #dadada;
+    --rpf-gray-600: #6b6b6b;
+    --rpf-yellow-500: #ffc700;
+    --rpf-yellow-600: #e0b000;
+
+    --rpf-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --rpf-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+    --rpf-space-1: 4px;
+    --rpf-space-2: 8px;
+    --rpf-space-3: 12px;
+    --rpf-space-4: 16px;
+    --rpf-space-5: 24px;
+    --rpf-space-6: 32px;
+
+    --rpf-radius-2: 12px;
+    --rpf-radius-3: 18px;
+    --rpf-shadow-1: 0 10px 20px rgba(0, 0, 0, .06);
+
+    --rpf-focus-ring: 0 0 0 4px rgba(255, 199, 0, .55);
+    --rpf-focus-outline: 0 0 0 2px rgba(11, 11, 11, .9);
+}

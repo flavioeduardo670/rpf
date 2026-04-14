@@ -1,0 +1,33 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.components.css' %}">
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.shell.css' %}">
+    <script defer src="{% static 'core/table_tools.js' %}"></script>
+    <title>{% block title %}ERP RPF{% endblock %}</title>
+</head>
+<body class="rpf-body">
+    <div class="rpf-shell">
+        {% include 'core/partials/sidebar.html' %}
+        <div class="rpf-shell__main">
+            {% include 'core/partials/topbar.html' %}
+            <main class="rpf-content">
+                {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li class="message {{ message.tags }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+</body>
+</html>
