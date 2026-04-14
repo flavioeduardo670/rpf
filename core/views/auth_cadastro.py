@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from core.forms import EventoCalendarioForm
-from core.models import EventoCalendario, OrdemServico, RockEvento
+from core.models import EventoCalendario, OrdemServico, Reuniao, RockEvento
 
 from .common import can_edit, get_user_morador, setor_required
 
@@ -47,11 +47,16 @@ def calendario(request):
     eventos_por_dia = defaultdict(list)
 
     for rock in RockEvento.objects.filter(data__range=(start, end)):
-        eventos_por_dia[rock.data].append(rock.nome)
+        eventos_por_dia[rock.data].append({'origem': 'rock', 'texto': rock.nome})
     for os in OrdemServico.objects.filter(data_inicio__date__range=(start, end)):
-        eventos_por_dia[os.data_inicio.date()].append(f"OS {os.numero}")
+        eventos_por_dia[os.data_inicio.date()].append({'origem': 'os', 'texto': f"OS {os.numero}"})
+    for reuniao in Reuniao.objects.filter(data__range=(start, end)):
+        titulo = f"Reunião {reuniao.get_tipo_display()}"
+        if reuniao.tipo == 'setorial' and reuniao.setor:
+            titulo = f"{titulo} - {reuniao.get_setor_display()}"
+        eventos_por_dia[reuniao.data].append({'origem': 'reuniao', 'texto': titulo})
     for manual in EventoCalendario.objects.filter(data__range=(start, end)):
-        eventos_por_dia[manual.data].append(manual.titulo)
+        eventos_por_dia[manual.data].append({'origem': 'manual', 'texto': manual.titulo})
 
     weeks = [
         [{'date': day, 'events': eventos_por_dia.get(day, [])} for day in week]

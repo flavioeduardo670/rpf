@@ -194,6 +194,21 @@
             line-height: 1.2;
         }
 
+        .events li.manual { background: #ececec; }
+        .events li.os { background: #dceeff; }
+        .events li.rock { background: #f8dfef; }
+        .events li.reuniao { background: #e2f4e2; }
+
+        .event-label {
+            display: inline-block;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-right: 6px;
+            opacity: 0.75;
+        }
+
         .side {
             background: var(--panel);
             border: 1px solid var(--line);
@@ -273,7 +288,7 @@
             <div>
                 <a href="{% url 'home' %}" class="back">Voltar ao inicio</a>
                 <h1>Calendario</h1>
-                <p>Rocks e OSs aparecem automaticamente. Eventos manuais podem ser adicionados abaixo.</p>
+                <p>Rocks, OSs e reuniões aparecem automaticamente. Eventos manuais podem ser adicionados abaixo.</p>
             </div>
             <div class="month-nav">
                 <a href="?mes={{ mes_anterior|date:'Y-m' }}">&lt;</a>
@@ -300,7 +315,12 @@
                                     </div>
                                     <ul class="events">
                                         {% for evento in day.events %}
-                                            <li>{{ evento }}</li>
+                                            <li class="{{ evento.origem }}">
+                                                <span class="event-label">
+                                                    {% if evento.origem == 'manual' %}Manual{% elif evento.origem == 'os' %}OS{% elif evento.origem == 'rock' %}Rock{% elif evento.origem == 'reuniao' %}Reunião{% endif %}
+                                                </span>
+                                                {{ evento.texto }}
+                                            </li>
                                         {% endfor %}
                                     </ul>
                                 </div>
