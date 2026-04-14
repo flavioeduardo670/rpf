@@ -1,5 +1,8 @@
-from django.db import models
+from datetime import datetime, time
+
+from django.db import models, transaction
 from django.db.models.signals import post_save, pre_save
+from django.db.models import Q
 from django.dispatch import receiver
 from decimal import Decimal
 from django.utils import timezone
@@ -605,37 +608,100 @@ class AtaReuniao(models.Model):
         return self.identificador_formatado
 
 
-class AtaParticipante(models.Model):
-    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='participantes')
-    morador = models.ForeignKey(Morador, on_delete=models.PROTECT, related_name='participacoes_ata')
-    presente = models.BooleanField(default=True)
-    assinatura_status = models.CharField(max_length=255, blank=True, default='')
+class AtaAcao5W2H(models.Model):
+    ata_reuniao = models.ForeignKey(
+        AtaReuniao,
+        on_delete=models.CASCADE,
+        related_name='acoes_5w2h',
+    )
+    o_que = models.TextField()
+    por_que = models.TextField(blank=True, default='')
+    quem = models.CharField(max_length=150)
+    quando = models.DateField(blank=True, null=True)
+    onde = models.CharField(max_length=200, blank=True, default='')
+    como = models.TextField(blank=True, default='')
+    quanto = models.CharField(max_length=120, blank=True, default='')
+    observacao = models.TextField(blank=True, default='')
+    gerou_os = models.BooleanField(default=False)
+    ordem_servico = models.ForeignKey(
+        'OrdemServico',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='acoes_5w2h',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['morador__ordem_hierarquia', 'morador__nome']
+        ordering = ['-criado_em', '-id']
 
     def __str__(self):
-        return f"{self.morador.nome} ({'Presente' if self.presente else 'Ausente'})"
+        return f"Ação 5W2H #{self.pk} - {self.o_que[:60]}"
 
+    def _observacao_os(self, extras=None):
+        partes = []
+        if self.por_que:
+            partes.append(f"Por quê: {self.por_que}")
+        if self.como:
+            partes.append(f"Como: {self.como}")
+        if self.quanto:
+            partes.append(f"Quanto: {self.quanto}")
+        if self.onde:
+            partes.append(f"Onde: {self.onde}")
+        if self.observacao:
+            partes.append(f"Obs. ação: {self.observacao}")
+        if extras:
+            for extra in extras:
+                if extra:
+                    partes.append(str(extra))
+        return "\n".join(partes).strip()
 
-class AtaTopico(models.Model):
-    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='topicos')
-    ordem = models.PositiveIntegerField()
-    titulo_assunto = models.CharField(max_length=200)
-    desenvolvimento = models.TextField(blank=True, default='')
+    def _resolver_executado_por(self):
+        responsavel = (self.quem or '').strip()
+        if not responsavel:
+            return 'Não definido'
 
-    class Meta:
-        ordering = ['ordem', 'id']
-        constraints = [
-            models.UniqueConstraint(fields=['ata', 'ordem'], name='unique_ata_topico_ordem'),
-        ]
+        morador = Morador.objects.filter(
+            Q(nome__iexact=responsavel) | Q(apelido__iexact=responsavel)
+        ).first()
+        if morador:
+            return morador.nome
+        return responsavel
 
-    def clean(self):
-        if self.ata_id and AtaTopico.objects.filter(ata_id=self.ata_id, ordem=self.ordem).exclude(pk=self.pk).exists():
-            raise ValidationError({'ordem': 'Ja existe um topico com essa ordem nesta ata.'})
+    def gerar_ordem_servico(self, *, setor='manutencao', extras_observacao=None):
+        with transaction.atomic():
+            acao = AtaAcao5W2H.objects.select_for_update().get(pk=self.pk)
 
-    def __str__(self):
-        return f"{self.ordem}. {self.titulo_assunto}"
+            if acao.ordem_servico_id:
+                if not acao.gerou_os:
+                    acao.gerou_os = True
+                    acao.save(update_fields=['gerou_os'])
+                return acao.ordem_servico
+
+            if acao.gerou_os:
+                raise ValidationError('Ação 5W2H já marcada como geradora de OS.')
+
+            data_inicio = timezone.now()
+            data_fim = None
+            if acao.quando:
+                data_fim = timezone.make_aware(
+                    datetime.combine(acao.quando, time(23, 59, 59)),
+                    timezone.get_current_timezone(),
+                )
+
+            ordem_servico = OrdemServico.objects.create(
+                setor=setor,
+                descricao=acao.o_que,
+                observacao=acao._observacao_os(extras=extras_observacao),
+                executado_por=acao._resolver_executado_por(),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+            )
+
+            acao.ordem_servico = ordem_servico
+            acao.gerou_os = True
+            acao.save(update_fields=['ordem_servico', 'gerou_os'])
+            return ordem_servico
 
 
 class Produto(models.Model):
