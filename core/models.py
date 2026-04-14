@@ -563,7 +563,12 @@ class AtaReuniao(models.Model):
     horario_inicio_real = models.TimeField(blank=True, null=True)
     horario_fim_real = models.TimeField(blank=True, null=True)
     texto_abertura = models.TextField(blank=True, default='')
+    participantes_texto = models.TextField(blank=True, default='')
+    topicos_texto = models.TextField(blank=True, default='')
+    plano_acao_5w2h_texto = models.TextField(blank=True, default='')
     encerramento_texto = models.TextField(blank=True, default='')
+    arquivo_pdf = models.FileField(upload_to='atas/', null=True, blank=True)
+    registrada_em = models.DateTimeField(blank=True, null=True)
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -593,6 +598,9 @@ class AtaReuniao(models.Model):
         return f"ATA {self._setor_identificador()} {self.numero_sequencial:02d}/{self.ano}"
 
     def save(self, *args, **kwargs):
+        if self.pk and AtaReuniao.objects.filter(pk=self.pk, registrada_em__isnull=False).exists():
+            raise ValidationError('Ata registrada e imutavel. Crie nova versao para alterar o conteudo.')
+
         if not self.ano:
             self.ano = self.reuniao.data.year
 

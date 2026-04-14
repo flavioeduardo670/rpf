@@ -32,7 +32,7 @@ from .models import (
     PendenciaMensalItem,
     AjusteMorador,
     ContaFixa,
-    Reuniao,
+    AtaReuniao,
 )
 
 
@@ -584,6 +584,36 @@ class ContaFixaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         apply_form_config(self, 'conta_fixa_form')
+
+
+class AtaReuniaoForm(forms.ModelForm):
+    class Meta:
+        model = AtaReuniao
+        fields = [
+            'horario_inicio_real',
+            'horario_fim_real',
+            'texto_abertura',
+            'participantes_texto',
+            'topicos_texto',
+            'plano_acao_5w2h_texto',
+            'encerramento_texto',
+        ]
+        labels = {
+            'texto_abertura': 'Abertura',
+            'participantes_texto': 'Participantes (1 por linha)',
+            'topicos_texto': 'Tópicos (1 por linha)',
+            'plano_acao_5w2h_texto': '5W2H (What|Why|Where|When|Who|How|How much por linha)',
+            'encerramento_texto': 'Encerramento',
+        }
+        widgets = {
+            'horario_inicio_real': forms.TimeInput(attrs={'type': 'time'}),
+            'horario_fim_real': forms.TimeInput(attrs={'type': 'time'}),
+            'texto_abertura': forms.Textarea(attrs={'rows': 4}),
+            'participantes_texto': forms.Textarea(attrs={'rows': 6}),
+            'topicos_texto': forms.Textarea(attrs={'rows': 6}),
+            'plano_acao_5w2h_texto': forms.Textarea(attrs={'rows': 8}),
+            'encerramento_texto': forms.Textarea(attrs={'rows': 4}),
+        }
 
 
 class CadastroForm(UserCreationForm):
