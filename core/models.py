@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from decimal import Decimal
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 
 # =====================================================
@@ -507,6 +508,101 @@ class EventoCalendario(models.Model):
 
     def __str__(self):
         return f"{self.data} - {self.titulo}"
+
+
+class Reuniao(models.Model):
+    TIPO_CHOICES = [
+        ('geral', 'Geral'),
+        ('setorial', 'Setorial'),
+    ]
+    STATUS_CHOICES = [
+        ('marcada', 'Marcada'),
+        ('realizada', 'Realizada'),
+        ('cancelada', 'Cancelada'),
+    ]
+    SETOR_CHOICES = [
+        ('administrativo', 'Administrativo'),
+        ('compras', 'Compras'),
+        ('infraestrutura', 'Infraestrutura'),
+        ('hotelaria', 'Hotelaria'),
+        ('manutencao', 'Manutenção'),
+        ('rock', 'Rock'),
+        ('financeiro', 'Financeiro'),
+        ('outros', 'Outros'),
+    ]
+
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='geral')
+    setor = models.CharField(max_length=30, choices=SETOR_CHOICES, blank=True, null=True)
+    data = models.DateField()
+    horario_marcado = models.TimeField()
+    local = models.CharField(max_length=150)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='marcada')
+
+    class Meta:
+        ordering = ['-data', '-horario_marcado']
+
+    def clean(self):
+        if self.tipo == 'setorial' and not self.setor:
+            raise ValidationError({'setor': 'Informe o setor para reuniões setoriais.'})
+        if self.tipo == 'geral':
+            self.setor = None
+
+    def __str__(self):
+        return f"Reunião {self.get_tipo_display()} - {self.data:%d/%m/%Y}"
+
+
+class AtaReuniao(models.Model):
+    reuniao = models.OneToOneField(Reuniao, on_delete=models.CASCADE, related_name='ata')
+    numero_sequencial = models.PositiveIntegerField(editable=False)
+    ano = models.PositiveIntegerField(editable=False)
+    escopo_numeracao = models.CharField(max_length=40, editable=False)
+    identificador_formatado = models.CharField(max_length=80, editable=False)
+    horario_inicio_real = models.TimeField(blank=True, null=True)
+    horario_fim_real = models.TimeField(blank=True, null=True)
+    texto_abertura = models.TextField(blank=True, default='')
+    encerramento_texto = models.TextField(blank=True, default='')
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-ano', '-numero_sequencial']
+        unique_together = (('ano', 'escopo_numeracao', 'numero_sequencial'),)
+
+    def _setor_identificador(self):
+        if self.reuniao.tipo == 'setorial':
+            return (self.reuniao.setor or 'setorial').upper()
+        return self.reuniao.tipo.upper()
+
+    def _escopo_numeracao(self):
+        if self.reuniao.tipo == 'setorial':
+            return f"setorial:{(self.reuniao.setor or 'setorial').lower()}"
+        return self.reuniao.tipo
+
+    def _proximo_numero(self):
+        return (
+            AtaReuniao.objects.filter(ano=self.ano, escopo_numeracao=self.escopo_numeracao)
+            .exclude(pk=self.pk)
+            .aggregate(max_num=models.Max('numero_sequencial'))
+            .get('max_num') or 0
+        ) + 1
+
+    def _identificador(self):
+        return f"ATA {self._setor_identificador()} {self.numero_sequencial:02d}/{self.ano}"
+
+    def save(self, *args, **kwargs):
+        if not self.ano:
+            self.ano = self.reuniao.data.year
+
+        self.escopo_numeracao = self._escopo_numeracao()
+
+        if not self.numero_sequencial:
+            self.numero_sequencial = self._proximo_numero()
+
+        self.identificador_formatado = self._identificador()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.identificador_formatado
 
 
 class Produto(models.Model):

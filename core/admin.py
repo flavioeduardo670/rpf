@@ -4,7 +4,15 @@ from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib.auth.models import User
 from django import forms
 
-from .models import AcessoUsuario, ConfiguracaoFinanceira, Morador, Mensalidade, NotaFiscal
+from .models import (
+    AcessoUsuario,
+    AtaReuniao,
+    ConfiguracaoFinanceira,
+    Morador,
+    Mensalidade,
+    NotaFiscal,
+    Reuniao,
+)
 
 
 # =====================================================
@@ -92,6 +100,35 @@ class MoradorAdmin(admin.ModelAdmin):
 
 admin.site.register(Mensalidade)
 admin.site.register(NotaFiscal)
+
+
+@admin.register(Reuniao)
+class ReuniaoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'tipo', 'setor', 'data', 'horario_marcado', 'local', 'status')
+    list_filter = ('tipo', 'setor', 'status', 'data')
+    search_fields = ('local',)
+    ordering = ('-data', '-horario_marcado')
+
+
+@admin.register(AtaReuniao)
+class AtaReuniaoAdmin(admin.ModelAdmin):
+    list_display = (
+        'identificador_formatado',
+        'reuniao',
+        'numero_sequencial',
+        'ano',
+        'escopo_numeracao',
+        'horario_inicio_real',
+        'horario_fim_real',
+        'criado_por',
+        'criado_em',
+    )
+    list_filter = ('ano', 'escopo_numeracao', 'criado_em')
+    search_fields = ('identificador_formatado', 'reuniao__local', 'reuniao__setor')
+    autocomplete_fields = ('reuniao', 'criado_por')
+    ordering = ('-ano', '-numero_sequencial')
+
+
 @admin.register(ConfiguracaoFinanceira)
 class ConfiguracaoFinanceiraAdmin(admin.ModelAdmin):
     list_display = (
