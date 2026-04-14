@@ -60,3 +60,31 @@ class PermissoesInsuficientesTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_calendario_permite_visualizacao_com_permissao_de_leitura(self):
+        user = User.objects.create_user(username='reunioes_visualizacao', password='123456')
+        Morador.objects.create(
+            nome='Morador Reunioes Leitura',
+            user=user,
+            ativo=True,
+            acesso_reunioes_visualizar=True,
+            acesso_reunioes_editar=False,
+        )
+
+        self.client.force_login(user)
+        response = self.client.get(reverse('calendario'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_calendario_bloqueia_post_sem_permissao_de_edicao(self):
+        user = User.objects.create_user(username='reunioes_sem_edicao', password='123456')
+        Morador.objects.create(
+            nome='Morador Reunioes Somente Leitura',
+            user=user,
+            ativo=True,
+            acesso_reunioes_visualizar=True,
+            acesso_reunioes_editar=False,
+        )
+
+        self.client.force_login(user)
+        response = self.client.post(reverse('calendario'), {'titulo': 'Reuniao geral', 'data': '2026-04-14'})
+        self.assertEqual(response.status_code, 403)

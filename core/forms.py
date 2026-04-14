@@ -596,6 +596,8 @@ class AcessoMoradorForm(forms.ModelForm):
             'acesso_manutencao_editar',
             'acesso_rock_visualizar',
             'acesso_rock_editar',
+            'acesso_reunioes_visualizar',
+            'acesso_reunioes_editar',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -617,6 +619,8 @@ class AcessoUsuarioForm(forms.ModelForm):
             'acesso_manutencao_editar',
             'acesso_rock_visualizar',
             'acesso_rock_editar',
+            'acesso_reunioes_visualizar',
+            'acesso_reunioes_editar',
         ]
 
     def __init__(self, *args, **kwargs):
