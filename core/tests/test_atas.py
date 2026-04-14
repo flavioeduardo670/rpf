@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from core.models import AtaLinha5W2H, AtaParticipante, AtaReuniao, AtaTopico, Reuniao
+from core.models import AtaLinha5W2H, AtaParticipante, AtaReuniao, AtaTopico, Morador, Reuniao
 
 
 class AtaReuniaoRegistroTests(TestCase):
@@ -84,3 +84,8 @@ class AtaReuniaoRegistroTests(TestCase):
         self.assertEqual(primeira, 1)
         self.assertEqual(segunda, 0)
         self.assertEqual(self.ata.linhas_5w2h.exclude(ordem_servico__isnull=True).count(), 1)
+
+    def test_participante_preenche_nome_a_partir_do_morador(self):
+        morador = Morador.objects.create(nome='Bruno')
+        participante = AtaParticipante.objects.create(ata=self.ata, morador=morador)
+        self.assertEqual(participante.nome, 'Bruno')
