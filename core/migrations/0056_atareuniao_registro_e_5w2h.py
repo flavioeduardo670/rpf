@@ -47,56 +47,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.CreateModel(
-            name="AtaParticipante",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("nome", models.CharField(max_length=150)),
-                ("presente", models.BooleanField(default=True)),
-                (
-                    "ata",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="participantes",
-                        to="core.atareuniao",
-                    ),
-                ),
-            ],
-            options={"ordering": ["nome"]},
-        ),
-        migrations.CreateModel(
-            name="AtaTopico",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("ordem", models.PositiveIntegerField(default=1)),
-                ("texto", models.TextField()),
-                (
-                    "ata",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="topicos",
-                        to="core.atareuniao",
-                    ),
-                ),
-            ],
-            options={"ordering": ["ordem", "id"]},
-        ),
-        migrations.CreateModel(
             name="AtaLinha5W2H",
             fields=[
                 (
