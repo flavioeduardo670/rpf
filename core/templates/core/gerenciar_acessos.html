@@ -61,6 +61,8 @@
                         <th class="center">Manutencao E</th>
                         <th class="center">Rock V</th>
                         <th class="center">Rock E</th>
+                        <th class="center">Reuniões V</th>
+                        <th class="center">Reuniões E</th>
                     </tr>
                     {% for form in formset %}
                     <tr>
@@ -79,9 +81,11 @@
                         <td class="center">{{ form.acesso_manutencao_editar }}</td>
                         <td class="center">{{ form.acesso_rock_visualizar }}</td>
                         <td class="center">{{ form.acesso_rock_editar }}</td>
+                        <td class="center">{{ form.acesso_reunioes_visualizar }}</td>
+                        <td class="center">{{ form.acesso_reunioes_editar }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="12" class="center">Nenhum morador cadastrado.</td></tr>
+                    <tr><td colspan="14" class="center">Nenhum morador cadastrado.</td></tr>
                     {% endfor %}
                 </table>
             </div>
@@ -101,6 +105,8 @@
                         <th class="center">Manutencao E</th>
                         <th class="center">Rock V</th>
                         <th class="center">Rock E</th>
+                        <th class="center">Reuniões V</th>
+                        <th class="center">Reuniões E</th>
                     </tr>
                     {% for form in usuario_formset %}
                     <tr>
@@ -126,9 +132,11 @@
                         <td class="center">{{ form.acesso_manutencao_editar }}</td>
                         <td class="center">{{ form.acesso_rock_visualizar }}</td>
                         <td class="center">{{ form.acesso_rock_editar }}</td>
+                        <td class="center">{{ form.acesso_reunioes_visualizar }}</td>
+                        <td class="center">{{ form.acesso_reunioes_editar }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="12" class="center">Nenhum usuario sem morador.</td></tr>
+                    <tr><td colspan="14" class="center">Nenhum usuario sem morador.</td></tr>
                     {% endfor %}
                 </table>
             </div>
