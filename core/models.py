@@ -5,6 +5,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.db import transaction
 
 
 # =====================================================
@@ -552,15 +554,31 @@ class Reuniao(models.Model):
 
 
 class AtaReuniao(models.Model):
+    STATUS_CHOICES = [
+        ('rascunho', 'Rascunho'),
+        ('registrada', 'Registrada'),
+    ]
+
     reuniao = models.OneToOneField(Reuniao, on_delete=models.CASCADE, related_name='ata')
     numero_sequencial = models.PositiveIntegerField(editable=False)
     ano = models.PositiveIntegerField(editable=False)
     escopo_numeracao = models.CharField(max_length=40, editable=False)
     identificador_formatado = models.CharField(max_length=80, editable=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='rascunho')
     horario_inicio_real = models.TimeField(blank=True, null=True)
     horario_fim_real = models.TimeField(blank=True, null=True)
     texto_abertura = models.TextField(blank=True, default='')
     encerramento_texto = models.TextField(blank=True, default='')
+    gerou_os = models.BooleanField(default=False)
+    pdf_final = models.FileField(upload_to='atas/%Y/%m/', blank=True, null=True)
+    registrada_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='atas_registradas',
+    )
+    registrada_em = models.DateTimeField(blank=True, null=True)
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -603,6 +621,155 @@ class AtaReuniao(models.Model):
 
     def __str__(self):
         return self.identificador_formatado
+
+    @property
+    def pode_editar(self):
+        return self.status == 'rascunho'
+
+    def _validar_para_registro(self):
+        erros = {}
+        if not self.reuniao.data:
+            erros['data'] = 'Informe a data da reunião.'
+        if not self.horario_inicio_real:
+            erros['horario_inicio_real'] = 'Informe o horário de início real.'
+        if not self.horario_fim_real:
+            erros['horario_fim_real'] = 'Informe o horário de fim real.'
+        if self.horario_inicio_real and self.horario_fim_real and self.horario_fim_real <= self.horario_inicio_real:
+            erros['horario_fim_real'] = 'O horário de fim deve ser maior que o horário de início.'
+        if not self.participantes.filter(presente=True).exists():
+            erros['participantes'] = 'Inclua ao menos um participante presente.'
+        if not self.topicos.filter(texto__isnull=False).exclude(texto='').exists():
+            erros['topicos'] = 'Inclua ao menos um tópico.'
+        if erros:
+            raise ValidationError(erros)
+
+    def _montar_pdf_final(self):
+        linhas = [
+            self.identificador_formatado,
+            f"Status: {self.get_status_display()}",
+            f"Data: {self.reuniao.data:%d/%m/%Y}",
+            f"Horário real: {self.horario_inicio_real.strftime('%H:%M')} - {self.horario_fim_real.strftime('%H:%M')}",
+            "",
+            "Participantes:",
+        ]
+        for participante in self.participantes.order_by('nome'):
+            if participante.presente:
+                linhas.append(f"- {participante.nome}")
+        linhas.append("")
+        linhas.append("Tópicos:")
+        for topico in self.topicos.order_by('ordem', 'id'):
+            linhas.append(f"- {topico.texto}")
+        return ContentFile(("\n".join(linhas) + "\n").encode('utf-8'))
+
+    def _gerar_os_das_linhas_5w2h(self):
+        if self.gerou_os:
+            return 0
+
+        criadas = 0
+        setor_os = self.reuniao.setor or 'outros'
+        if setor_os not in dict(OrdemServico.SETOR_CHOICES):
+            setor_os = 'outros'
+
+        for linha in self.linhas_5w2h.filter(ordem_servico__isnull=True):
+            if not linha.is_valida_para_os:
+                continue
+
+            os_criada = OrdemServico.objects.create(
+                setor=setor_os,
+                descricao=f"{linha.o_que}\n\nPor quê: {linha.por_que}\nComo: {linha.como}",
+                observacao=f"Onde: {linha.onde}\nQuanto: {linha.quanto}",
+                data_inicio=timezone.now(),
+                executado_por=linha.quem,
+                status='aberta',
+            )
+            linha.ordem_servico = os_criada
+            linha.save(update_fields=['ordem_servico'])
+            criadas += 1
+
+        self.gerou_os = True
+        self.save(update_fields=['gerou_os'])
+        return criadas
+
+    @transaction.atomic
+    def registrar(self, registrado_por=None):
+        if self.status == 'registrada':
+            return 0
+
+        self._validar_para_registro()
+        quantidade_os = self._gerar_os_das_linhas_5w2h()
+
+        pdf_content = self._montar_pdf_final()
+        nome_pdf = f"ata_{self.ano}_{self.numero_sequencial:02d}.pdf"
+        self.pdf_final.save(nome_pdf, pdf_content, save=False)
+
+        self.status = 'registrada'
+        self.registrada_por = registrado_por
+        self.registrada_em = timezone.now()
+        self.save(update_fields=['pdf_final', 'status', 'registrada_por', 'registrada_em'])
+        return quantidade_os
+
+
+class AtaBloqueioEdicaoMixin(models.Model):
+    class Meta:
+        abstract = True
+
+    def _validar_edicao_permitida(self):
+        if self.ata_id and self.ata.status != 'rascunho':
+            raise ValidationError('A edição é permitida apenas para atas em rascunho.')
+
+    def save(self, *args, **kwargs):
+        self._validar_edicao_permitida()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self._validar_edicao_permitida()
+        return super().delete(*args, **kwargs)
+
+
+class AtaParticipante(AtaBloqueioEdicaoMixin):
+    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='participantes')
+    nome = models.CharField(max_length=150)
+    presente = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+
+class AtaTopico(AtaBloqueioEdicaoMixin):
+    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='topicos')
+    ordem = models.PositiveIntegerField(default=1)
+    texto = models.TextField()
+
+    class Meta:
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        return f"Tópico {self.ordem}"
+
+
+class AtaLinha5W2H(AtaBloqueioEdicaoMixin):
+    ata = models.ForeignKey(AtaReuniao, on_delete=models.CASCADE, related_name='linhas_5w2h')
+    o_que = models.CharField(max_length=255, blank=True, default='')
+    por_que = models.TextField(blank=True, default='')
+    onde = models.CharField(max_length=255, blank=True, default='')
+    quem = models.CharField(max_length=150, blank=True, default='')
+    quando = models.DateField(blank=True, null=True)
+    como = models.TextField(blank=True, default='')
+    quanto = models.CharField(max_length=120, blank=True, default='')
+    ordem_servico = models.OneToOneField(
+        'OrdemServico',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='origem_5w2h',
+    )
+
+    @property
+    def is_valida_para_os(self):
+        return bool(self.o_que and self.por_que and self.onde and self.quem and self.como)
 
 
 class Produto(models.Model):
