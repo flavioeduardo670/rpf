@@ -178,7 +178,7 @@ class ConsumoForm(forms.ModelForm):
         model = ConsumoEstoque
         fields = ['morador', 'data', 'produto', 'quantidade', 'setor', 'rock_evento']
         widgets = {
-            'data': forms.DateInput(attrs={'type': 'date'}),
+            'data': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -237,9 +237,11 @@ class OrdemServicoForm(forms.ModelForm):
         ]
         widgets = {
             'data_inicio': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
                 attrs={'type': 'datetime-local'}
             ),
             'data_fim': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
                 attrs={'type': 'datetime-local'}
             ),
         }
@@ -257,6 +259,37 @@ class OrdemServicoForm(forms.ModelForm):
         apply_form_config(self, 'ordem_servico_form')
 
 
+class TransferirSituacaoOSForm(forms.ModelForm):
+    class Meta:
+        model = OrdemServico
+        fields = ['executado_por', 'data_inicio', 'data_fim', 'status']
+        widgets = {
+            'data_inicio': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local'},
+            ),
+            'data_fim': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local'},
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        moradores = Morador.objects.filter(ativo=True).order_by('ordem_hierarquia', 'nome')
+        self.fields['executado_por'] = forms.ChoiceField(
+            choices=[('', '---')] + [(m.apelido or m.nome, m.apelido or m.nome) for m in moradores],
+            required=True,
+            label='Morador responsável',
+        )
+        self.fields['status'].choices = [
+            ('finalizada', 'Finalizada'),
+            ('nao_atendida', 'Não atendida'),
+            ('andamento', 'Em andamento'),
+            ('aguardando_orcamento', 'Aguardando orçamento'),
+        ]
+
+
 class MaterialUtilizadoForm(forms.ModelForm):
     class Meta:
         model = MaterialUtilizado
@@ -267,7 +300,7 @@ class MaterialUtilizadoForm(forms.ModelForm):
             'data_consumo',
         ]
         widgets = {
-            'data_consumo': forms.DateInput(attrs={'type': 'date'}),
+            'data_consumo': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -403,7 +436,7 @@ class RockEventoForm(forms.ModelForm):
             'valor_arrecadado',
         ]
         widgets = {
-            'data': forms.DateInput(attrs={'type': 'date'}),
+            'data': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
             'horario_inicio': forms.TimeInput(attrs={'type': 'time'}),
             'horario_fim': forms.TimeInput(attrs={'type': 'time'}),
         }
@@ -504,7 +537,7 @@ class EventoCalendarioForm(forms.ModelForm):
             'data': 'Data',
         }
         widgets = {
-            'data': forms.DateInput(attrs={'type': 'date'}),
+            'data': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
         }
 
 
