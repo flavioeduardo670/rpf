@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.forms import OrdemServicoForm, TransferirSituacaoOSForm
@@ -23,8 +24,9 @@ def manutencao(request):
         return redirect('manutencao')
 
     ordens = OrdemServico.objects.all().order_by('numero')
-    ordens_ativas = ordens.exclude(status='finalizada')
-    ordens_finalizadas = ordens.filter(status='finalizada')
+    filtros_finalizadas = Q(status='finalizada') | Q(status='finalizado') | Q(status='nao_atendida')
+    ordens_ativas = ordens.exclude(filtros_finalizadas)
+    ordens_finalizadas = ordens.filter(filtros_finalizadas)
     return render(request, 'core/manutencao.html', {
         'os_form': os_form,
         'ordens_ativas': ordens_ativas,
@@ -36,9 +38,10 @@ def manutencao(request):
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar')
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('numero')
+    filtros_finalizadas = Q(status='finalizada') | Q(status='finalizado') | Q(status='nao_atendida')
     return render(request, 'core/lista_os.html', {
-        'ordens_ativas': ordens.exclude(status='finalizada'),
-        'ordens_finalizadas': ordens.filter(status='finalizada'),
+        'ordens_ativas': ordens.exclude(filtros_finalizadas),
+        'ordens_finalizadas': ordens.filter(filtros_finalizadas),
     })
 
 
