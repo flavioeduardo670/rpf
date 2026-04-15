@@ -47,11 +47,15 @@
 
     <section class="panel">
         <h2>Agendar reunião</h2>
+        {% if can_edit_reunioes %}
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
             <button type="submit">Agendar reunião</button>
         </form>
+        {% else %}
+        <p class="empty">Você possui acesso somente para visualização.</p>
+        {% endif %}
     </section>
 
     <section class="panel">
@@ -84,13 +88,13 @@
                         {% endif %}
                     </td>
                     <td class="actions">
-                        {% if reuniao.status in status_permite_ata and not reuniao.ata %}
+                        {% if reuniao.ata %}
+                        <a class="btn-secondary" href="{% url 'editar_ata_reuniao' reuniao.id %}">Editar ata</a>
+                        {% elif reuniao.status in status_permite_ata and not reuniao.ata and can_edit_reunioes %}
                         <form method="post" action="{% url 'adicionar_ata_reuniao' reuniao.id %}">
                             {% csrf_token %}
                             <button type="submit" class="btn-secondary">Adicionar ata</button>
                         </form>
-                        {% elif reuniao.ata %}
-                        Ata cadastrada
                         {% else %}
                         Indisponível
                         {% endif %}
