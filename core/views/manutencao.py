@@ -22,7 +22,7 @@ def manutencao(request):
         os_nova.save()
         return redirect('manutencao')
 
-    ordens = OrdemServico.objects.all().order_by('-numero')
+    ordens = OrdemServico.objects.all().order_by('numero')
     ordens_ativas = ordens.exclude(status='finalizada')
     ordens_finalizadas = ordens.filter(status='finalizada')
     return render(request, 'core/manutencao.html', {
@@ -35,7 +35,7 @@ def manutencao(request):
 
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar')
 def lista_os(request):
-    ordens = OrdemServico.objects.all().order_by('-numero')
+    ordens = OrdemServico.objects.all().order_by('numero')
     return render(request, 'core/lista_os.html', {
         'ordens_ativas': ordens.exclude(status='finalizada'),
         'ordens_finalizadas': ordens.filter(status='finalizada'),

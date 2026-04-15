@@ -25,12 +25,8 @@
         .status-tag { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid #222; background:#fff; font-size:.74rem; font-weight:700; }
         .acoes-stack { display:flex; flex-wrap:wrap; gap:8px; min-width:220px; }
         .acoes-stack .btn { padding:7px 10px; font-size:.75rem; }
-        .setor-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0 8px; }
-        .setor-header h2 { margin:0; font-size:1.1rem; }
-        .toggle-btn { display:inline-flex; align-items:center; gap:8px; border:1px solid #111; background:#fff; color:#111; padding:7px 11px; border-radius:999px; cursor:pointer; font-weight:700; }
-        .toggle-btn .arrow { font-size:.85rem; transition:transform .2s ease; }
-        .toggle-btn[aria-expanded="false"] .arrow { transform:rotate(-90deg); }
-        .is-hidden { display:none; }
+        details.finalizadas { margin-top:16px; }
+        details.finalizadas > summary { cursor:pointer; font-weight:700; padding:8px 0; }
         @media (max-width:760px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .actions{width:100%; flex-direction:column;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
@@ -72,12 +68,10 @@
         </table>
     </div>
 
-    <div class="setor-header">
-        <h2>OSs finalizadas</h2>
-        <button type="button" class="toggle-btn" data-target="setor-finalizadas" data-label-show="Mostrar OSs finalizadas" data-label-hide="Ocultar OSs finalizadas" aria-expanded="false"><span class="arrow" aria-hidden="true">▾</span><span class="label">Mostrar OSs finalizadas</span></button>
-    </div>
-    <div class="panel is-hidden" id="setor-finalizadas">
-        <table>
+    <details class="finalizadas">
+        <summary>Mostrar OSs finalizadas</summary>
+        <div class="panel">
+            <table>
             <tr><th>Numero</th><th>Setor</th><th>Descricao</th><th>Observacao</th><th>Solicitante</th><th>Executado por</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
             {% for os in ordens_finalizadas %}
             <tr>
@@ -100,8 +94,9 @@
             {% empty %}
             <tr><td colspan="10" class="empty">Nenhuma OS finalizada.</td></tr>
             {% endfor %}
-        </table>
-    </div>
+            </table>
+        </div>
+    </details>
 </div>
 </body>
 </html>
