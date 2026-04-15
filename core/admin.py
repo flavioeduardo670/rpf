@@ -6,6 +6,7 @@ from django import forms
 
 from .models import (
     AcessoUsuario,
+    AtaLinha5W2H,
     AtaParticipante,
     AtaReuniao,
     AtaTopico,
@@ -44,6 +45,8 @@ class MoradorAdmin(admin.ModelAdmin):
         'acesso_manutencao_editar',
         'acesso_rock_visualizar',
         'acesso_rock_editar',
+        'acesso_reunioes_visualizar',
+        'acesso_reunioes_editar',
     )
 
     list_filter = (
@@ -58,6 +61,8 @@ class MoradorAdmin(admin.ModelAdmin):
         'acesso_manutencao_editar',
         'acesso_rock_visualizar',
         'acesso_rock_editar',
+        'acesso_reunioes_visualizar',
+        'acesso_reunioes_editar',
     )
 
     search_fields = ('nome', 'apelido', 'email')
@@ -89,6 +94,8 @@ class MoradorAdmin(admin.ModelAdmin):
                 'acesso_manutencao_editar',
                 'acesso_rock_visualizar',
                 'acesso_rock_editar',
+                'acesso_reunioes_visualizar',
+                'acesso_reunioes_editar',
             )
         }),
     )
@@ -116,14 +123,21 @@ class AtaParticipanteInline(admin.TabularInline):
     model = AtaParticipante
     extra = 0
     autocomplete_fields = ('morador',)
-    fields = ('morador', 'presente', 'assinatura_status')
+    fields = ('morador', 'nome', 'presente')
 
 
 class AtaTopicoInline(admin.StackedInline):
     model = AtaTopico
     extra = 0
-    fields = ('ordem', 'titulo_assunto', 'desenvolvimento')
+    fields = ('ordem', 'texto')
     ordering = ('ordem', 'id')
+
+
+class AtaLinha5W2HInline(admin.TabularInline):
+    model = AtaLinha5W2H
+    extra = 0
+    fields = ('o_que', 'por_que', 'quem', 'quando', 'onde', 'como', 'quanto', 'ordem_servico')
+    readonly_fields = ('ordem_servico',)
 
 
 @admin.register(AtaReuniao)
@@ -143,7 +157,7 @@ class AtaReuniaoAdmin(admin.ModelAdmin):
     search_fields = ('identificador_formatado', 'reuniao__local', 'reuniao__setor')
     autocomplete_fields = ('reuniao', 'criado_por')
     ordering = ('-ano', '-numero_sequencial')
-    inlines = (AtaParticipanteInline, AtaTopicoInline)
+    inlines = (AtaParticipanteInline, AtaTopicoInline, AtaLinha5W2HInline)
 
 
 @admin.register(ConfiguracaoFinanceira)
