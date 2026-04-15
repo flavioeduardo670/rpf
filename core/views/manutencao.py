@@ -5,7 +5,7 @@ from core.forms import OrdemServicoForm, TransferirSituacaoOSForm
 from core.models import NotaFiscal, OrdemServico
 from core.services.estoque import remover_consumo_e_devolver_estoque
 
-from .common import can_edit, get_user_morador, organizar_ordens_por_setor, setor_required
+from .common import can_edit, get_user_morador, setor_required
 
 
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar', morador_edit_attr='acesso_manutencao_editar')
@@ -22,21 +22,18 @@ def manutencao(request):
         os_nova.save()
         return redirect('manutencao')
 
-    ordens = OrdemServico.objects.all().order_by('setor', '-numero')
-    secoes_setor, ordens_finalizadas = organizar_ordens_por_setor(ordens)
+    ordens = OrdemServico.objects.all().order_by('-numero')
     return render(request, 'core/manutencao.html', {
         'os_form': os_form,
-        'secoes_setor': secoes_setor,
-        'ordens_finalizadas': ordens_finalizadas,
+        'ordens': ordens,
         'can_edit_manutencao': can_edit_manutencao,
     })
 
 
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar')
 def lista_os(request):
-    ordens = OrdemServico.objects.all().order_by('setor', '-numero')
-    secoes_setor, ordens_finalizadas = organizar_ordens_por_setor(ordens)
-    return render(request, 'core/lista_os.html', {'secoes_setor': secoes_setor, 'ordens_finalizadas': ordens_finalizadas})
+    ordens = OrdemServico.objects.all().order_by('-numero')
+    return render(request, 'core/lista_os.html', {'ordens': ordens})
 
 
 @setor_required(group_name='Manutencao', morador_edit_attr='acesso_manutencao_editar')
