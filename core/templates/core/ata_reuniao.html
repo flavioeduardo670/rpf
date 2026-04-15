@@ -1,0 +1,166 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ ata.identificador_formatado }} | Ata</title>
+    <style>
+        body { margin:0; padding:24px; background:#f4f4f4; font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+        .wrap { max-width:1200px; margin:0 auto; }
+        .panel { background:#fff; border:1px solid #ddd; border-radius:12px; padding:16px; margin-bottom:14px; }
+        .grid { display:grid; gap:12px; grid-template-columns:repeat(2, minmax(0,1fr)); }
+        .grid-1 { display:grid; gap:12px; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { border:1px solid #ddd; padding:8px; vertical-align:top; }
+        th { background:#f7f7f7; font-size:.85rem; }
+        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:7px; }
+        .top { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:center; }
+        .muted { color:#666; }
+        .btn { border:1px solid #121212; background:#121212; color:#fff; border-radius:999px; padding:10px 14px; text-decoration:none; font-weight:700; cursor:pointer; }
+        .btn.light { background:#fff; color:#121212; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; }
+        .messages { list-style:none; padding:0; display:grid; gap:8px; }
+        .messages li { background:#fff; border:1px solid #ddd; border-radius:8px; padding:8px 10px; }
+        .readonly-mask { opacity:.75; pointer-events:none; }
+        @media (max-width: 960px) { .grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body class="app-body">
+<div class="wrap">
+    <div class="top panel">
+        <div>
+            <a href="{% url 'reunioes' %}" class="btn light">← Voltar para reuniões</a>
+            <h1 style="margin:.6rem 0 .3rem;">{{ ata.identificador_formatado }}</h1>
+            <p class="muted" style="margin:0;">Reunião {{ reuniao.get_tipo_display }}{% if reuniao.setor %} - {{ reuniao.get_setor_display }}{% endif %} | {{ reuniao.data|date:"d/m/Y" }} | {{ reuniao.local }}</p>
+        </div>
+        <div class="actions">
+            {% if ata.pdf_final %}
+            <a class="btn light" href="{% url 'baixar_ata_pdf' reuniao.id %}">Baixar PDF registrado</a>
+            {% endif %}
+            <span class="btn light">Status: {{ ata.get_status_display }}</span>
+        </div>
+    </div>
+
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="post" class="{% if not can_edit_reunioes or not ata.pode_editar %}readonly-mask{% endif %}">
+        {% csrf_token %}
+
+        <section class="panel grid">
+            <div>
+                <h3>Dados principais</h3>
+                {{ form.as_p }}
+            </div>
+            <div>
+                <h3>Reunião</h3>
+                <p><strong>Data:</strong> {{ reuniao.data|date:"d/m/Y" }}</p>
+                <p><strong>Horário marcado:</strong> {{ reuniao.horario_marcado|time:"H:i" }}</p>
+                <p><strong>Local:</strong> {{ reuniao.local }}</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h3>Participantes</h3>
+            {{ participantes_formset.management_form }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Morador</th>
+                        <th>Nome</th>
+                        <th>Presente</th>
+                        <th>Excluir</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p_form in participantes_formset %}
+                    <tr>
+                        <td>{{ p_form.id }}{{ p_form.morador }}</td>
+                        <td>{{ p_form.nome }}</td>
+                        <td>{{ p_form.presente }}</td>
+                        <td>{% if p_form.instance.pk %}{{ p_form.DELETE }}{% else %}-{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <h3>Assuntos abordados</h3>
+            {{ topicos_formset.management_form }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Assunto</th>
+                        <th>Desenvolvimento</th>
+                        <th>Excluir</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for t_form in topicos_formset %}
+                    <tr>
+                        <td>{{ t_form.id }}{{ t_form.ordem }}</td>
+                        <td>{{ t_form.titulo_assunto }}</td>
+                        <td>{{ t_form.desenvolvimento }}</td>
+                        <td>{% if t_form.instance.pk %}{{ t_form.DELETE }}{% else %}-{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <h3>5W2H — Plano de ação gerado na reunião</h3>
+            {{ linhas_formset.management_form }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>O quê</th>
+                        <th>Por quê</th>
+                        <th>Quem</th>
+                        <th>Quando</th>
+                        <th>Onde</th>
+                        <th>Como</th>
+                        <th>Quanto</th>
+                        <th>OS</th>
+                        <th>Excluir</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for l_form in linhas_formset %}
+                    <tr>
+                        <td>{{ l_form.id }}{{ l_form.o_que }}</td>
+                        <td>{{ l_form.por_que }}</td>
+                        <td>{{ l_form.quem }}</td>
+                        <td>{{ l_form.quando }}</td>
+                        <td>{{ l_form.onde }}</td>
+                        <td>{{ l_form.como }}</td>
+                        <td>{{ l_form.quanto }}</td>
+                        <td>{% if l_form.instance.ordem_servico_id %}OS {{ l_form.instance.ordem_servico_id }}{% else %}-{% endif %}</td>
+                        <td>{% if l_form.instance.pk and not l_form.instance.ordem_servico_id %}{{ l_form.DELETE }}{% else %}-{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        {% if can_edit_reunioes and ata.pode_editar %}
+        <section class="panel actions">
+            <button class="btn light" type="submit" name="acao" value="salvar">Salvar rascunho</button>
+            <button class="btn" type="submit" name="acao" value="registrar">Gerar PDF e registrar ata</button>
+        </section>
+        {% else %}
+        <section class="panel"><p class="muted">Ata registrada ou perfil sem permissão de edição.</p></section>
+        {% endif %}
+    </form>
+</div>
+</body>
+</html>
