@@ -8,9 +8,25 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name="ataparticipante",
-            name="nome",
-            field=models.CharField(blank=True, default="", max_length=150),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql=(
+                        "ALTER TABLE core_ataparticipante "
+                        "ADD COLUMN IF NOT EXISTS nome varchar(150) NOT NULL DEFAULT '';"
+                    ),
+                    reverse_sql=(
+                        "ALTER TABLE core_ataparticipante "
+                        "DROP COLUMN IF EXISTS nome;"
+                    ),
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name="ataparticipante",
+                    name="nome",
+                    field=models.CharField(blank=True, default="", max_length=150),
+                ),
+            ],
         ),
     ]
