@@ -103,19 +103,5 @@
         </table>
     </div>
 </div>
-<script>
-    document.querySelectorAll('.toggle-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            const target = document.getElementById(button.dataset.target);
-            if (!target) return;
-            const oculto = target.classList.toggle('is-hidden');
-            button.setAttribute('aria-expanded', String(!oculto));
-            const label = button.querySelector('.label');
-            if (label) {
-                label.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
-            }
-        });
-    });
-</script>
 </body>
 </html>

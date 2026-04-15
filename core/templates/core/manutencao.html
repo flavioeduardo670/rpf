@@ -123,7 +123,7 @@
                     <th>Fim</th>
                     <th>Acoes</th>
                 </tr>
-                {% for os in ordens_finalizadas %}
+                {% for os in ordens %}
                 <tr>
                     <td>#{{ os.numero }}</td>
                     <td><span class="setor-tag">{{ os.get_setor_display }}</span></td>
@@ -152,20 +152,5 @@
         </div>
     </section>
 </div>
-<script>
-    document.querySelectorAll('.toggle-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            const targetId = button.dataset.target;
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            const oculto = target.classList.toggle('is-hidden');
-            button.setAttribute('aria-expanded', String(!oculto));
-            const label = button.querySelector('.label');
-            if (label) {
-                label.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
-            }
-        });
-    });
-</script>
 </body>
 </html>
