@@ -17,16 +17,14 @@
         h1 { margin:0; }
         .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; }
         .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:auto; box-shadow:0 10px 20px rgba(0,0,0,.06); }
-        table { width:100%; min-width:700px; border-collapse:collapse; }
+        table { width:100%; min-width:1120px; border-collapse:collapse; }
         th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; }
         th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
         .empty { color:var(--muted); text-align:center; }
-        .setor-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0 8px; }
-        .setor-header h2 { margin:0; font-size:1.1rem; }
-        .toggle-btn { display:inline-flex; align-items:center; gap:8px; border:1px solid #111; background:#fff; color:#111; padding:7px 11px; border-radius:999px; cursor:pointer; font-weight:700; }
-        .toggle-btn .arrow { font-size:.85rem; transition:transform .2s ease; }
-        .toggle-btn[aria-expanded="false"] .arrow { transform:rotate(-90deg); }
-        .is-hidden { display:none; }
+        .setor-tag { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid #cfcfcf; background:#fafafa; font-size:.74rem; font-weight:700; }
+        .status-tag { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid #222; background:#fff; font-size:.74rem; font-weight:700; }
+        .acoes-stack { display:flex; flex-wrap:wrap; gap:8px; min-width:220px; }
+        .acoes-stack .btn { padding:7px 10px; font-size:.75rem; }
         @media (max-width:760px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .actions{width:100%; flex-direction:column;} .btn{width:100%; text-align:center;} }
     </style>
 </head>
@@ -40,70 +38,32 @@
         </div>
     </div>
 
-    {% for secao in secoes_setor %}
-    <div class="setor-header">
-        <h2>{{ secao.label }}</h2>
-        <button type="button" class="toggle-btn" data-target="setor-{{ secao.setor }}" data-label-show="Mostrar {{ secao.label }}" data-label-hide="Ocultar {{ secao.label }}" aria-expanded="true"><span class="arrow" aria-hidden="true">▾</span><span class="label">Ocultar {{ secao.label }}</span></button>
-    </div>
-    <div class="panel" id="setor-{{ secao.setor }}">
+    <div class="panel">
         <table>
-            <tr><th>Numero</th><th>Descricao</th><th>Observacao</th><th>Executado por</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
-            {% for os in secao.ordens %}
+            <tr><th>Numero</th><th>Setor</th><th>Descricao</th><th>Observacao</th><th>Solicitante</th><th>Executado por</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
+            {% for os in ordens %}
             <tr>
-                <td>{{ os.numero }}</td>
+                <td>#{{ os.numero }}</td>
+                <td><span class="setor-tag">{{ os.get_setor_display }}</span></td>
                 <td>{{ os.descricao }}</td>
                 <td>{{ os.observacao|default:"-" }}</td>
+                <td>{{ os.solicitante_exibicao }}</td>
                 <td>{{ os.executado_por_exibicao }}</td>
-                <td>{{ os.get_status_display }}</td>
-                <td>{{ os.data_inicio }}</td>
-                <td>{{ os.data_fim|default:"-" }}</td>
-                <td><a class="btn" href="{% url 'editar_os' os.numero %}">Editar</a></td>
+                <td><span class="status-tag">{{ os.get_status_display }}</span></td>
+                <td>{{ os.data_inicio|date:"d/m/Y H:i" }}</td>
+                <td>{{ os.data_fim|date:"d/m/Y H:i"|default:"-" }}</td>
+                <td>
+                    <div class="acoes-stack">
+                        <a class="btn" href="{% url 'editar_os' os.numero %}">Editar</a>
+                        <a class="btn" href="{% url 'transferir_situacao_os' os.numero %}">Transferir situação</a>
+                    </div>
+                </td>
             </tr>
             {% empty %}
-            <tr><td colspan="8" class="empty">Nenhuma OS ativa neste setor.</td></tr>
-            {% endfor %}
-        </table>
-    </div>
-    {% endfor %}
-
-    <div class="setor-header">
-        <h2>OSs finalizadas</h2>
-        <button type="button" class="toggle-btn" data-target="setor-finalizadas" data-label-show="Mostrar OSs finalizadas" data-label-hide="Ocultar OSs finalizadas" aria-expanded="false"><span class="arrow" aria-hidden="true">▾</span><span class="label">Mostrar OSs finalizadas</span></button>
-    </div>
-    <div class="panel is-hidden" id="setor-finalizadas">
-        <table>
-            <tr><th>Numero</th><th>Setor</th><th>Descricao</th><th>Observacao</th><th>Executado por</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Acao</th></tr>
-            {% for os in ordens_finalizadas %}
-            <tr>
-                <td>{{ os.numero }}</td>
-                <td>{{ os.get_setor_display }}</td>
-                <td>{{ os.descricao }}</td>
-                <td>{{ os.observacao|default:"-" }}</td>
-                <td>{{ os.executado_por_exibicao }}</td>
-                <td>{{ os.get_status_display }}</td>
-                <td>{{ os.data_inicio }}</td>
-                <td>{{ os.data_fim|default:"-" }}</td>
-                <td><a class="btn" href="{% url 'editar_os' os.numero %}">Editar</a></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="9" class="empty">Nenhuma OS finalizada.</td></tr>
+            <tr><td colspan="10" class="empty">Nenhuma OS registrada.</td></tr>
             {% endfor %}
         </table>
     </div>
 </div>
-<script>
-    document.querySelectorAll('.toggle-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            const target = document.getElementById(button.dataset.target);
-            if (!target) return;
-            const oculto = target.classList.toggle('is-hidden');
-            button.setAttribute('aria-expanded', String(!oculto));
-            const label = button.querySelector('.label');
-            if (label) {
-                label.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
-            }
-        });
-    });
-</script>
 </body>
 </html>
