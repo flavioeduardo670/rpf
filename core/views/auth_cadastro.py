@@ -34,13 +34,32 @@ def calendario(request):
 
     can_edit_reunioes = can_edit(request, 'acesso_reunioes_editar')
 
+    editar_evento_id = request.GET.get('editar_evento')
+    evento_em_edicao = None
+    if editar_evento_id:
+        evento_em_edicao = EventoCalendario.objects.filter(pk=editar_evento_id).first()
+
     if request.method == 'POST':
-        form = EventoCalendarioForm(request.POST)
+        acao = request.POST.get('acao', 'criar_manual')
+        evento_id = request.POST.get('evento_id')
+        if acao == 'excluir_manual':
+            EventoCalendario.objects.filter(pk=evento_id).delete()
+            return redirect(f"{redirect('calendario').url}?mes={current.strftime('%Y-%m')}")
+
+        if acao == 'editar_manual':
+            evento_em_edicao = EventoCalendario.objects.filter(pk=evento_id).first()
+            form = EventoCalendarioForm(request.POST, instance=evento_em_edicao)
+        else:
+            form = EventoCalendarioForm(request.POST)
+
         if form.is_valid():
             form.save()
             return redirect(f"{redirect('calendario').url}?mes={current.strftime('%Y-%m')}")
     else:
-        form = EventoCalendarioForm(initial={'data': today})
+        if evento_em_edicao:
+            form = EventoCalendarioForm(instance=evento_em_edicao)
+        else:
+            form = EventoCalendarioForm(initial={'data': today})
 
     start = current
     end = (current + timedelta(days=32)).replace(day=1) - timedelta(days=1)
@@ -62,6 +81,8 @@ def calendario(request):
         [{'date': day, 'events': eventos_por_dia.get(day, [])} for day in week]
         for week in calendar.Calendar(firstweekday=0).monthdatescalendar(current.year, current.month)
     ]
+    eventos_manuais = EventoCalendario.objects.filter(data__range=(start, end)).order_by('data', 'titulo')
+
     return render(
         request,
         'core/calendario.html',
@@ -75,6 +96,8 @@ def calendario(request):
             'mes_anterior': (current - timedelta(days=1)).replace(day=1),
             'mes_proximo': (current + timedelta(days=32)).replace(day=1),
             'can_edit_reunioes': can_edit_reunioes,
+            'eventos_manuais': eventos_manuais,
+            'evento_em_edicao': evento_em_edicao,
         },
     )
 
