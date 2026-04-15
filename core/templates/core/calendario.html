@@ -194,6 +194,21 @@
             line-height: 1.2;
         }
 
+        .events li.manual { background: #ececec; }
+        .events li.os { background: #dceeff; }
+        .events li.rock { background: #f8dfef; }
+        .events li.reuniao { background: #e2f4e2; }
+
+        .event-label {
+            display: inline-block;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-right: 6px;
+            opacity: 0.75;
+        }
+
         .side {
             background: var(--panel);
             border: 1px solid var(--line);
@@ -244,6 +259,40 @@
             cursor: pointer;
         }
 
+        .btn-light {
+            border: 1px solid var(--line-strong);
+            background: #fff;
+            color: #111;
+        }
+
+        .manual-list {
+            margin-top: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .manual-item {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px;
+            background: #fafafa;
+        }
+
+        .manual-item p {
+            margin: 0 0 6px;
+            font-size: 0.86rem;
+        }
+
+        .manual-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .inline-form {
+            display: inline;
+        }
+
         .note {
             font-size: 0.85rem;
             color: var(--muted);
@@ -273,7 +322,7 @@
             <div>
                 <a href="{% url 'home' %}" class="back">Voltar ao inicio</a>
                 <h1>Calendario</h1>
-                <p>Rocks e OSs aparecem automaticamente. Eventos manuais podem ser adicionados abaixo.</p>
+                <p>Rocks, OSs e reuniões aparecem automaticamente. Eventos manuais podem ser adicionados abaixo.</p>
             </div>
             <div class="month-nav">
                 <a href="?mes={{ mes_anterior|date:'Y-m' }}">&lt;</a>
@@ -300,7 +349,12 @@
                                     </div>
                                     <ul class="events">
                                         {% for evento in day.events %}
-                                            <li>{{ evento }}</li>
+                                            <li class="{{ evento.origem }}">
+                                                <span class="event-label">
+                                                    {% if evento.origem == 'manual' %}Manual{% elif evento.origem == 'os' %}OS{% elif evento.origem == 'rock' %}Rock{% elif evento.origem == 'reuniao' %}Reunião{% endif %}
+                                                </span>
+                                                {{ evento.texto }}
+                                            </li>
                                         {% endfor %}
                                     </ul>
                                 </div>
@@ -311,9 +365,14 @@
             </div>
 
             <aside class="side">
-                <h3>Adicionar evento</h3>
+                <h3>{% if evento_em_edicao %}Editar evento{% else %}Adicionar evento{% endif %}</h3>
+                {% if can_edit_reunioes %}
                 <form method="post" class="form">
                     {% csrf_token %}
+                    <input type="hidden" name="acao" value="{% if evento_em_edicao %}editar_manual{% else %}criar_manual{% endif %}">
+                    {% if evento_em_edicao %}
+                    <input type="hidden" name="evento_id" value="{{ evento_em_edicao.id }}">
+                    {% endif %}
                     <div class="field">
                         <label for="{{ form.titulo.id_for_label }}">Evento</label>
                         {{ form.titulo }}
@@ -322,9 +381,35 @@
                         <label for="{{ form.data.id_for_label }}">Data</label>
                         {{ form.data }}
                     </div>
-                    <button type="submit" class="btn">Salvar evento</button>
+                    <button type="submit" class="btn">{% if evento_em_edicao %}Salvar edição{% else %}Salvar evento{% endif %}</button>
+                    {% if evento_em_edicao %}
+                    <a class="btn btn-light" href="?mes={{ current|date:'Y-m' }}">Cancelar edição</a>
+                    {% endif %}
                 </form>
                 <p class="note">Aparece junto com o codigo da OS e o nome de cada rock.</p>
+
+                <h3>Eventos manuais do mês</h3>
+                <div class="manual-list">
+                    {% for evento in eventos_manuais %}
+                    <article class="manual-item">
+                        <p><strong>{{ evento.titulo }}</strong><br>{{ evento.data|date:"d/m/Y" }}</p>
+                        <div class="manual-actions">
+                            <a class="btn btn-light" href="?mes={{ current|date:'Y-m' }}&editar_evento={{ evento.id }}">Editar</a>
+                            <form method="post" class="inline-form" onsubmit="return confirm('Excluir este evento manual?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="acao" value="excluir_manual">
+                                <input type="hidden" name="evento_id" value="{{ evento.id }}">
+                                <button type="submit" class="btn btn-light">Excluir</button>
+                            </form>
+                        </div>
+                    </article>
+                    {% empty %}
+                    <p class="note">Nenhum evento manual cadastrado neste mês.</p>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="note">Você possui acesso somente para visualização das reuniões e eventos.</p>
+                {% endif %}
             </aside>
         </section>
     </main>
