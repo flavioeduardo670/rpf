@@ -878,7 +878,9 @@ class OrdemServico(models.Model):
 
     STATUS_CHOICES = [
         ('aberta', 'Aberta'),
-        ('andamento', 'Em Andamento'),
+        ('andamento', 'Em andamento'),
+        ('aguardando_orcamento', 'Aguardando orçamento'),
+        ('nao_atendida', 'Não atendida'),
         ('finalizada', 'Finalizada'),
     ]
 
@@ -886,6 +888,7 @@ class OrdemServico(models.Model):
     setor = models.CharField(max_length=20, choices=SETOR_CHOICES, default='manutencao')
     descricao = models.TextField()
     observacao = models.TextField(blank=True, null=True)
+    solicitante = models.CharField(max_length=150, blank=True, default='')
 
     data_inicio = models.DateTimeField()
     data_fim = models.DateTimeField(blank=True, null=True)
@@ -907,6 +910,10 @@ class OrdemServico(models.Model):
         if morador and morador.apelido:
             return morador.apelido
         return executado_por
+
+    @property
+    def solicitante_exibicao(self):
+        return (self.solicitante or '').strip() or '-'
 
     # Indica se já foi gerada despesa no financeiro
     despesa_gerada = models.BooleanField(default=False)

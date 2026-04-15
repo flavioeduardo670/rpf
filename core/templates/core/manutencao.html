@@ -70,6 +70,7 @@
                     <th>Numero</th>
                     <th>Descricao</th>
                     <th>Observacao</th>
+                    <th>Solicitante</th>
                     <th>Executado por</th>
                     <th>Status</th>
                     <th>Inicio</th>
@@ -81,6 +82,7 @@
                     <td>{{ os.numero }}</td>
                     <td>{{ os.descricao }}</td>
                     <td>{{ os.observacao|default:"-" }}</td>
+                    <td>{{ os.solicitante_exibicao }}</td>
                     <td>{{ os.executado_por_exibicao }}</td>
                     <td>{{ os.get_status_display }}</td>
                     <td>{{ os.data_inicio }}</td>
@@ -88,13 +90,14 @@
                     <td class="actions">
                         {% if can_edit_manutencao %}
                         <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                        <a href="{% url 'transferir_situacao_os' os.numero %}" class="btn">Transferir situação</a>
                         {% else %}
                         -
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="empty">Nenhuma OS ativa neste setor.</td></tr>
+                <tr><td colspan="9" class="empty">Nenhuma OS ativa neste setor.</td></tr>
                 {% endfor %}
             </table>
         </div>
@@ -111,6 +114,7 @@
                     <th>Setor</th>
                     <th>Descricao</th>
                     <th>Observacao</th>
+                    <th>Solicitante</th>
                     <th>Executado por</th>
                     <th>Status</th>
                     <th>Inicio</th>
@@ -123,6 +127,7 @@
                     <td>{{ os.get_setor_display }}</td>
                     <td>{{ os.descricao }}</td>
                     <td>{{ os.observacao|default:"-" }}</td>
+                    <td>{{ os.solicitante_exibicao }}</td>
                     <td>{{ os.executado_por_exibicao }}</td>
                     <td>{{ os.get_status_display }}</td>
                     <td>{{ os.data_inicio }}</td>
@@ -130,13 +135,14 @@
                     <td class="actions">
                         {% if can_edit_manutencao %}
                         <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                        <a href="{% url 'transferir_situacao_os' os.numero %}" class="btn">Transferir situação</a>
                         {% else %}
                         -
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="9" class="empty">Nenhuma OS finalizada.</td></tr>
+                <tr><td colspan="10" class="empty">Nenhuma OS finalizada.</td></tr>
                 {% endfor %}
             </table>
         </div>

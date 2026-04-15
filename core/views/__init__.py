@@ -22,7 +22,7 @@ from .estoque import (
     registrar_consumo,
 )
 from .legacy import configurar_formularios, configurar_listas
-from .manutencao import editar_os, lista_os, manutencao
+from .manutencao import editar_os, lista_os, manutencao, transferir_situacao_os
 from .moradores import exportar_moradores_csv, moradores, perfil
 from .pix import webhook_pix
 from .rock import comprar_rocks, editar_rock, exportar_ingressos_rock_pdf, ingressos_rock, lotes_rock, rock
