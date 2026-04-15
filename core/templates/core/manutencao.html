@@ -19,18 +19,17 @@
         .panel h2, .panel h3 { margin-top:0; }
         form p { margin:0 0 12px; }
         input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
-        .table-wrap { overflow:auto; }
-        table { width:100%; min-width:860px; border-collapse:collapse; }
+        .table-wrap { overflow:auto; border:1px solid #e5e5e5; border-radius:10px; }
+        table { width:100%; min-width:1120px; border-collapse:collapse; }
         th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:top; }
         th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
         .empty { color:var(--muted); text-align:center; }
-        .actions a { text-decoration:none; }
-        .setor-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin: 18px 0 8px; }
-        .setor-header h3 { margin:0; }
-        .toggle-btn { display:inline-flex; align-items:center; gap:8px; border:1px solid #111; background:#fff; color:#111; padding:7px 11px; border-radius:999px; cursor:pointer; font-weight:700; }
-        .toggle-btn .arrow { font-size:.85rem; transition:transform .2s ease; }
-        .toggle-btn[aria-expanded="false"] .arrow { transform:rotate(-90deg); }
-        .is-hidden { display:none; }
+        .setor-tag { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid #cfcfcf; background:#fafafa; font-size:.74rem; font-weight:700; }
+        .status-tag { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid #222; background:#fff; font-size:.74rem; font-weight:700; }
+        .acoes-stack { display:flex; flex-wrap:wrap; gap:8px; min-width:220px; }
+        .acoes-stack .btn { padding:7px 10px; font-size:.75rem; }
+        details.finalizadas { margin-top:16px; }
+        details.finalizadas > summary { cursor:pointer; font-weight:700; padding:8px 0; }
         @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
     </style>
 </head>
@@ -59,58 +58,59 @@
 
     <section class="panel">
         <h2>Ordens registradas</h2>
-        {% for secao in secoes_setor %}
-        <div class="setor-header">
-            <h3>{{ secao.label }}</h3>
-            <button type="button" class="toggle-btn" data-target="setor-{{ secao.setor }}" data-label-show="Mostrar {{ secao.label }}" data-label-hide="Ocultar {{ secao.label }}" aria-expanded="true"><span class="arrow" aria-hidden="true">▾</span><span class="label">Ocultar {{ secao.label }}</span></button>
-        </div>
-        <div class="table-wrap" id="setor-{{ secao.setor }}">
-            <table>
-                <tr>
-                    <th>Numero</th>
-                    <th>Descricao</th>
-                    <th>Observacao</th>
-                    <th>Executado por</th>
-                    <th>Status</th>
-                    <th>Inicio</th>
-                    <th>Fim</th>
-                    <th>Acoes</th>
-                </tr>
-                {% for os in secao.ordens %}
-                <tr>
-                    <td>{{ os.numero }}</td>
-                    <td>{{ os.descricao }}</td>
-                    <td>{{ os.observacao|default:"-" }}</td>
-                    <td>{{ os.executado_por_exibicao }}</td>
-                    <td>{{ os.get_status_display }}</td>
-                    <td>{{ os.data_inicio }}</td>
-                    <td>{{ os.data_fim|default:"-" }}</td>
-                    <td class="actions">
-                        {% if can_edit_manutencao %}
-                        <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="8" class="empty">Nenhuma OS ativa neste setor.</td></tr>
-                {% endfor %}
-            </table>
-        </div>
-        {% endfor %}
-
-        <div class="setor-header">
-            <h3>OSs finalizadas</h3>
-            <button type="button" class="toggle-btn" data-target="setor-finalizadas" data-label-show="Mostrar OSs finalizadas" data-label-hide="Ocultar OSs finalizadas" aria-expanded="false"><span class="arrow" aria-hidden="true">▾</span><span class="label">Mostrar OSs finalizadas</span></button>
-        </div>
-        <div class="table-wrap is-hidden" id="setor-finalizadas">
+        <h3>OSs ativas</h3>
+        <div class="table-wrap">
             <table>
                 <tr>
                     <th>Numero</th>
                     <th>Setor</th>
                     <th>Descricao</th>
                     <th>Observacao</th>
+                    <th>Solicitante</th>
+                    <th>Executado por</th>
+                    <th>Status</th>
+                    <th>Inicio</th>
+                    <th>Fim</th>
+                    <th>Acoes</th>
+                </tr>
+                {% for os in ordens_ativas %}
+                <tr>
+                    <td>#{{ os.numero }}</td>
+                    <td><span class="setor-tag">{{ os.get_setor_display }}</span></td>
+                    <td>{{ os.descricao }}</td>
+                    <td>{{ os.observacao|default:"-" }}</td>
+                    <td>{{ os.solicitante_exibicao }}</td>
+                    <td>{{ os.executado_por_exibicao }}</td>
+                    <td><span class="status-tag">{{ os.get_status_display }}</span></td>
+                    <td>{{ os.data_inicio|date:"d/m/Y H:i" }}</td>
+                    <td>{{ os.data_fim|date:"d/m/Y H:i"|default:"-" }}</td>
+                    <td>
+                        {% if can_edit_manutencao %}
+                        <div class="acoes-stack">
+                            <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                            <a href="{% url 'transferir_situacao_os' os.numero %}" class="btn">Transferir situação</a>
+                        </div>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="empty">Nenhuma OS ativa.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <details class="finalizadas">
+            <summary>Mostrar OSs finalizadas</summary>
+            <div class="table-wrap">
+                <table>
+                <tr>
+                    <th>Numero</th>
+                    <th>Setor</th>
+                    <th>Descricao</th>
+                    <th>Observacao</th>
+                    <th>Solicitante</th>
                     <th>Executado por</th>
                     <th>Status</th>
                     <th>Inicio</th>
@@ -119,43 +119,33 @@
                 </tr>
                 {% for os in ordens_finalizadas %}
                 <tr>
-                    <td>{{ os.numero }}</td>
-                    <td>{{ os.get_setor_display }}</td>
+                    <td>#{{ os.numero }}</td>
+                    <td><span class="setor-tag">{{ os.get_setor_display }}</span></td>
                     <td>{{ os.descricao }}</td>
                     <td>{{ os.observacao|default:"-" }}</td>
+                    <td>{{ os.solicitante_exibicao }}</td>
                     <td>{{ os.executado_por_exibicao }}</td>
-                    <td>{{ os.get_status_display }}</td>
-                    <td>{{ os.data_inicio }}</td>
-                    <td>{{ os.data_fim|default:"-" }}</td>
-                    <td class="actions">
+                    <td><span class="status-tag">{{ os.get_status_display }}</span></td>
+                    <td>{{ os.data_inicio|date:"d/m/Y H:i" }}</td>
+                    <td>{{ os.data_fim|date:"d/m/Y H:i"|default:"-" }}</td>
+                    <td>
                         {% if can_edit_manutencao %}
-                        <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                        <div class="acoes-stack">
+                            <a href="{% url 'editar_os' os.numero %}" class="btn">Editar</a>
+                            <a href="{% url 'transferir_situacao_os' os.numero %}" class="btn">Transferir situação</a>
+                        </div>
                         {% else %}
                         -
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="9" class="empty">Nenhuma OS finalizada.</td></tr>
+                <tr><td colspan="10" class="empty">Nenhuma OS finalizada.</td></tr>
                 {% endfor %}
-            </table>
-        </div>
+                </table>
+            </div>
+        </details>
     </section>
 </div>
-<script>
-    document.querySelectorAll('.toggle-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            const targetId = button.dataset.target;
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            const oculto = target.classList.toggle('is-hidden');
-            button.setAttribute('aria-expanded', String(!oculto));
-            const label = button.querySelector('.label');
-            if (label) {
-                label.textContent = oculto ? button.dataset.labelShow : button.dataset.labelHide;
-            }
-        });
-    });
-</script>
 </body>
 </html>

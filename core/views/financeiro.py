@@ -55,8 +55,8 @@ class ParcelaForm(forms.ModelForm):
         model = NotaParcela
         fields = ['valor', 'vencimento', 'mes_referencia', 'status']
         widgets = {
-            'vencimento': forms.DateInput(attrs={'type': 'date'}),
-            'mes_referencia': forms.DateInput(attrs={'type': 'date'}),
+            'vencimento': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'mes_referencia': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
         }
 
 
@@ -72,7 +72,10 @@ class NotaFiscalForm(forms.ModelForm):
             'valor', 'data_emissao', 'data_vencimento', 'status', 'data_pagamento', 'forma_pagamento', 'observacao',
         ]
         labels = {'descricao': 'Item', 'valor': 'Valor unitario'}
-        widgets = {k: forms.DateInput(attrs={'type': 'date'}) for k in ['data_emissao', 'data_vencimento', 'data_pagamento']}
+        widgets = {
+            k: forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})
+            for k in ['data_emissao', 'data_vencimento', 'data_pagamento']
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
