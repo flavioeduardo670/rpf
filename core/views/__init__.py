@@ -26,3 +26,4 @@ from .manutencao import editar_os, lista_os, manutencao, transferir_situacao_os
 from .moradores import exportar_moradores_csv, moradores, perfil
 from .pix import webhook_pix
 from .rock import comprar_rocks, editar_rock, exportar_ingressos_rock_pdf, ingressos_rock, lotes_rock, rock
+from .reunioes import adicionar_ata_reuniao, baixar_ata_pdf, editar_ata_reuniao, reunioes
