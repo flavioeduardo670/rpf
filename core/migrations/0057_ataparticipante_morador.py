@@ -5,6 +5,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("core", "0056_atareuniao_registro_e_5w2h"),
+        ("core", "0056_ataparticipante_atatopico"),
     ]
 
     operations = [

@@ -651,68 +651,22 @@ class AtaReuniao(models.Model):
             raise ValidationError(erros)
 
     def _montar_pdf_final(self):
-        def _texto_pdf(valor):
-            return str(valor).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
-
         linhas = [
-            'ASSOCIACAO REPUBLICA PORTAO DOS FUNDOS',
             self.identificador_formatado,
+            f"Status: {self.get_status_display()}",
             f"Data: {self.reuniao.data:%d/%m/%Y}",
-            f"Horario marcado: {self.reuniao.horario_marcado.strftime('%H:%M')}",
-            f"Inicio/Fim: {self.horario_inicio_real.strftime('%H:%M')} - {self.horario_fim_real.strftime('%H:%M')}",
-            f"Local: {self.reuniao.local}",
-            '',
-            'PARTICIPANTES',
+            f"Horário real: {self.horario_inicio_real.strftime('%H:%M')} - {self.horario_fim_real.strftime('%H:%M')}",
+            "",
+            "Participantes:",
         ]
-        for participante in self.participantes.order_by('nome', 'id'):
-            if not participante.presente:
-                continue
-            if participante.morador_id:
-                apelido = participante.morador.apelido or '-'
-                funcao = participante.morador.funcoes or '-'
-            else:
-                apelido = '-'
-                funcao = '-'
-            linhas.append(f"- {participante.nome} | {apelido} | {funcao} | Presente")
-
-        linhas.append('')
-        linhas.append('ASSUNTOS ABORDADOS')
+        for participante in self.participantes.order_by('nome'):
+            if participante.presente:
+                linhas.append(f"- {participante.nome}")
+        linhas.append("")
+        linhas.append("Tópicos:")
         for topico in self.topicos.order_by('ordem', 'id'):
-            linhas.append(f"{topico.ordem}. {topico.texto}")
-
-        linhas.append('')
-        linhas.append('5W2H - Plano de Acao')
-        for linha in self.linhas_5w2h.order_by('id'):
-            prazo = linha.quando.strftime('%d/%m/%Y') if linha.quando else '-'
-            linhas.append(f"{linha.o_que} | {linha.por_que} | {linha.quem} | {prazo} | {linha.onde} | {linha.como} | {linha.quanto}")
-
-        conteudo = [f"BT /F1 10 Tf 36 806 Td ({_texto_pdf('ATA DE REUNIAO')}) Tj"]
-        y = 788
-        for linha in linhas:
-            conteudo.append(f"1 0 0 1 36 {y} Tm ({_texto_pdf(linha)}) Tj")
-            y -= 14
-            if y < 40:
-                break
-        conteudo.append('ET')
-        stream = '\n'.join(conteudo).encode('latin-1', errors='replace')
-        objetos = [
-            b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n",
-            b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n",
-            b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n",
-            b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n",
-            f"5 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1') + stream + b"\nendstream endobj\n",
-        ]
-        pdf = b'%PDF-1.4\n'
-        offsets = [0]
-        for obj in objetos:
-            offsets.append(len(pdf))
-            pdf += obj
-        xref_start = len(pdf)
-        pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1') + b"0000000000 65535 f \n"
-        for offset in offsets[1:]:
-            pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
-        pdf += (f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF").encode('latin-1')
-        return ContentFile(pdf)
+            linhas.append(f"- {topico.texto}")
+        return ContentFile(("\n".join(linhas) + "\n").encode('utf-8'))
 
     def _gerar_os_das_linhas_5w2h(self):
         if self.gerou_os:
@@ -727,26 +681,11 @@ class AtaReuniao(models.Model):
             if not linha.is_valida_para_os:
                 continue
 
-            data_fim = None
-            if linha.quando:
-                data_fim = datetime.combine(linha.quando, time(23, 59, 0), tzinfo=timezone.get_current_timezone())
-
-            observacoes = []
-            if linha.por_que:
-                observacoes.append(f"Por quê: {linha.por_que}")
-            if linha.onde:
-                observacoes.append(f"Onde: {linha.onde}")
-            if linha.como:
-                observacoes.append(f"Como: {linha.como}")
-            if linha.quanto:
-                observacoes.append(f"Quanto: {linha.quanto}")
-
             os_criada = OrdemServico.objects.create(
                 setor=setor_os,
-                descricao=linha.o_que,
-                observacao='\n'.join(observacoes),
+                descricao=f"{linha.o_que}\n\nPor quê: {linha.por_que}\nComo: {linha.como}",
+                observacao=f"Onde: {linha.onde}\nQuanto: {linha.quanto}",
                 data_inicio=timezone.now(),
-                data_fim=data_fim,
                 executado_por=linha.quem,
                 status='aberta',
             )
@@ -843,7 +782,7 @@ class AtaLinha5W2H(AtaBloqueioEdicaoMixin):
 
     @property
     def is_valida_para_os(self):
-        return bool((self.o_que or '').strip() and (self.quem or '').strip())
+        return bool(self.o_que and self.por_que and self.onde and self.quem and self.como)
 
 
 class Produto(models.Model):
