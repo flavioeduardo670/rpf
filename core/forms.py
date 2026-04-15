@@ -2,6 +2,7 @@ from collections import OrderedDict
 import os
 import uuid
 from django import forms
+from django.forms import BaseInlineFormSet
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.utils.text import get_valid_filename
@@ -32,6 +33,11 @@ from .models import (
     PendenciaMensalItem,
     AjusteMorador,
     ContaFixa,
+    Reuniao,
+    AtaReuniao,
+    AtaParticipante,
+    AtaTopico,
+    AtaLinha5W2H,
 )
 
 
@@ -508,6 +514,129 @@ class EventoCalendarioForm(forms.ModelForm):
         }
 
 
+class ReuniaoForm(forms.ModelForm):
+    class Meta:
+        model = Reuniao
+        fields = ['tipo', 'setor', 'data', 'horario_marcado', 'local']
+        labels = {
+            'tipo': 'Tipo',
+            'setor': 'Setor',
+            'data': 'Data',
+            'horario_marcado': 'Horario marcado',
+            'local': 'Local',
+        }
+        widgets = {
+            'data': forms.DateInput(attrs={'type': 'date'}),
+            'horario_marcado': forms.TimeInput(attrs={'type': 'time'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['setor'].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('tipo') == 'setorial' and not cleaned.get('setor'):
+            self.add_error('setor', 'Informe o setor da reunião setorial.')
+        return cleaned
+
+
+class AtaReuniaoForm(forms.ModelForm):
+    class Meta:
+        model = AtaReuniao
+        fields = [
+            'horario_inicio_real',
+            'horario_fim_real',
+            'texto_abertura',
+            'encerramento_texto',
+        ]
+        labels = {
+            'horario_inicio_real': 'Horário início real',
+            'horario_fim_real': 'Horário fim real',
+            'texto_abertura': 'Abertura / Contexto',
+            'encerramento_texto': 'Encerramento',
+        }
+        widgets = {
+            'horario_inicio_real': forms.TimeInput(attrs={'type': 'time'}),
+            'horario_fim_real': forms.TimeInput(attrs={'type': 'time'}),
+            'texto_abertura': forms.Textarea(attrs={'rows': 3}),
+            'encerramento_texto': forms.Textarea(attrs={'rows': 3}),
+        }
+
+
+class AtaParticipanteForm(forms.ModelForm):
+    class Meta:
+        model = AtaParticipante
+        fields = ['morador', 'nome', 'presente']
+        labels = {
+            'morador': 'Morador',
+            'nome': 'Nome',
+            'presente': 'Presente',
+        }
+
+
+class AtaTopicoForm(forms.ModelForm):
+    titulo_assunto = forms.CharField(max_length=200, required=False, label='Assunto')
+    desenvolvimento = forms.CharField(required=False, label='Desenvolvimento', widget=forms.Textarea(attrs={'rows': 2}))
+
+    class Meta:
+        model = AtaTopico
+        fields = ['ordem']
+        labels = {
+            'ordem': 'Ordem',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        texto = (self.instance.texto or '').strip()
+        if texto and not self.is_bound:
+            if '\n' in texto:
+                titulo, resto = texto.split('\n', 1)
+                self.initial['titulo_assunto'] = titulo.replace(':', '').strip()
+                self.initial['desenvolvimento'] = resto.strip('- ').strip()
+            else:
+                self.initial['titulo_assunto'] = texto
+
+    def clean(self):
+        cleaned = super().clean()
+        titulo = (cleaned.get('titulo_assunto') or '').strip()
+        desenvolvimento = (cleaned.get('desenvolvimento') or '').strip()
+        if not titulo and not desenvolvimento:
+            raise forms.ValidationError('Informe assunto ou desenvolvimento.')
+        if titulo and desenvolvimento:
+            self.instance.texto = f"{titulo}\n- {desenvolvimento}"
+        else:
+            self.instance.texto = titulo or desenvolvimento
+        return cleaned
+
+
+class AtaLinha5W2HForm(forms.ModelForm):
+    class Meta:
+        model = AtaLinha5W2H
+        fields = ['o_que', 'por_que', 'quem', 'quando', 'onde', 'como', 'quanto']
+        labels = {
+            'o_que': 'O quê',
+            'por_que': 'Por quê',
+            'quem': 'Quem',
+            'quando': 'Quando',
+            'onde': 'Onde',
+            'como': 'Como',
+            'quanto': 'Quanto',
+        }
+        widgets = {
+            'quando': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+
+class AtaBaseInlineFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        if not self.instance.pode_editar:
+            raise forms.ValidationError('A ata está registrada e não pode mais ser alterada.')
+
+
 class DescontoMensalForm(forms.ModelForm):
     class Meta:
         model = DescontoMensal
@@ -596,6 +725,8 @@ class AcessoMoradorForm(forms.ModelForm):
             'acesso_manutencao_editar',
             'acesso_rock_visualizar',
             'acesso_rock_editar',
+            'acesso_reunioes_visualizar',
+            'acesso_reunioes_editar',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -617,6 +748,8 @@ class AcessoUsuarioForm(forms.ModelForm):
             'acesso_manutencao_editar',
             'acesso_rock_visualizar',
             'acesso_rock_editar',
+            'acesso_reunioes_visualizar',
+            'acesso_reunioes_editar',
         ]
 
     def __init__(self, *args, **kwargs):
