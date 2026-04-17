@@ -9,6 +9,18 @@ from core.services.estoque import remover_consumo_e_devolver_estoque
 from .common import can_edit, get_user_morador, setor_required
 
 
+def _filtro_os_finalizadas():
+    """
+    Inclui variações legadas de status finalizado para evitar
+    que OS antigas desapareçam da listagem de finalizadas.
+    """
+    return (
+        Q(status='nao_atendida')
+        | Q(status__in=['finalizada', 'finalizado'])
+        | Q(status__istartswith='finaliz')
+    )
+
+
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar', morador_edit_attr='acesso_manutencao_editar')
 def manutencao(request):
     can_edit_manutencao = can_edit(request, 'acesso_manutencao_editar')
@@ -24,7 +36,7 @@ def manutencao(request):
         return redirect('manutencao')
 
     ordens = OrdemServico.objects.all().order_by('numero')
-    filtros_finalizadas = Q(status='finalizada') | Q(status='finalizado') | Q(status='nao_atendida')
+    filtros_finalizadas = _filtro_os_finalizadas()
     ordens_ativas = ordens.exclude(filtros_finalizadas)
     ordens_finalizadas = ordens.filter(filtros_finalizadas)
     return render(request, 'core/manutencao.html', {
@@ -38,7 +50,7 @@ def manutencao(request):
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar')
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('numero')
-    filtros_finalizadas = Q(status='finalizada') | Q(status='finalizado') | Q(status='nao_atendida')
+    filtros_finalizadas = _filtro_os_finalizadas()
     return render(request, 'core/lista_os.html', {
         'ordens_ativas': ordens.exclude(filtros_finalizadas),
         'ordens_finalizadas': ordens.filter(filtros_finalizadas),
