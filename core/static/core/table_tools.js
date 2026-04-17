@@ -41,8 +41,14 @@
     const dataRows = table.tBodies.length
       ? Array.from(table.tBodies).flatMap((tbody) => Array.from(tbody.rows))
       : Array.from(table.querySelectorAll('tr')).filter((row) => row !== headerRow);
+    const normalizedHeaderText = normalize(headerRow.innerText || headerRow.textContent).toLowerCase();
     const originalRows = dataRows.filter((row) => row.cells.length > 1);
-    if (!originalRows.length) return;
+    const contentRows = originalRows.filter((row) => {
+      if (row === headerRow) return false;
+      const normalizedRowText = normalize(row.innerText || row.textContent).toLowerCase();
+      return normalizedRowText !== normalizedHeaderText;
+    });
+    if (!contentRows.length) return;
 
     const controls = document.createElement('div');
     controls.className = 'table-tools';
@@ -85,7 +91,7 @@
       const sortSelection = colSelect.value || '0';
       const direction = directionSelect.value === 'desc' ? -1 : 1;
 
-      const filtered = originalRows.filter((row) => {
+      const filtered = contentRows.filter((row) => {
         if (!query) return true;
         return normalize(row.innerText || row.textContent).toLowerCase().includes(query);
       });
