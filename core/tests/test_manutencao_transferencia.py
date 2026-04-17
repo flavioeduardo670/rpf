@@ -116,3 +116,31 @@ class ManutencaoTransferenciaTests(TestCase):
             {os.descricao for os in ordens_finalizadas},
             {'OS em andamento', 'OS aguardando orçamento'},
         )
+
+    def test_lista_os_considera_data_fim_preenchida_como_finalizada(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta e ativa',
+            data_inicio='2026-04-16T09:00',
+            executado_por='Mari',
+            status='aberta',
+            solicitante='João',
+        )
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta mas encerrada',
+            data_inicio='2026-04-16T10:00',
+            data_fim='2026-04-16T12:00',
+            executado_por='Mari',
+            status='aberta',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('lista_os'))
+
+        self.assertEqual(response.status_code, 200)
+        ordens_finalizadas = list(response.context['ordens_finalizadas'])
+        ordens_ativas = list(response.context['ordens_ativas'])
+
+        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta e ativa'})
+        self.assertEqual({os.descricao for os in ordens_finalizadas}, {'OS aberta mas encerrada'})

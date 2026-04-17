@@ -22,8 +22,8 @@ def manutencao(request):
         return redirect('manutencao')
 
     ordens = OrdemServico.objects.all().order_by('numero')
-    ordens_ativas = ordens.filter(status__iexact='aberta')
-    ordens_finalizadas = ordens.exclude(status__iexact='aberta')
+    ordens_ativas = ordens.filter(status__iexact='aberta', data_fim__isnull=True)
+    ordens_finalizadas = ordens.exclude(status__iexact='aberta', data_fim__isnull=True)
     return render(request, 'core/manutencao.html', {
         'os_form': os_form,
         'ordens_ativas': ordens_ativas,
@@ -36,8 +36,8 @@ def manutencao(request):
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('numero')
     return render(request, 'core/lista_os.html', {
-        'ordens_ativas': ordens.filter(status__iexact='aberta'),
-        'ordens_finalizadas': ordens.exclude(status__iexact='aberta'),
+        'ordens_ativas': ordens.filter(status__iexact='aberta', data_fim__isnull=True),
+        'ordens_finalizadas': ordens.exclude(status__iexact='aberta', data_fim__isnull=True),
     })
 
 
