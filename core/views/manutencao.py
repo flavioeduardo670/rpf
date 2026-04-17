@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.forms import OrdemServicoForm, TransferirSituacaoOSForm
@@ -7,16 +6,6 @@ from core.models import NotaFiscal, OrdemServico
 from core.services.estoque import remover_consumo_e_devolver_estoque
 
 from .common import can_edit, get_user_morador, setor_required
-
-
-def _filtro_os_finalizadas():
-    """
-    Considera como finalizadas todas as OS que não estão "abertas".
-    Isso mantém a tabela de ativas apenas com OS em aberto
-    e envia qualquer outro status para a tabela de finalizadas.
-    """
-    return ~Q(status__iexact='aberta')
-
 
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar', morador_edit_attr='acesso_manutencao_editar')
 def manutencao(request):
@@ -33,9 +22,8 @@ def manutencao(request):
         return redirect('manutencao')
 
     ordens = OrdemServico.objects.all().order_by('numero')
-    filtros_finalizadas = _filtro_os_finalizadas()
-    ordens_ativas = ordens.exclude(filtros_finalizadas)
-    ordens_finalizadas = ordens.filter(filtros_finalizadas)
+    ordens_ativas = ordens.filter(status__iexact='aberta')
+    ordens_finalizadas = ordens.exclude(status__iexact='aberta')
     return render(request, 'core/manutencao.html', {
         'os_form': os_form,
         'ordens_ativas': ordens_ativas,
@@ -47,10 +35,9 @@ def manutencao(request):
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar')
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('numero')
-    filtros_finalizadas = _filtro_os_finalizadas()
     return render(request, 'core/lista_os.html', {
-        'ordens_ativas': ordens.exclude(filtros_finalizadas),
-        'ordens_finalizadas': ordens.filter(filtros_finalizadas),
+        'ordens_ativas': ordens.filter(status__iexact='aberta'),
+        'ordens_finalizadas': ordens.exclude(status__iexact='aberta'),
     })
 
 
