@@ -11,14 +11,11 @@ from .common import can_edit, get_user_morador, setor_required
 
 def _filtro_os_finalizadas():
     """
-    Inclui variações legadas de status finalizado para evitar
-    que OS antigas desapareçam da listagem de finalizadas.
+    Considera como finalizadas todas as OS que não estão "abertas".
+    Isso mantém a tabela de ativas apenas com OS em aberto
+    e envia qualquer outro status para a tabela de finalizadas.
     """
-    return (
-        Q(status='nao_atendida')
-        | Q(status__in=['finalizada', 'finalizado'])
-        | Q(status__istartswith='finaliz')
-    )
+    return ~Q(status__iexact='aberta')
 
 
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar', morador_edit_attr='acesso_manutencao_editar')

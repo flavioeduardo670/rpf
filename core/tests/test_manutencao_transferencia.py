@@ -78,3 +78,41 @@ class ManutencaoTransferenciaTests(TestCase):
         self.assertContains(response, 'Troca de fechadura')
         self.assertContains(response, 'Mostrar OSs finalizadas')
         self.assertNotContains(response, 'Nenhuma OS finalizada.')
+
+    def test_lista_os_envia_status_nao_aberto_para_finalizadas(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta',
+            data_inicio='2026-04-16T09:00',
+            executado_por='Mari',
+            status='aberta',
+            solicitante='João',
+        )
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS em andamento',
+            data_inicio='2026-04-16T10:00',
+            executado_por='Mari',
+            status='andamento',
+            solicitante='João',
+        )
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aguardando orçamento',
+            data_inicio='2026-04-16T11:00',
+            executado_por='Mari',
+            status='aguardando_orcamento',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('lista_os'))
+
+        self.assertEqual(response.status_code, 200)
+        ordens_finalizadas = list(response.context['ordens_finalizadas'])
+        ordens_ativas = list(response.context['ordens_ativas'])
+
+        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta'})
+        self.assertEqual(
+            {os.descricao for os in ordens_finalizadas},
+            {'OS em andamento', 'OS aguardando orçamento'},
+        )
