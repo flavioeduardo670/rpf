@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.forms import OrdemServicoForm, TransferirSituacaoOSForm
@@ -7,6 +6,20 @@ from core.models import NotaFiscal, OrdemServico
 from core.services.estoque import remover_consumo_e_devolver_estoque
 
 from .common import can_edit, get_user_morador, setor_required
+
+
+def _separar_ordens(ordens):
+    ordens_ativas = []
+    ordens_finalizadas = []
+
+    for ordem in ordens:
+        status_normalizado = (ordem.status or '').strip().lower()
+        if status_normalizado == 'aberta' and ordem.data_fim is None:
+            ordens_ativas.append(ordem)
+        else:
+            ordens_finalizadas.append(ordem)
+
+    return ordens_ativas, ordens_finalizadas
 
 
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar', morador_edit_attr='acesso_manutencao_editar')
@@ -24,9 +37,7 @@ def manutencao(request):
         return redirect('manutencao')
 
     ordens = OrdemServico.objects.all().order_by('numero')
-    filtros_finalizadas = Q(status='finalizada') | Q(status='finalizado') | Q(status='nao_atendida')
-    ordens_ativas = ordens.exclude(filtros_finalizadas)
-    ordens_finalizadas = ordens.filter(filtros_finalizadas)
+    ordens_ativas, ordens_finalizadas = _separar_ordens(ordens)
     return render(request, 'core/manutencao.html', {
         'os_form': os_form,
         'ordens_ativas': ordens_ativas,
@@ -38,10 +49,10 @@ def manutencao(request):
 @setor_required(group_name='Manutencao', morador_view_attr='acesso_manutencao_visualizar')
 def lista_os(request):
     ordens = OrdemServico.objects.all().order_by('numero')
-    filtros_finalizadas = Q(status='finalizada') | Q(status='finalizado') | Q(status='nao_atendida')
+    ordens_ativas, ordens_finalizadas = _separar_ordens(ordens)
     return render(request, 'core/lista_os.html', {
-        'ordens_ativas': ordens.exclude(filtros_finalizadas),
-        'ordens_finalizadas': ordens.filter(filtros_finalizadas),
+        'ordens_ativas': ordens_ativas,
+        'ordens_finalizadas': ordens_finalizadas,
     })
 
 
