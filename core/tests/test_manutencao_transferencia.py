@@ -144,3 +144,22 @@ class ManutencaoTransferenciaTests(TestCase):
 
         self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta e ativa'})
         self.assertEqual({os.descricao for os in ordens_finalizadas}, {'OS aberta mas encerrada'})
+
+    def test_lista_os_normaliza_status_com_espacos(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta com espaços',
+            data_inicio='2026-04-16T09:00',
+            executado_por='Mari',
+            status='  aberta  ',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('lista_os'))
+
+        self.assertEqual(response.status_code, 200)
+        ordens_finalizadas = list(response.context['ordens_finalizadas'])
+        ordens_ativas = list(response.context['ordens_ativas'])
+
+        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta com espaços'})
+        self.assertEqual(ordens_finalizadas, [])
