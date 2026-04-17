@@ -55,3 +55,92 @@ class ManutencaoTransferenciaTests(TestCase):
         self.assertEqual(os_obj.executado_por, 'Mari')
         self.assertEqual(os_obj.status, 'andamento')
         self.assertIsNotNone(os_obj.data_fim)
+
+    def test_lista_os_mostra_status_finalizado_legado_em_finalizadas(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='Troca de fechadura',
+            data_inicio='2026-04-16T10:00',
+            executado_por='Mari',
+            status='Finalizada',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('lista_os'))
+
+        self.assertEqual(response.status_code, 200)
+        ordens_finalizadas = list(response.context['ordens_finalizadas'])
+        ordens_ativas = list(response.context['ordens_ativas'])
+
+        self.assertEqual(len(ordens_finalizadas), 1)
+        self.assertEqual(ordens_finalizadas[0].descricao, 'Troca de fechadura')
+        self.assertEqual(len(ordens_ativas), 0)
+        self.assertContains(response, 'Troca de fechadura')
+        self.assertContains(response, 'Mostrar OSs finalizadas')
+        self.assertNotContains(response, 'Nenhuma OS finalizada.')
+
+    def test_lista_os_envia_status_nao_aberto_para_finalizadas(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta',
+            data_inicio='2026-04-16T09:00',
+            executado_por='Mari',
+            status='aberta',
+            solicitante='João',
+        )
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS em andamento',
+            data_inicio='2026-04-16T10:00',
+            executado_por='Mari',
+            status='andamento',
+            solicitante='João',
+        )
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aguardando orçamento',
+            data_inicio='2026-04-16T11:00',
+            executado_por='Mari',
+            status='aguardando_orcamento',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('lista_os'))
+
+        self.assertEqual(response.status_code, 200)
+        ordens_finalizadas = list(response.context['ordens_finalizadas'])
+        ordens_ativas = list(response.context['ordens_ativas'])
+
+        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta'})
+        self.assertEqual(
+            {os.descricao for os in ordens_finalizadas},
+            {'OS em andamento', 'OS aguardando orçamento'},
+        )
+
+    def test_lista_os_considera_data_fim_preenchida_como_finalizada(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta e ativa',
+            data_inicio='2026-04-16T09:00',
+            executado_por='Mari',
+            status='aberta',
+            solicitante='João',
+        )
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS aberta mas encerrada',
+            data_inicio='2026-04-16T10:00',
+            data_fim='2026-04-16T12:00',
+            executado_por='Mari',
+            status='aberta',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('lista_os'))
+
+        self.assertEqual(response.status_code, 200)
+        ordens_finalizadas = list(response.context['ordens_finalizadas'])
+        ordens_ativas = list(response.context['ordens_ativas'])
+
+        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta e ativa'})
+        self.assertEqual({os.descricao for os in ordens_finalizadas}, {'OS aberta mas encerrada'})
