@@ -163,3 +163,19 @@ class ManutencaoTransferenciaTests(TestCase):
 
         self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta com espaços'})
         self.assertEqual(ordens_finalizadas, [])
+
+    def test_manutencao_renderiza_tabela_de_finalizadas(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS já finalizada',
+            data_inicio='2026-04-16T10:00',
+            data_fim='2026-04-16T12:00',
+            executado_por='Mari',
+            status='finalizada',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('manutencao'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'OS já finalizada')
