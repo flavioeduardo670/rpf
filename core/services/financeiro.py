@@ -1,10 +1,22 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import unicodedata
 
 from django.db.models import Sum
 from django.utils import timezone
 
 from core.models import AjusteMorador, ConfiguracaoFinanceira, ContaFixa, Morador, NotaParcela, PendenciaMensalItem
+
+
+def _normalizar_tipo_item(tipo_item):
+    texto = unicodedata.normalize('NFKD', str(tipo_item or '')).encode('ascii', 'ignore').decode('ascii')
+    texto = texto.lower().replace('_', ' ').replace('-', ' ').strip()
+    texto = ' '.join(texto.split())
+    if 'material' in texto:
+        return 'material'
+    if 'consumo' in texto:
+        return 'consumo'
+    return 'outro'
 
 
 def resolver_mes_referencia(mes_param):
@@ -26,14 +38,18 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         nota__setor='compras',
         nota__cobrar_no_aluguel=True,
     ).select_related('nota').prefetch_related('rateio_exclusoes')
-    parcelas_consumo = parcelas_mes.filter(nota__tipo_item='Bem de Consumo').exclude(nota__categoria_compra='rock')
-    parcelas_material = parcelas_mes.filter(nota__tipo_item='Bem Material').exclude(nota__categoria_compra='rock')
-    parcelas_rateio = parcelas_mes.filter(
-        nota__tipo_item__in=['Bem de Consumo', 'Bem Material']
-    ).exclude(nota__categoria_compra='rock')
+    parcelas_rateio = parcelas_mes
+    parcelas_consumo_lista = []
+    parcelas_material_lista = []
+    for parcela in parcelas_rateio:
+        tipo_normalizado = _normalizar_tipo_item(parcela.nota.tipo_item)
+        if tipo_normalizado == 'material':
+            parcelas_material_lista.append(parcela)
+        else:
+            parcelas_consumo_lista.append(parcela)
 
-    total_caixinha_mes = parcelas_consumo.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-    total_parcelas_material = parcelas_material.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+    total_caixinha_mes = sum((parcela.valor for parcela in parcelas_consumo_lista), Decimal('0.00'))
+    total_parcelas_material = sum((parcela.valor for parcela in parcelas_material_lista), Decimal('0.00'))
     total_parcelas_mes_rateio = (total_caixinha_mes + total_parcelas_material).quantize(Decimal('0.01'))
     total_despesas = parcelas_rateio.filter(status='pago').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
     total_pendente = parcelas_rateio.filter(status='pendente').aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
@@ -93,10 +109,10 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
             acumulador[morador_id] += valor
             restante -= valor
 
-    for parcela in parcelas_consumo:
+    for parcela in parcelas_consumo_lista:
         _distribuir_por_inclusao(parcela, caixinha_por_morador_map)
 
-    for parcela in parcelas_material:
+    for parcela in parcelas_material_lista:
         _distribuir_por_inclusao(parcela, parcelas_material_por_morador_map)
 
     rateio_moradores = []

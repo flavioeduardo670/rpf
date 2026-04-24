@@ -74,14 +74,30 @@ def calendario(request):
         if reuniao.tipo == 'setorial' and reuniao.setor:
             titulo = f"{titulo} - {reuniao.get_setor_display()}"
         eventos_por_dia[reuniao.data].append({'origem': 'reuniao', 'texto': titulo})
-    for manual in EventoCalendario.objects.filter(data__range=(start, end)):
-        eventos_por_dia[manual.data].append({'origem': 'manual', 'texto': manual.titulo})
+    eventos_manuais_mes = list(EventoCalendario.objects.filter(data__range=(start, end), recorrente=False))
+    eventos_recorrentes = list(EventoCalendario.objects.filter(recorrente=True, data__lte=end))
+
+    for manual in eventos_manuais_mes:
+        texto = manual.titulo if manual.dia_todo or not manual.horario else f"{manual.horario.strftime('%H:%M')} - {manual.titulo}"
+        eventos_por_dia[manual.data].append({'origem': 'manual', 'texto': texto, 'cor': manual.cor})
+
+    for manual in eventos_recorrentes:
+        ultimo_dia_mes = calendar.monthrange(current.year, current.month)[1]
+        dia_referencia = min(manual.data.day, ultimo_dia_mes)
+        data_ocorrencia = current.replace(day=dia_referencia)
+        if data_ocorrencia < manual.data:
+            continue
+        texto_base = f"{manual.titulo} (recorrente)"
+        texto = texto_base if manual.dia_todo or not manual.horario else f"{manual.horario.strftime('%H:%M')} - {texto_base}"
+        eventos_por_dia[data_ocorrencia].append({'origem': 'manual', 'texto': texto, 'cor': manual.cor})
 
     weeks = [
         [{'date': day, 'events': eventos_por_dia.get(day, [])} for day in week]
         for week in calendar.Calendar(firstweekday=0).monthdatescalendar(current.year, current.month)
     ]
-    eventos_manuais = EventoCalendario.objects.filter(data__range=(start, end)).order_by('data', 'titulo')
+    eventos_manuais = EventoCalendario.objects.filter(
+        data__range=(start, end)
+    ).order_by('data', 'titulo')
 
     return render(
         request,
