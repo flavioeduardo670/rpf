@@ -15,7 +15,7 @@ def _separar_ordens(ordens):
 
     for ordem in ordens:
         status_normalizado = (ordem.status or '').strip().lower()
-        if ordem.data_fim is not None or status_normalizado in status_finalizados:
+        if status_normalizado in status_finalizados:
             ordens_finalizadas.append(ordem)
             continue
         ordens_ativas.append(ordem)
