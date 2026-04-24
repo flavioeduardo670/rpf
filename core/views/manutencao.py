@@ -11,13 +11,14 @@ from .common import can_edit, get_user_morador, setor_required
 def _separar_ordens(ordens):
     ordens_ativas = []
     ordens_finalizadas = []
+    status_finalizados = {'finalizada', 'nao_atendida'}
 
     for ordem in ordens:
         status_normalizado = (ordem.status or '').strip().lower()
-        if status_normalizado == 'aberta' and ordem.data_fim is None:
-            ordens_ativas.append(ordem)
-        else:
+        if status_normalizado in status_finalizados:
             ordens_finalizadas.append(ordem)
+            continue
+        ordens_ativas.append(ordem)
 
     return ordens_ativas, ordens_finalizadas
 
@@ -28,7 +29,7 @@ def manutencao(request):
     os_form = OrdemServicoForm(request.POST or None)
     if request.method == 'POST' and os_form.is_valid():
         os_nova = os_form.save(commit=False)
-        morador = get_user_morador(request)
+        morador = get_user_morador(request.user)
         if morador:
             os_nova.solicitante = morador.apelido or morador.nome
         elif request.user.is_authenticated:

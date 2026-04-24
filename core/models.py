@@ -510,10 +510,20 @@ class ChoiceOption(models.Model):
 class EventoCalendario(models.Model):
     titulo = models.CharField(max_length=200)
     data = models.DateField()
+    cor = models.CharField(max_length=7, default='#ececec')
+    dia_todo = models.BooleanField(default=True)
+    horario = models.TimeField(blank=True, null=True)
+    recorrente = models.BooleanField(default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-data', 'titulo']
+
+    def clean(self):
+        if self.dia_todo:
+            self.horario = None
+        elif not self.horario:
+            raise ValidationError({'horario': 'Informe o horário ou marque "Dia todo".'})
 
     def __str__(self):
         return f"{self.data} - {self.titulo}"

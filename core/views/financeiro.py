@@ -368,7 +368,8 @@ def criar_parcelas_nota(nota):
     if nota.parcelas.exists():
         return
     quantidade = nota.quantidade_parcelas or 1
-    total = (nota.valor or Decimal('0.00')) * (nota.quantidade or 0)
+    quantidade_itens = nota.quantidade or 0
+    total = (nota.valor or Decimal('0.00')) * quantidade_itens if quantidade_itens > 0 else (nota.valor or Decimal('0.00'))
     vencimento, mes_ref = _primeiro_vencimento(nota.data_emissao)
     valor_parcela = (total / quantidade).quantize(Decimal('0.01')) if quantidade else total
     restante = total
@@ -390,13 +391,8 @@ def compras(request):
         nota.setor = 'compras'
         if not nota.parcelado:
             nota.quantidade_parcelas = 1
-        if not nota.adicionar_estoque:
-            nota.setor_estoque = None
-            nota.local_estoque = None
-            nota.quantidade = 0
-            nota.qualidade = ''
         nota.save()
-        if nota.adicionar_estoque and nota.quantidade > 0:
+        if nota.adicionar_estoque and nota.quantidade > 0 and nota.setor_estoque and nota.local_estoque:
             produto, criado = Produto.objects.get_or_create(nome=nota.descricao, setor=nota.setor_estoque, local=nota.local_estoque, defaults={'descricao': nota.tipo_item or '', 'quantidade': nota.quantidade, 'estoque_minimo': 0})
             if not criado:
                 produto.quantidade += nota.quantidade
@@ -406,13 +402,28 @@ def compras(request):
         criar_parcelas_nota(nota)
         return redirect('compras')
     mes_cobranca_sub = NotaParcela.objects.filter(nota_id=OuterRef('pk')).order_by('mes_referencia').values('mes_referencia')[:1]
-    notas = NotaFiscal.objects.filter(setor='compras').annotate(total_valor=ExpressionWrapper(F('quantidade') * F('valor'), output_field=DecimalField(max_digits=12, decimal_places=2)), mes_cobranca=Subquery(mes_cobranca_sub)).order_by('-data_emissao')
+    total_valor_expr = Case(
+        When(quantidade__gt=0, then=F('quantidade') * F('valor')),
+        default=F('valor'),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+    notas = NotaFiscal.objects.filter(setor='compras').annotate(
+        total_valor=ExpressionWrapper(total_valor_expr, output_field=DecimalField(max_digits=12, decimal_places=2)),
+        mes_cobranca=Subquery(mes_cobranca_sub),
+    ).order_by('-data_emissao')
     return render(request, 'core/compras.html', {'form': form, 'notas': notas, 'can_edit_compras': can_edit_compras, 'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'), 'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome')})
 
 
 @setor_required(group_name='Compras', morador_view_attr='acesso_compras_visualizar')
 def exportar_compras_csv(request):
-    notas = NotaFiscal.objects.filter(setor='compras').annotate(total_valor=ExpressionWrapper(F('quantidade') * F('valor'), output_field=DecimalField(max_digits=12, decimal_places=2))).order_by('-data_emissao', '-id')
+    total_valor_expr = Case(
+        When(quantidade__gt=0, then=F('quantidade') * F('valor')),
+        default=F('valor'),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+    notas = NotaFiscal.objects.filter(setor='compras').annotate(
+        total_valor=ExpressionWrapper(total_valor_expr, output_field=DecimalField(max_digits=12, decimal_places=2))
+    ).order_by('-data_emissao', '-id')
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="compras_{timezone.localtime().strftime("%Y%m%d_%H%M%S")}.csv"'
     response.write('\ufeff')
@@ -433,11 +444,6 @@ def editar_nota_compra(request, nota_id):
     if request.method == 'POST' and form.is_valid():
         nota = form.save(commit=False)
         nota.setor = 'compras'
-        if not nota.adicionar_estoque:
-            nota.setor_estoque = None
-            nota.local_estoque = None
-            nota.quantidade = 0
-            nota.qualidade = ''
         nota.save()
         messages.success(request, 'Nota atualizada com sucesso.')
         return redirect('compras')

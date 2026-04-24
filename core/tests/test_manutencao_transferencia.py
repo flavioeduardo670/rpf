@@ -79,7 +79,7 @@ class ManutencaoTransferenciaTests(TestCase):
         self.assertContains(response, 'Mostrar OSs finalizadas')
         self.assertNotContains(response, 'Nenhuma OS finalizada.')
 
-    def test_lista_os_envia_status_nao_aberto_para_finalizadas(self):
+    def test_lista_os_mantem_status_em_andamento_e_aguardando_como_ativas(self):
         OrdemServico.objects.create(
             setor='manutencao',
             descricao='OS aberta',
@@ -111,13 +111,13 @@ class ManutencaoTransferenciaTests(TestCase):
         ordens_finalizadas = list(response.context['ordens_finalizadas'])
         ordens_ativas = list(response.context['ordens_ativas'])
 
-        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta'})
         self.assertEqual(
-            {os.descricao for os in ordens_finalizadas},
-            {'OS em andamento', 'OS aguardando orçamento'},
+            {os.descricao for os in ordens_ativas},
+            {'OS aberta', 'OS em andamento', 'OS aguardando orçamento'},
         )
+        self.assertEqual(ordens_finalizadas, [])
 
-    def test_lista_os_considera_data_fim_preenchida_como_finalizada(self):
+    def test_lista_os_nao_trata_data_fim_preenchida_como_finalizada_quando_status_aberta(self):
         OrdemServico.objects.create(
             setor='manutencao',
             descricao='OS aberta e ativa',
@@ -128,7 +128,7 @@ class ManutencaoTransferenciaTests(TestCase):
         )
         OrdemServico.objects.create(
             setor='manutencao',
-            descricao='OS aberta mas encerrada',
+            descricao='OS aberta com data fim planejada',
             data_inicio='2026-04-16T10:00',
             data_fim='2026-04-16T12:00',
             executado_por='Mari',
@@ -142,8 +142,11 @@ class ManutencaoTransferenciaTests(TestCase):
         ordens_finalizadas = list(response.context['ordens_finalizadas'])
         ordens_ativas = list(response.context['ordens_ativas'])
 
-        self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta e ativa'})
-        self.assertEqual({os.descricao for os in ordens_finalizadas}, {'OS aberta mas encerrada'})
+        self.assertEqual(
+            {os.descricao for os in ordens_ativas},
+            {'OS aberta e ativa', 'OS aberta com data fim planejada'},
+        )
+        self.assertEqual(ordens_finalizadas, [])
 
     def test_lista_os_normaliza_status_com_espacos(self):
         OrdemServico.objects.create(
@@ -163,3 +166,19 @@ class ManutencaoTransferenciaTests(TestCase):
 
         self.assertEqual({os.descricao for os in ordens_ativas}, {'OS aberta com espaços'})
         self.assertEqual(ordens_finalizadas, [])
+
+    def test_manutencao_renderiza_tabela_de_finalizadas(self):
+        OrdemServico.objects.create(
+            setor='manutencao',
+            descricao='OS já finalizada',
+            data_inicio='2026-04-16T10:00',
+            data_fim='2026-04-16T12:00',
+            executado_por='Mari',
+            status='finalizada',
+            solicitante='João',
+        )
+
+        response = self.client.get(reverse('manutencao'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'OS já finalizada')

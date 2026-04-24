@@ -248,6 +248,21 @@
             border: 1px solid var(--line);
             font-size: 0.95rem;
         }
+        .field input[type="checkbox"] {
+            width: auto;
+            padding: 0;
+        }
+        .field-inline {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .errorlist {
+            margin: 0;
+            padding-left: 16px;
+            color: #a20000;
+            font-size: 0.8rem;
+        }
 
         .btn {
             border: 1px solid var(--accent);
@@ -349,7 +364,7 @@
                                     </div>
                                     <ul class="events">
                                         {% for evento in day.events %}
-                                            <li class="{{ evento.origem }}">
+                                            <li class="{{ evento.origem }}"{% if evento.origem == 'manual' and evento.cor %} style="background: {{ evento.cor }};"{% endif %}>
                                                 <span class="event-label">
                                                     {% if evento.origem == 'manual' %}Manual{% elif evento.origem == 'os' %}OS{% elif evento.origem == 'rock' %}Rock{% elif evento.origem == 'reuniao' %}Reunião{% endif %}
                                                 </span>
@@ -376,10 +391,32 @@
                     <div class="field">
                         <label for="{{ form.titulo.id_for_label }}">Evento</label>
                         {{ form.titulo }}
+                        {{ form.titulo.errors }}
                     </div>
                     <div class="field">
                         <label for="{{ form.data.id_for_label }}">Data</label>
                         {{ form.data }}
+                        {{ form.data.errors }}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.cor.id_for_label }}">Cor da anotação</label>
+                        {{ form.cor }}
+                        {{ form.cor.errors }}
+                    </div>
+                    <div class="field field-inline">
+                        {{ form.dia_todo }}
+                        <label for="{{ form.dia_todo.id_for_label }}">Dia todo</label>
+                        {{ form.dia_todo.errors }}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.horario.id_for_label }}">Horário</label>
+                        {{ form.horario }}
+                        {{ form.horario.errors }}
+                    </div>
+                    <div class="field field-inline">
+                        {{ form.recorrente }}
+                        <label for="{{ form.recorrente.id_for_label }}">Recorrente</label>
+                        {{ form.recorrente.errors }}
                     </div>
                     <button type="submit" class="btn">{% if evento_em_edicao %}Salvar edição{% else %}Salvar evento{% endif %}</button>
                     {% if evento_em_edicao %}
@@ -392,7 +429,16 @@
                 <div class="manual-list">
                     {% for evento in eventos_manuais %}
                     <article class="manual-item">
-                        <p><strong>{{ evento.titulo }}</strong><br>{{ evento.data|date:"d/m/Y" }}</p>
+                        <p>
+                            <strong>{{ evento.titulo }}</strong><br>
+                            {{ evento.data|date:"d/m/Y" }}
+                            {% if evento.dia_todo %}
+                                • Dia todo
+                            {% elif evento.horario %}
+                                • {{ evento.horario|time:"H:i" }}
+                            {% endif %}
+                            {% if evento.recorrente %}• Recorrente{% endif %}
+                        </p>
                         <div class="manual-actions">
                             <a class="btn btn-light" href="?mes={{ current|date:'Y-m' }}&editar_evento={{ evento.id }}">Editar</a>
                             <form method="post" class="inline-form" onsubmit="return confirm('Excluir este evento manual?');">
@@ -413,5 +459,20 @@
             </aside>
         </section>
     </main>
+<script>
+const diaTodoInput = document.getElementById('id_dia_todo');
+const horarioInput = document.getElementById('id_horario');
+if (diaTodoInput && horarioInput) {
+    const toggleHorario = () => {
+        const disabled = diaTodoInput.checked;
+        horarioInput.disabled = disabled;
+        if (disabled) {
+            horarioInput.value = '';
+        }
+    };
+    diaTodoInput.addEventListener('change', toggleHorario);
+    toggleHorario();
+}
+</script>
 </body>
 </html>
