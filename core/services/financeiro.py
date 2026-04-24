@@ -38,7 +38,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         nota__setor='compras',
         nota__cobrar_no_aluguel=True,
     ).select_related('nota').prefetch_related('rateio_exclusoes')
-    parcelas_rateio = parcelas_mes.exclude(nota__categoria_compra='rock')
+    parcelas_rateio = parcelas_mes
     parcelas_consumo_lista = []
     parcelas_material_lista = []
     for parcela in parcelas_rateio:

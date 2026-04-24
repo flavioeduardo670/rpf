@@ -64,3 +64,65 @@ class CalcularRateioFinanceiroTests(TestCase):
 
         self.assertEqual(resumo['total_parcelas_mes_rateio'], Decimal('200.00'))
         self.assertEqual(resumo['caixinha_por_morador'], Decimal('100.00'))
+
+    def test_categoria_rock_entra_no_rateio_quando_cobrar_no_aluguel_ativo(self):
+        mes = date(2026, 5, 1)
+        Morador.objects.create(nome='Morador 1', ativo=True, peso_quarto=Decimal('1.0'))
+        Morador.objects.create(nome='Morador 2', ativo=True, peso_quarto=Decimal('1.0'))
+        nota = NotaFiscal.objects.create(
+            setor='compras',
+            descricao='Compra Rock',
+            fornecedor='Fornecedor',
+            categoria_compra='rock',
+            tipo_item='Bem de Consumo',
+            quantidade=1,
+            valor=Decimal('80.00'),
+            cobrar_no_aluguel=True,
+            data_emissao=date(2026, 4, 2),
+            data_vencimento=date(2026, 4, 10),
+            status='pendente',
+        )
+        NotaParcela.objects.create(
+            nota=nota,
+            numero=1,
+            valor=Decimal('80.00'),
+            vencimento=date(2026, 5, 5),
+            mes_referencia=mes,
+            status='pendente',
+        )
+
+        resumo = calcular_rateio_financeiro(mes, incluir_pendencia=True)
+
+        self.assertEqual(resumo['total_parcelas_mes_rateio'], Decimal('80.00'))
+        self.assertEqual(resumo['caixinha_por_morador'], Decimal('40.00'))
+
+    def test_nota_nao_entra_no_rateio_quando_cobrar_no_aluguel_desativado(self):
+        mes = date(2026, 5, 1)
+        Morador.objects.create(nome='Morador 1', ativo=True, peso_quarto=Decimal('1.0'))
+        Morador.objects.create(nome='Morador 2', ativo=True, peso_quarto=Decimal('1.0'))
+        nota = NotaFiscal.objects.create(
+            setor='compras',
+            descricao='Compra sem rateio',
+            fornecedor='Fornecedor',
+            categoria_compra='rock',
+            tipo_item='Bem de Consumo',
+            quantidade=1,
+            valor=Decimal('90.00'),
+            cobrar_no_aluguel=False,
+            data_emissao=date(2026, 4, 2),
+            data_vencimento=date(2026, 4, 10),
+            status='pendente',
+        )
+        NotaParcela.objects.create(
+            nota=nota,
+            numero=1,
+            valor=Decimal('90.00'),
+            vencimento=date(2026, 5, 5),
+            mes_referencia=mes,
+            status='pendente',
+        )
+
+        resumo = calcular_rateio_financeiro(mes, incluir_pendencia=True)
+
+        self.assertEqual(resumo['total_parcelas_mes_rateio'], Decimal('0.00'))
+        self.assertEqual(resumo['caixinha_por_morador'], Decimal('0.00'))
