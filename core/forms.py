@@ -537,14 +537,30 @@ class CompraIngressoRockForm(forms.Form):
 class EventoCalendarioForm(forms.ModelForm):
     class Meta:
         model = EventoCalendario
-        fields = ['titulo', 'data']
+        fields = ['titulo', 'data', 'cor', 'dia_todo', 'horario', 'recorrente']
         labels = {
             'titulo': 'Evento',
             'data': 'Data',
+            'cor': 'Cor',
+            'dia_todo': 'Dia todo',
+            'horario': 'Horário',
+            'recorrente': 'Recorrente',
         }
         widgets = {
             'data': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'cor': forms.TextInput(attrs={'type': 'color'}),
+            'horario': forms.TimeInput(attrs={'type': 'time'}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        dia_todo = cleaned.get('dia_todo')
+        horario = cleaned.get('horario')
+        if dia_todo:
+            cleaned['horario'] = None
+        elif not horario:
+            self.add_error('horario', 'Informe o horário ou marque "Dia todo".')
+        return cleaned
 
 
 class ReuniaoForm(forms.ModelForm):
