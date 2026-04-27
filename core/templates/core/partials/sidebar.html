@@ -1,9 +1,8 @@
 {% load static %}
 <aside class="rpf-shell__sidebar">
-    <div class="rpf-brand">
-        <img src="{% static 'core/brand/rpf_logo_icon.svg' %}" alt="RPF">
-        <span>ERP RPF</span>
-    </div>
+    <a class="rpf-brand" href="{% url 'home' %}" aria-label="Ir para início">
+        <img src="{% static 'core/brand/rpf_logo_full.svg' %}" alt="República Portão dos Fundos">
+    </a>
     <nav class="rpf-nav" aria-label="Principal">
         <a class="rpf-nav__link" href="{% url 'home' %}">Início</a>
         <a class="rpf-nav__link" href="{% url 'moradores' %}">Moradores</a>

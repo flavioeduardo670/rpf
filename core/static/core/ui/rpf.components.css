@@ -153,6 +153,14 @@ form p input:focus {
     width: min(420px, 100%);
 }
 
+.rpf-auth__logo {
+    width: 100%;
+    max-width: 220px;
+    display: block;
+    margin: 0 auto 14px;
+    border-radius: 12px;
+}
+
 .rpf-auth__title {
     margin: 0 0 10px;
 }
