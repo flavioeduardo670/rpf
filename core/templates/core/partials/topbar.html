@@ -1,7 +1,7 @@
 {% load static %}
 <header class="rpf-topbar">
     <div class="rpf-topbar__title-wrap">
-        <img class="rpf-topbar__logo" src="{% static 'core/brand/rpf_logo_icon.svg' %}" alt="Logo República Portão dos Fundos">
+        <img class="rpf-topbar__logo" src="{{ MEDIA_URL }}perfil_fotos/logo.jpg" alt="Logo República Portão dos Fundos">
         <h1>Gestão da República</h1>
     </div>
     <a class="rpf-btn rpf-btn--secondary" href="{% url 'perfil' %}">Meu perfil</a>

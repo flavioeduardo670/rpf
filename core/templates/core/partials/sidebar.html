@@ -1,7 +1,7 @@
 {% load static %}
 <aside class="rpf-shell__sidebar">
     <a class="rpf-brand" href="{% url 'home' %}" aria-label="Ir para início">
-        <img src="{% static 'core/brand/rpf_logo_full.svg' %}" alt="República Portão dos Fundos">
+        <img src="{{ MEDIA_URL }}perfil_fotos/logo.jpg" alt="República Portão dos Fundos">
     </a>
     <nav class="rpf-nav" aria-label="Principal">
         <a class="rpf-nav__link" href="{% url 'home' %}">Início</a>
