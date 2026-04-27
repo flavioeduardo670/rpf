@@ -1,7 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" role="img" aria-label="ERP RPF">
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0B0B0B"/>
-  <rect x="10" y="46" width="44" height="8" rx="4" fill="#FFC700"/>
-  <path d="M18 18h18c7 0 12 5 12 11 0 5-3 9-8 10l9 11h-9l-8-10h-6v10h-8V18zm8 7v9h10c2.5 0 4-2 4-4.5S38.5 25 36 25H26z" fill="#fff"/>
-  <text x="80" y="30" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#0B0B0B">ERP-RPF</text>
-  <text x="80" y="50" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B6B6B">Gestão operacional</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 760" role="img" aria-label="República Portão dos Fundos">
+  <rect width="760" height="760" fill="#000"/>
+  <g fill="#fff">
+    <text x="380" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="64">REPÚBLICA</text>
+
+    <rect x="130" y="220" width="190" height="320" fill="none" stroke="#fff" stroke-width="14"/>
+    <polygon points="142,238 242,284 242,520 142,520" fill="#000"/>
+
+    <path d="M390 390h70v-62l58-46h110l38 44-26 25-28-31h-54l53 52v48l-58 58v84h-58v-62l44-46v-33l-35 33h-138v-63z"/>
+    <rect x="565" y="436" width="115" height="50"/>
+
+    <ellipse cx="460" cy="260" rx="44" ry="44"/>
+    <path d="M372 244l95-54 76 8 10 7-131 76-56-8z"/>
+    <path d="M390 266c-14 8-24 19-28 34 7 5 14 5 20 0 2-11 8-19 18-24 4-3 4-7 0-10-3-3-7-3-10 0z"/>
+    <path d="M366 283c-7 15-8 33-4 53l18 15c8-17 9-35 1-54l-15-14z"/>
+
+    <text x="380" y="650" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="62">PORTÃO DOS FUNDOS</text>
+  </g>
 </svg>
