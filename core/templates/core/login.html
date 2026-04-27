@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
+    <link rel="icon" href="{{ MEDIA_URL }}perfil_fotos/logo.jpg" type="image/jpeg">
     <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.tokens.css' %}">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.components.css' %}">
@@ -13,7 +13,7 @@
 <body class="rpf-body">
     <main class="rpf-auth">
         <div class="rpf-card rpf-auth__card">
-            <img class="rpf-auth__logo" src="{% static 'core/brand/rpf_logo_full.svg' %}" alt="República Portão dos Fundos">
+            <img class="rpf-auth__logo" src="{{ MEDIA_URL }}perfil_fotos/logo.jpg" alt="República Portão dos Fundos">
             <h1 class="rpf-auth__title">Entrar</h1>
             <p class="rpf-auth__subtitle">Faça login para acessar o sistema.</p>
             <form method="post">
