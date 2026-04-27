@@ -14,17 +14,17 @@
 }
 
 .rpf-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .8px;
+    display: block;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    background: rgba(255, 255, 255, .04);
+    padding: 10px;
 }
 
 .rpf-brand img {
-    width: 24px;
-    height: 24px;
+    width: 100%;
+    display: block;
+    height: auto;
 }
 
 .rpf-nav {
@@ -63,6 +63,19 @@
     gap: 12px;
 }
 
+.rpf-topbar__title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rpf-topbar__logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
 .rpf-topbar h1 {
     margin: 0;
     font-size: 1.1rem;
@@ -85,5 +98,9 @@
 
     .rpf-shell__sidebar {
         padding: var(--rpf-space-4);
+    }
+
+    .rpf-brand {
+        max-width: 220px;
     }
 }
