@@ -27,7 +27,7 @@
 <div class="wrap">
     <div class="top">
         <h1>Editar parcela</h1>
-        <a class="btn light" href="{% url 'financeiro' %}">Voltar</a>
+        <a class="btn light" href="{% url 'financeiro_aluguel' %}">Voltar</a>
     </div>
 
     <section class="card">
@@ -35,7 +35,7 @@
             {% csrf_token %}
             {{ form.as_p }}
             <div class="actions">
-                <a class="btn light" href="{% url 'financeiro' %}">Cancelar</a>
+                <a class="btn light" href="{% url 'financeiro_aluguel' %}">Cancelar</a>
                 <button type="submit" class="btn">Salvar</button>
             </div>
         </form>

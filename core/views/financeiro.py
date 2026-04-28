@@ -119,18 +119,59 @@ class NotaFiscalForm(forms.ModelForm):
 
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_home(request):
+    modulos = [
+        {
+            'titulo': 'Aluguel',
+            'descricao': 'Rateio mensal, ajustes individuais, pendências e comprovantes.',
+            'url': redirect('financeiro_aluguel').url,
+            'status': 'Ativo',
+        },
+        {
+            'titulo': 'Faturamento',
+            'descricao': 'Acompanhamento de receitas e previsão de entradas.',
+            'url': '',
+            'status': 'Em breve',
+        },
+        {
+            'titulo': 'Prestação de contas',
+            'descricao': 'Consolidação de despesas e prestação por período.',
+            'url': '',
+            'status': 'Em breve',
+        },
+        {
+            'titulo': 'Fluxo de caixa',
+            'descricao': 'Visão de entradas e saídas com saldo acumulado.',
+            'url': '',
+            'status': 'Em breve',
+        },
+        {
+            'titulo': 'Balanço patrimonial',
+            'descricao': 'Resumo patrimonial e posição financeira da casa.',
+            'url': '',
+            'status': 'Em breve',
+        },
+    ]
+    return render(request, 'core/financeiro_home.html', {'modulos': modulos})
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
     can_edit_financeiro = can_edit(request, 'acesso_financeiro_editar')
     configuracao = ConfiguracaoFinanceira.objects.order_by('-id').first()
     configuracao_form = None
     if request.method == 'POST':
+        if 'delete_ajuste_id' in request.POST:
+            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            AjusteMorador.objects.filter(id=request.POST.get('delete_ajuste_id'), mes_referencia=mes).delete()
+            return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         if 'desconto_submit' in request.POST:
             mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
             form = DescontoMensalForm(request.POST)
             if form.is_valid():
                 from core.models import DescontoMensal
                 DescontoMensal.objects.update_or_create(mes_referencia=mes, defaults={'valor_total': form.cleaned_data['valor_total']})
-                return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
+                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'ajuste_submit' in request.POST:
             fs = AjusteMoradorFormSet(
                 request.POST,
@@ -144,7 +185,7 @@ def financeiro(request):
                     ajuste.save()
                 for obj in fs.deleted_objects:
                     obj.delete()
-                return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
+                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'pendencia_submit' in request.POST:
             mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
             fs = PendenciaMensalItemFormSet(
@@ -159,18 +200,18 @@ def financeiro(request):
                     item.save()
                 for obj in fs.deleted_objects:
                     obj.delete()
-                return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
+                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'fixas_submit' in request.POST:
             fs = ContaFixaFormSet(request.POST, queryset=ContaFixa.objects.all())
             if fs.is_valid():
                 fs.save()
                 mes_ref = request.POST.get('mes_referencia')
-                return redirect(f"{redirect('financeiro').url}?mes={mes_ref[:7]}") if mes_ref else redirect('financeiro')
+                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_ref[:7]}") if mes_ref else redirect('financeiro_aluguel')
         else:
             configuracao_form = ConfiguracaoFinanceiraForm(request.POST, instance=configuracao)
             if configuracao_form.is_valid():
                 configuracao_form.save()
-                return redirect('financeiro')
+                return redirect('financeiro_aluguel')
     if configuracao_form is None:
         configuracao_form = ConfiguracaoFinanceiraForm(instance=configuracao)
 
@@ -250,7 +291,7 @@ def pagar_nota(request, nota_id):
         nota.status = 'pago'
         nota.data_pagamento = timezone.now().date()
         nota.save(update_fields=['status', 'data_pagamento'])
-    return redirect('financeiro')
+    return redirect('financeiro_aluguel')
 
 
 @require_POST
@@ -260,7 +301,7 @@ def pagar_parcela(request, parcela_id):
     if parcela.status != 'pago':
         parcela.status = 'pago'
         parcela.save(update_fields=['status'])
-    return redirect('financeiro')
+    return redirect('financeiro_aluguel')
 
 
 @login_required
@@ -274,10 +315,10 @@ def anexar_comprovante_pagamento(request, morador_id):
     morador = get_object_or_404(Morador, id=morador_id, ativo=True)
     arquivo = request.FILES.get('comprovante')
     mes_param = request.POST.get('mes')
-    next_view = request.POST.get('next', 'financeiro')
+    next_view = request.POST.get('next', 'financeiro_aluguel')
 
     if not arquivo or not mes_param:
-        return redirect(next_view if next_view in ('financeiro', 'perfil') else 'financeiro')
+        return redirect(next_view if next_view in ('financeiro', 'financeiro_aluguel', 'perfil') else 'financeiro_aluguel')
 
     mes_referencia = resolver_mes_referencia(mes_param)
     ComprovantePagamentoMorador.objects.update_or_create(
@@ -287,7 +328,7 @@ def anexar_comprovante_pagamento(request, morador_id):
     )
     if next_view == 'perfil':
         return redirect('perfil')
-    return redirect(f"{redirect('financeiro').url}?mes={mes_referencia.strftime('%Y-%m')}")
+    return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_referencia.strftime('%Y-%m')}")
 
 
 @login_required
@@ -299,9 +340,9 @@ def ver_comprovante_pagamento(request, comprovante_id):
     if not can_view_financeiro and (not morador_logado or morador_logado.id != comprovante.morador_id):
         raise PermissionDenied('Você não pode visualizar este comprovante.')
 
-    destino = 'perfil' if (morador_logado and morador_logado.id == comprovante.morador_id and not can_view_financeiro) else 'financeiro'
+    destino = 'perfil' if (morador_logado and morador_logado.id == comprovante.morador_id and not can_view_financeiro) else 'financeiro_aluguel'
     if destino == 'financeiro':
-        destino = f"{redirect('financeiro').url}?mes={comprovante.mes_referencia.strftime('%Y-%m')}"
+        destino = f"{redirect('financeiro_aluguel').url}?mes={comprovante.mes_referencia.strftime('%Y-%m')}"
 
     if not comprovante.arquivo or not comprovante.arquivo.name:
         messages.error(request, 'Comprovante não encontrado para este registro.')
@@ -330,7 +371,7 @@ def editar_parcela(request, parcela_id):
     form = ParcelaForm(request.POST or None, instance=parcela)
     if request.method == 'POST' and form.is_valid():
         form.save()
-        return redirect('financeiro')
+        return redirect('financeiro_aluguel')
     return render(request, 'core/editar_parcela.html', {'form': form, 'parcela': parcela})
 
 
@@ -349,7 +390,7 @@ def editar_rateio_parcela(request, parcela_id):
         for morador_id in excluidos - existentes:
             ParcelaRateioExclusao.objects.create(parcela=parcela, morador_id=morador_id)
         mes_param = request.POST.get('mes_param')
-        return redirect(f"{redirect('financeiro').url}?mes={mes_param}") if mes_param else redirect('financeiro')
+        return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_param}") if mes_param else redirect('financeiro_aluguel')
 
     excluidos_ids = set(ParcelaRateioExclusao.objects.filter(parcela=parcela).values_list('morador_id', flat=True))
     moradores_contexto = [{'morador': morador, 'selecionado': morador.id not in excluidos_ids} for morador in moradores_ativos]

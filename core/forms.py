@@ -729,6 +729,7 @@ class AjusteMoradorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['morador'].queryset = Morador.objects.filter(ativo=True).order_by('ordem_hierarquia', 'nome')
         self.fields['morador'].label_from_instance = lambda m: (m.apelido or m.nome)
+        self.fields['motivo'].required = False
         apply_form_config(self, 'ajuste_morador_form')
 
 
