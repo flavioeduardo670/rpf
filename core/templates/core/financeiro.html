@@ -395,12 +395,20 @@ const addAjusteRow = () => {
 };
 
 const removeAjusteRow = (row) => {
-    const deleteInput = row.querySelector('input[type=\"checkbox\"]');
-    if (deleteInput) {
+    if (!row) return;
+    const deleteInput = row.querySelector('input[name$="-DELETE"]');
+    const idInput = row.querySelector('input[name$="-id"]');
+    const hasPersistedId = Boolean(idInput && idInput.value);
+
+    if (deleteInput && hasPersistedId) {
         deleteInput.checked = true;
         row.style.display = 'none';
-    } else {
-        row.remove();
+        return;
+    }
+
+    row.remove();
+    if (ajusteTotalForms) {
+        ajusteTotalForms.value = ajusteBody.querySelectorAll('tr').length;
     }
 };
 
