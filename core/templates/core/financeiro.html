@@ -97,9 +97,9 @@
     <section class="config-wrap">
         <h2>Mes de referencia</h2>
         <div class="hero-actions">
-            <a href="{% url 'financeiro' %}?mes={{ mes_anterior|date:'Y-m' }}" class="btn btn-invert">Mes anterior</a>
+            <a href="{% url 'financeiro_aluguel' %}?mes={{ mes_anterior|date:'Y-m' }}" class="btn btn-invert">Mes anterior</a>
             <span style="font-weight:700;">{{ mes_referencia|date:"m/Y" }}</span>
-            <a href="{% url 'financeiro' %}?mes={{ mes_proximo|date:'Y-m' }}" class="btn btn-invert">Mes seguinte</a>
+            <a href="{% url 'financeiro_aluguel' %}?mes={{ mes_proximo|date:'Y-m' }}" class="btn btn-invert">Mes seguinte</a>
         </div>
     </section>
 
