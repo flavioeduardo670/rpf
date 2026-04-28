@@ -1,0 +1,26 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Financeiro | ERP RPF{% endblock %}
+
+{% block content %}
+<section class="rpf-dashboard-grid">
+    <article class="rpf-card" style="grid-column:1/-1;">
+        <p class="rpf-kpi__label">Módulo</p>
+        <h1 class="rpf-kpi__value">Financeiro</h1>
+        <p>Selecione um submódulo para acessar os recursos financeiros da casa.</p>
+    </article>
+
+    {% for modulo in modulos %}
+    <article class="rpf-card">
+        <p class="rpf-kpi__label">{{ modulo.status }}</p>
+        <h2 class="rpf-kpi__value">{{ modulo.titulo }}</h2>
+        <p>{{ modulo.descricao }}</p>
+        {% if modulo.url %}
+        <a href="{{ modulo.url }}" class="rpf-btn rpf-btn--primary">Acessar</a>
+        {% else %}
+        <span class="rpf-btn rpf-btn--ghost" aria-disabled="true">Em breve</span>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+{% endblock %}

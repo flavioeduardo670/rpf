@@ -9,6 +9,7 @@ from .financeiro import (
     exportar_compras_csv,
     exportar_financeiro_csv,
     financeiro,
+    financeiro_home,
     pagar_nota,
     pagar_parcela,
     ver_comprovante_pagamento,
