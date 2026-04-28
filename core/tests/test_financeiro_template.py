@@ -43,6 +43,17 @@ class FinanceiroTemplateTests(TestCase):
         self.assertIn(f'name="pendencia-0-id" value="{self.pendencia.id}"', html)
 
 
+    def test_financeiro_exclui_ajuste_por_botao_dedicado(self):
+        response = self.client.post(
+            reverse('financeiro'),
+            data={
+                'mes_referencia': '2026-05-01',
+                'delete_ajuste_id': str(self.ajuste.id),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(AjusteMorador.objects.filter(id=self.ajuste.id).exists())
+
     def test_financeiro_permite_salvar_ajuste_sem_motivo(self):
         response = self.client.post(
             reverse('financeiro'),
@@ -89,6 +100,7 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'input[name$="-DELETE"]')
         self.assertContains(response, 'input[name$="-id"]')
+        self.assertContains(response, 'name="delete_ajuste_id"')
         self.assertContains(response, "ajusteTotalForms.value = ajusteBody.querySelectorAll('tr').length;")
 
     def test_financeiro_exibe_coluna_de_comprovante(self):

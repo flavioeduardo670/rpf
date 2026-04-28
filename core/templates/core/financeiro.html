@@ -246,7 +246,11 @@
                         <td>{{ form.valor }}</td>
                         <td>{{ form.motivo }}</td>
                         <td>
+                            {% if form.instance.pk %}
+                            <button type="submit" class="btn btn-invert" name="delete_ajuste_id" value="{{ form.instance.pk }}">Excluir</button>
+                            {% else %}
                             <button type="button" class="btn btn-invert" data-remove-ajuste>Excluir</button>
+                            {% endif %}
                             <span style="display:none;">{{ form.DELETE }}</span>
                         </td>
                     </tr>

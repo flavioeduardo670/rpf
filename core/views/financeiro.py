@@ -124,6 +124,10 @@ def financeiro(request):
     configuracao = ConfiguracaoFinanceira.objects.order_by('-id').first()
     configuracao_form = None
     if request.method == 'POST':
+        if 'delete_ajuste_id' in request.POST:
+            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            AjusteMorador.objects.filter(id=request.POST.get('delete_ajuste_id'), mes_referencia=mes).delete()
+            return redirect(f"{redirect('financeiro').url}?mes={mes.strftime('%Y-%m')}")
         if 'desconto_submit' in request.POST:
             mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
             form = DescontoMensalForm(request.POST)
