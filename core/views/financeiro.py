@@ -178,6 +178,7 @@ def financeiro_prestacao_contas(request):
             'percentual': f"{percentual.quantize(Decimal('0.01'))}",
         })
 
+<<<<<<< codex/develop-financial-accountability-page-fswsu8
     parcelas_ordenadas = sorted(resumo['parcelas_rateio'], key=lambda p: p.nota.data_emissao or mes_referencia)
     calendario = {}
     for parcela in parcelas_ordenadas:
@@ -226,6 +227,14 @@ def financeiro_prestacao_contas_morador(request, morador_id):
         'composicao': composicao,
     })
 
+=======
+    return render(request, 'core/financeiro_prestacao_contas.html', {
+        'mes_referencia': mes_referencia,
+        'composicao_gastos': composicao_gastos,
+        **resumo,
+    })
+
+>>>>>>> main
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
     can_edit_financeiro = can_edit(request, 'acesso_financeiro_editar')
