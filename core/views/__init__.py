@@ -10,6 +10,7 @@ from .financeiro import (
     exportar_financeiro_csv,
     financeiro,
     financeiro_home,
+    financeiro_prestacao_contas,
     pagar_nota,
     pagar_parcela,
     ver_comprovante_pagamento,

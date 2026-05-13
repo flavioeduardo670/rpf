@@ -16,6 +16,7 @@ urlpatterns = [
     path('moradores/exportar/', views.exportar_moradores_csv, name='exportar_moradores_csv'),
     path('financeiro/', views.financeiro_home, name='financeiro'),
     path('financeiro/aluguel/', views.financeiro, name='financeiro_aluguel'),
+    path('financeiro/prestacao-contas/', views.financeiro_prestacao_contas, name='financeiro_prestacao_contas'),
     path('financeiro/exportar/', views.exportar_financeiro_csv, name='exportar_financeiro_csv'),
     path('financeiro/notas/<int:nota_id>/pagar/', views.pagar_nota, name='pagar_nota'),
     path('financeiro/parcelas/<int:parcela_id>/pagar/', views.pagar_parcela, name='pagar_parcela'),
