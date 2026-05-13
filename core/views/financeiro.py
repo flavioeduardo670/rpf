@@ -136,8 +136,8 @@ def financeiro_home(request):
         {
             'titulo': 'Prestação de contas',
             'descricao': 'Consolidação de despesas e prestação por período.',
-            'url': '',
-            'status': 'Em breve',
+            'url': redirect('financeiro_prestacao_contas').url,
+            'status': 'Ativo',
         },
         {
             'titulo': 'Fluxo de caixa',
@@ -154,6 +154,77 @@ def financeiro_home(request):
     ]
     return render(request, 'core/financeiro_home.html', {'modulos': modulos})
 
+
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_prestacao_contas(request):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    total_rateio = resumo['total_rateio']
+
+    composicao_raw = [
+        ('Aluguel', resumo['valor_aluguel']),
+        ('Contas fixas', resumo['valor_fixas_total']),
+        ('Pendências/Extras', resumo['pendencia_total_mes']),
+        ('Descontos', resumo['desconto_total_mes']),
+    ]
+    composicao_gastos = []
+    for label, valor in composicao_raw:
+        percentual = (valor / total_rateio * Decimal('100')) if total_rateio else Decimal('0')
+        composicao_gastos.append({
+            'label': label,
+            'valor': valor,
+            'percentual': f"{percentual.quantize(Decimal('0.01'))}",
+        })
+
+    parcelas_ordenadas = sorted(resumo['parcelas_rateio'], key=lambda p: p.nota.data_emissao or mes_referencia)
+    calendario = {}
+    for parcela in parcelas_ordenadas:
+        data_ref = parcela.nota.data_emissao or mes_referencia
+        if data_ref.month != mes_referencia.month or data_ref.year != mes_referencia.year:
+            continue
+        bucket = calendario.setdefault(data_ref, {'data': data_ref, 'total': Decimal('0.00'), 'qtd': 0})
+        bucket['total'] += parcela.valor or Decimal('0.00')
+        bucket['qtd'] += 1
+
+    return render(request, 'core/financeiro_prestacao_contas.html', {
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'composicao_gastos': composicao_gastos,
+        'calendario_gastos': sorted(calendario.values(), key=lambda x: x['data']),
+        **resumo,
+    })
+
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_prestacao_contas_morador(request, morador_id):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    item = next((i for i in resumo['rateio_moradores'] if i['morador'].id == morador_id), None)
+    if item is None:
+        raise PermissionDenied('Morador não encontrado no rateio do mês.')
+
+    morador_label = item['morador'].apelido or item['morador'].nome
+    total = item['valor'] or Decimal('0.00')
+    composicao = []
+    for label, valor in [
+        ('Aluguel', item['aluguel']),
+        ('Contas fixas', item['fixas']),
+        ('Caixinha', item['caixinha']),
+        ('Materiais', item['parcelas']),
+        ('Extras', item['extra']),
+    ]:
+        percentual = (valor / total * Decimal('100')) if total else Decimal('0.00')
+        composicao.append({'label': label, 'valor': valor, 'percentual': f"{percentual.quantize(Decimal('0.01'))}"})
+    return render(request, 'core/financeiro_prestacao_contas_detalhe.html', {
+        'mes_referencia': mes_referencia,
+        'item': item,
+        'morador_label': morador_label,
+        'composicao': composicao,
+    })
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
