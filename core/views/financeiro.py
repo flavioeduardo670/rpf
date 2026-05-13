@@ -136,8 +136,8 @@ def financeiro_home(request):
         {
             'titulo': 'Prestação de contas',
             'descricao': 'Consolidação de despesas e prestação por período.',
-            'url': '',
-            'status': 'Em breve',
+            'url': redirect('financeiro_prestacao_contas').url,
+            'status': 'Ativo',
         },
         {
             'titulo': 'Fluxo de caixa',
@@ -154,6 +154,35 @@ def financeiro_home(request):
     ]
     return render(request, 'core/financeiro_home.html', {'modulos': modulos})
 
+
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_prestacao_contas(request):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    total_rateio = resumo['total_rateio']
+
+    composicao_raw = [
+        ('Aluguel', resumo['valor_aluguel']),
+        ('Contas fixas', resumo['valor_fixas_total']),
+        ('Pendências/Extras', resumo['pendencia_total_mes']),
+        ('Descontos', resumo['desconto_total_mes']),
+    ]
+    composicao_gastos = []
+    for label, valor in composicao_raw:
+        percentual = (valor / total_rateio * Decimal('100')) if total_rateio else Decimal('0')
+        composicao_gastos.append({
+            'label': label,
+            'valor': valor,
+            'percentual': f"{percentual.quantize(Decimal('0.01'))}",
+        })
+
+    return render(request, 'core/financeiro_prestacao_contas.html', {
+        'mes_referencia': mes_referencia,
+        'composicao_gastos': composicao_gastos,
+        **resumo,
+    })
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):

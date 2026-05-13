@@ -1,0 +1,94 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Prestação de contas | ERP RPF{% endblock %}
+
+{% block content %}
+<section class="rpf-dashboard-grid" style="gap:16px;">
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Financeiro</p>
+    <h1 class="rpf-kpi__value">Prestação de contas · {{ mes_referencia|date:'m/Y' }}</h1>
+    <p>Visão detalhada dos gastos da casa e quanto cada morador participa no rateio mensal.</p>
+  </article>
+
+  <article class="rpf-card" style="grid-column: span 3;">
+    <p class="rpf-kpi__label">Resumo geral</p>
+    <table class="rpf-table" style="width:100%;">
+      <tbody>
+        <tr><th>Aluguel</th><td>R$ {{ valor_aluguel|floatformat:2 }}</td></tr>
+        <tr><th>Contas fixas</th><td>R$ {{ valor_fixas_total|floatformat:2 }}</td></tr>
+        <tr><th>Extras e pendências</th><td>R$ {{ pendencia_total_mes|floatformat:2 }}</td></tr>
+        <tr><th>Descontos</th><td>- R$ {{ desconto_total_mes|floatformat:2 }}</td></tr>
+        <tr><th>Total para rateio</th><td><strong>R$ {{ total_rateio|floatformat:2 }}</strong></td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="rpf-card" style="grid-column: span 3;">
+    <p class="rpf-kpi__label">Divisão visual dos gastos</p>
+    {% for item in composicao_gastos %}
+      <div style="margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; font-size:.9rem;"><span>{{ item.label }}</span><span>R$ {{ item.valor|floatformat:2 }} ({{ item.percentual }}%)</span></div>
+        <div style="height:10px; border-radius:999px; background:#e8e8e8; overflow:hidden;">
+          <div style="height:100%; width:{{ item.percentual }}%; background:#111;"></div>
+        </div>
+      </div>
+    {% endfor %}
+  </article>
+
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Rateio por morador</p>
+    <div style="overflow:auto;">
+      <table class="rpf-table" style="width:100%; min-width:760px;">
+        <thead>
+          <tr>
+            <th>Morador</th>
+            <th>Peso do quarto</th>
+            <th>Parcela do aluguel</th>
+            <th>Parcela das contas</th>
+            <th>Extras</th>
+            <th>Descontos</th>
+            <th>Total do mês</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in rateio_moradores %}
+          <tr>
+            <td>{{ item.morador.nome }}</td>
+            <td>{{ item.peso|floatformat:2 }}</td>
+            <td>R$ {{ item.valor_aluguel|floatformat:2 }}</td>
+            <td>R$ {{ item.valor_fixas|floatformat:2 }}</td>
+            <td>R$ {{ item.valor_pendencia|floatformat:2 }}</td>
+            <td>- R$ {{ item.valor_desconto|floatformat:2 }}</td>
+            <td><strong>R$ {{ item.valor|floatformat:2 }}</strong></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7">Nenhum morador ativo para o mês selecionado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Detalhamento de gastos lançados</p>
+    <div style="overflow:auto;">
+      <table class="rpf-table" style="width:100%; min-width:760px;">
+        <thead><tr><th>Vencimento</th><th>Descrição</th><th>Fornecedor</th><th>Status</th><th>Valor</th></tr></thead>
+        <tbody>
+        {% for parcela in parcelas_rateio %}
+          <tr>
+            <td>{{ parcela.vencimento|date:'d/m/Y' }}</td>
+            <td>{{ parcela.nota.descricao }}</td>
+            <td>{{ parcela.nota.fornecedor|default:'-' }}</td>
+            <td>{{ parcela.get_status_display }}</td>
+            <td>R$ {{ parcela.valor|floatformat:2 }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">Sem parcelas com rateio no período.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}
