@@ -230,7 +230,6 @@ def financeiro_prestacao_contas_morador(request, morador_id):
         'composicao': composicao,
     })
 
->>>>>>> main
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
     can_edit_financeiro = can_edit(request, 'acesso_financeiro_editar')
