@@ -161,6 +161,10 @@ def financeiro_home(request):
 def financeiro_prestacao_contas(request):
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
     resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    resumo['rateio_moradores'] = sorted(
+        resumo['rateio_moradores'],
+        key=lambda item: (item['morador'].ordem_hierarquia, item['morador'].nome),
+    )
     total_rateio = resumo['total_rateio']
 
     composicao_raw = [
@@ -178,7 +182,6 @@ def financeiro_prestacao_contas(request):
             'percentual': f"{percentual.quantize(Decimal('0.01'))}",
         })
 
-<<<<<<< codex/develop-financial-accountability-page-fswsu8
     parcelas_ordenadas = sorted(resumo['parcelas_rateio'], key=lambda p: p.nota.data_emissao or mes_referencia)
     calendario = {}
     for parcela in parcelas_ordenadas:
@@ -225,13 +228,6 @@ def financeiro_prestacao_contas_morador(request, morador_id):
         'item': item,
         'morador_label': morador_label,
         'composicao': composicao,
-    })
-
-=======
-    return render(request, 'core/financeiro_prestacao_contas.html', {
-        'mes_referencia': mes_referencia,
-        'composicao_gastos': composicao_gastos,
-        **resumo,
     })
 
 >>>>>>> main
