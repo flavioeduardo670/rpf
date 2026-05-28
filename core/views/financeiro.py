@@ -136,8 +136,8 @@ def financeiro_home(request):
         {
             'titulo': 'Prestação de contas',
             'descricao': 'Consolidação de despesas e prestação por período.',
-            'url': '',
-            'status': 'Em breve',
+            'url': redirect('financeiro_prestacao_contas').url,
+            'status': 'Ativo',
         },
         {
             'titulo': 'Fluxo de caixa',
@@ -154,6 +154,231 @@ def financeiro_home(request):
     ]
     return render(request, 'core/financeiro_home.html', {'modulos': modulos})
 
+
+
+
+
+def _usuario_pode_ver_prestacao_geral(request):
+    if request.user.is_superuser or request.user.groups.filter(name='Financeiro').exists():
+        return True
+    return can_edit(request, 'acesso_financeiro_visualizar') or can_edit(request, 'acesso_financeiro_editar')
+
+
+def _usuario_pode_ver_extrato_morador(request, morador_id):
+    if _usuario_pode_ver_prestacao_geral(request):
+        return True
+    morador_logado = get_user_morador(request.user)
+    return bool(morador_logado and morador_logado.id == morador_id)
+
+
+def _valor_percentual(valor, total):
+    percentual = (valor / total * Decimal('100')) if total else Decimal('0.00')
+    return f"{percentual.quantize(Decimal('0.01'))}"
+
+
+def _dividir_valor_por_moradores(valor, quantidade):
+    if not quantidade:
+        return Decimal('0.00')
+    return (valor / quantidade).quantize(Decimal('0.01'))
+
+
+def _moradores_participantes_parcela(parcela, moradores_ativos):
+    excluidos_ids = {item.morador_id for item in parcela.rateio_exclusoes.all()}
+    participantes = [morador for morador in moradores_ativos if morador.id not in excluidos_ids]
+    return participantes or moradores_ativos
+
+
+def _valor_parcela_para_morador(parcela, morador, participantes):
+    if not participantes or morador.id not in {participante.id for participante in participantes}:
+        return Decimal('0.00')
+    valor_total = parcela.valor or Decimal('0.00')
+    valor_base = (valor_total / len(participantes)).quantize(Decimal('0.01'))
+    participante_ids = [participante.id for participante in participantes]
+    if morador.id == participante_ids[-1]:
+        return (valor_total - (valor_base * (len(participantes) - 1))).quantize(Decimal('0.01'))
+    return valor_base
+
+
+def _montar_extrato_morador(resumo, item, mes_referencia):
+    morador = item['morador']
+    moradores_ativos = resumo['moradores_ativos']
+    total_moradores = resumo['total_moradores_ativos']
+    lancamentos = []
+
+    def adicionar(data, categoria, descricao, valor, tipo='debito', detalhe=''):
+        valor = (valor or Decimal('0.00')).quantize(Decimal('0.01'))
+        if valor == Decimal('0.00'):
+            return
+        lancamentos.append({
+            'data': data,
+            'categoria': categoria,
+            'descricao': descricao,
+            'detalhe': detalhe,
+            'tipo': tipo,
+            'valor': valor,
+        })
+
+    adicionar(
+        mes_referencia,
+        'Aluguel',
+        'Quota do aluguel do mês',
+        item['aluguel'],
+        detalhe=f"Peso do quarto: {morador.peso_quarto or Decimal('0.00')}.",
+    )
+
+    for conta, valor_morador in zip(resumo['contas_fixas'], item['fixas_detalhe']):
+        adicionar(
+            mes_referencia,
+            'Conta fixa',
+            conta.nome,
+            valor_morador,
+            detalhe=f"R$ {conta.valor.quantize(Decimal('0.01'))} dividido entre {total_moradores} moradores ativos.",
+        )
+
+    for parcela in resumo['parcelas_rateio']:
+        participantes = _moradores_participantes_parcela(parcela, moradores_ativos)
+        valor_morador = _valor_parcela_para_morador(parcela, morador, participantes)
+        if valor_morador == Decimal('0.00'):
+            continue
+        nota = parcela.nota
+        detalhes = [
+            f"Parcela {parcela.numero}",
+            f"mês de cobrança {parcela.mes_referencia.strftime('%m/%Y')}",
+            f"dividida entre {len(participantes)} morador(es)",
+        ]
+        if nota.fornecedor:
+            detalhes.append(f"fornecedor: {nota.fornecedor}")
+        if nota.tipo_item:
+            detalhes.append(f"tipo: {nota.tipo_item}")
+        adicionar(
+            nota.data_emissao or parcela.vencimento or mes_referencia,
+            'Parcelas do mês',
+            nota.descricao,
+            valor_morador,
+            detalhe='; '.join(detalhes) + '.',
+        )
+
+    for pendencia in resumo['pendencias_items']:
+        valor_morador = _dividir_valor_por_moradores(pendencia.valor, total_moradores)
+        descricao = pendencia.motivo or pendencia.descricao or pendencia.get_tipo_display()
+        detalhe = pendencia.descricao if pendencia.motivo and pendencia.descricao != pendencia.motivo else ''
+        adicionar(
+            pendencia.mes_referencia,
+            pendencia.get_tipo_display(),
+            descricao,
+            valor_morador,
+            tipo='credito' if pendencia.tipo == 'desconto' else 'debito',
+            detalhe=(detalhe or f"Rateado igualmente entre {total_moradores} moradores ativos."),
+        )
+
+    ajustes = AjusteMorador.objects.filter(mes_referencia=mes_referencia, morador=morador).order_by('id')
+    for ajuste in ajustes:
+        adicionar(
+            ajuste.mes_referencia,
+            'Ajuste individual',
+            ajuste.motivo,
+            ajuste.valor,
+            tipo='credito' if ajuste.tipo == 'desconto' else 'debito',
+            detalhe=ajuste.get_tipo_display(),
+        )
+
+    lancamentos.sort(key=lambda lancamento: (lancamento['data'], lancamento['categoria'], lancamento['descricao']))
+    total_debitos = sum((l['valor'] for l in lancamentos if l['tipo'] == 'debito'), Decimal('0.00')).quantize(Decimal('0.01'))
+    total_creditos = sum((l['valor'] for l in lancamentos if l['tipo'] == 'credito'), Decimal('0.00')).quantize(Decimal('0.01'))
+    saldo = (total_debitos - total_creditos).quantize(Decimal('0.01'))
+    return lancamentos, total_debitos, total_creditos, saldo
+
+
+@login_required
+def financeiro_prestacao_contas(request):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    morador_logado = get_user_morador(request.user)
+    if not _usuario_pode_ver_prestacao_geral(request):
+        if morador_logado:
+            return redirect(
+                f"{redirect('financeiro_prestacao_contas_morador', morador_id=morador_logado.id).url}"
+                f"?mes={mes_referencia.strftime('%Y-%m')}"
+            )
+        raise PermissionDenied('Você não tem permissão para acessar a prestação de contas.')
+
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    resumo['rateio_moradores'] = sorted(
+        resumo['rateio_moradores'],
+        key=lambda item: (item['morador'].ordem_hierarquia, item['morador'].nome),
+    )
+    total_rateio = resumo['total_rateio']
+
+    composicao_raw = [
+        ('Aluguel', resumo['valor_aluguel']),
+        ('Contas fixas', resumo['valor_fixas_total']),
+        ('Parcelas do mês', resumo['total_parcelas_mes_rateio']),
+        ('Extras', resumo['pendencia_total_mes']),
+        ('Descontos', resumo['desconto_total_mes']),
+    ]
+    composicao_gastos = []
+    for label, valor in composicao_raw:
+        composicao_gastos.append({
+            'label': label,
+            'valor': valor,
+            'percentual': _valor_percentual(valor, total_rateio),
+        })
+
+    parcelas_ordenadas = sorted(resumo['parcelas_rateio'], key=lambda p: p.nota.data_emissao or mes_referencia)
+    calendario = {}
+    for parcela in parcelas_ordenadas:
+        data_ref = parcela.nota.data_emissao or mes_referencia
+        if data_ref.month != mes_referencia.month or data_ref.year != mes_referencia.year:
+            continue
+        bucket = calendario.setdefault(data_ref, {'data': data_ref, 'total': Decimal('0.00'), 'qtd': 0})
+        bucket['total'] += parcela.valor or Decimal('0.00')
+        bucket['qtd'] += 1
+
+    return render(request, 'core/financeiro_prestacao_contas.html', {
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'composicao_gastos': composicao_gastos,
+        'calendario_gastos': sorted(calendario.values(), key=lambda x: x['data']),
+        **resumo,
+    })
+
+
+@login_required
+def financeiro_prestacao_contas_morador(request, morador_id):
+    if not _usuario_pode_ver_extrato_morador(request, morador_id):
+        raise PermissionDenied('Você só pode acessar o seu próprio extrato individual.')
+
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    item = next((i for i in resumo['rateio_moradores'] if i['morador'].id == morador_id), None)
+    if item is None:
+        raise PermissionDenied('Morador não encontrado no rateio do mês.')
+
+    morador_label = item['morador'].apelido or item['morador'].nome
+    total = item['valor'] or Decimal('0.00')
+    composicao = []
+    for label, valor in [
+        ('Aluguel', item['aluguel']),
+        ('Contas fixas', item['fixas']),
+        ('Caixinha/consumo', item['caixinha']),
+        ('Parcelas do mês', item['parcelas']),
+        ('Extras', item['extra']),
+    ]:
+        composicao.append({'label': label, 'valor': valor, 'percentual': _valor_percentual(valor, total)})
+
+    lancamentos, total_debitos, total_creditos, saldo_extrato = _montar_extrato_morador(resumo, item, mes_referencia)
+    return render(request, 'core/financeiro_prestacao_contas_detalhe.html', {
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'item': item,
+        'morador_label': morador_label,
+        'composicao': composicao,
+        'lancamentos': lancamentos,
+        'total_debitos': total_debitos,
+        'total_creditos': total_creditos,
+        'saldo_extrato': saldo_extrato,
+    })
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
@@ -448,11 +673,31 @@ def compras(request):
         default=F('valor'),
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
-    notas = NotaFiscal.objects.filter(setor='compras').annotate(
+    notas_base = NotaFiscal.objects.filter(setor='compras').annotate(
         total_valor=ExpressionWrapper(total_valor_expr, output_field=DecimalField(max_digits=12, decimal_places=2)),
         mes_cobranca=Subquery(mes_cobranca_sub),
-    ).order_by('-data_emissao')
-    return render(request, 'core/compras.html', {'form': form, 'notas': notas, 'can_edit_compras': can_edit_compras, 'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'), 'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome')})
+    )
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    notas = notas_base.filter(mes_cobranca=mes_referencia).order_by('-data_emissao', '-id')
+
+    meses_disponiveis = list(
+        notas_base.exclude(mes_cobranca__isnull=True)
+        .values_list('mes_cobranca', flat=True)
+        .distinct()
+        .order_by('-mes_cobranca')
+    )
+
+    return render(request, 'core/compras.html', {
+        'form': form,
+        'notas': notas,
+        'can_edit_compras': can_edit_compras,
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'meses_disponiveis': meses_disponiveis,
+        'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'),
+        'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome'),
+    })
 
 
 @setor_required(group_name='Compras', morador_view_attr='acesso_compras_visualizar')
