@@ -523,11 +523,31 @@ def compras(request):
         default=F('valor'),
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
-    notas = NotaFiscal.objects.filter(setor='compras').annotate(
+    notas_base = NotaFiscal.objects.filter(setor='compras').annotate(
         total_valor=ExpressionWrapper(total_valor_expr, output_field=DecimalField(max_digits=12, decimal_places=2)),
         mes_cobranca=Subquery(mes_cobranca_sub),
-    ).order_by('-data_emissao')
-    return render(request, 'core/compras.html', {'form': form, 'notas': notas, 'can_edit_compras': can_edit_compras, 'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'), 'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome')})
+    )
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    notas = notas_base.filter(mes_cobranca=mes_referencia).order_by('-data_emissao', '-id')
+
+    meses_disponiveis = list(
+        notas_base.exclude(mes_cobranca__isnull=True)
+        .values_list('mes_cobranca', flat=True)
+        .distinct()
+        .order_by('-mes_cobranca')
+    )
+
+    return render(request, 'core/compras.html', {
+        'form': form,
+        'notas': notas,
+        'can_edit_compras': can_edit_compras,
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'meses_disponiveis': meses_disponiveis,
+        'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'),
+        'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome'),
+    })
 
 
 @setor_required(group_name='Compras', morador_view_attr='acesso_compras_visualizar')

@@ -72,6 +72,17 @@
 
     <section class="card">
         <h2>Notas registradas</h2>
+        <div class="filters" style="margin-top:0;">
+            <a class="btn" href="{% url 'compras' %}?mes={{ mes_anterior|date:'Y-m' }}">Mês anterior</a>
+            <strong style="align-self:center;">Referência: {{ mes_referencia|date:'m/Y' }}</strong>
+            <a class="btn" href="{% url 'compras' %}?mes={{ mes_proximo|date:'Y-m' }}">Mês seguinte</a>
+            <select onchange="if(this.value){window.location='{% url 'compras' %}?mes='+this.value}">
+                <option value="">Ir para mês…</option>
+                {% for mes_item in meses_disponiveis %}
+                <option value="{{ mes_item|date:'Y-m' }}" {% if mes_item == mes_referencia %}selected{% endif %}>{{ mes_item|date:'m/Y' }}</option>
+                {% endfor %}
+            </select>
+        </div>
         <div class="filters" data-column-toggles>
             <label><input type="checkbox" data-col="0" checked> Item</label>
             <label><input type="checkbox" data-col="1" checked> Fornecedor</label>
@@ -84,12 +95,13 @@
             <label><input type="checkbox" data-col="8" checked> Estoque?</label>
             <label><input type="checkbox" data-col="9" checked> Cobrar aluguel?</label>
             <label><input type="checkbox" data-col="10" checked> Parcelado</label>
-            <label><input type="checkbox" data-col="11" checked> Mês cobrança</label>
-            <label><input type="checkbox" data-col="12" checked> Valor unitario</label>
-            <label><input type="checkbox" data-col="13" checked> Total</label>
-            <label><input type="checkbox" data-col="14" checked> Forma pagamento</label>
-            <label><input type="checkbox" data-col="15" checked> Status</label>
-            <label><input type="checkbox" data-col="16" checked> Acoes</label>
+            <label><input type="checkbox" data-col="11" checked> Dia compra</label>
+            <label><input type="checkbox" data-col="12" checked> Mês cobrança</label>
+            <label><input type="checkbox" data-col="13" checked> Valor unitario</label>
+            <label><input type="checkbox" data-col="14" checked> Total</label>
+            <label><input type="checkbox" data-col="15" checked> Forma pagamento</label>
+            <label><input type="checkbox" data-col="16" checked> Status</label>
+            <label><input type="checkbox" data-col="17" checked> Acoes</label>
         </div>
         <div class="table-wrap">
             <table data-filter-table>
@@ -140,24 +152,28 @@
                         <button class="filter-btn" type="button" data-col="10">Filtro ▼</button>
                     </th>
                     <th>
-                        <span class="th-title">Mês de cobrança</span>
+                        <span class="th-title">Dia da compra</span>
                         <button class="filter-btn" type="button" data-col="11">Filtro ▼</button>
                     </th>
                     <th>
-                        <span class="th-title">Valor unitario</span>
+                        <span class="th-title">Mês de cobrança</span>
                         <button class="filter-btn" type="button" data-col="12">Filtro ▼</button>
                     </th>
                     <th>
-                        <span class="th-title">Total</span>
+                        <span class="th-title">Valor unitario</span>
                         <button class="filter-btn" type="button" data-col="13">Filtro ▼</button>
                     </th>
                     <th>
-                        <span class="th-title">Forma de pagamento</span>
+                        <span class="th-title">Total</span>
                         <button class="filter-btn" type="button" data-col="14">Filtro ▼</button>
                     </th>
                     <th>
-                        <span class="th-title">Status</span>
+                        <span class="th-title">Forma de pagamento</span>
                         <button class="filter-btn" type="button" data-col="15">Filtro ▼</button>
+                    </th>
+                    <th>
+                        <span class="th-title">Status</span>
+                        <button class="filter-btn" type="button" data-col="16">Filtro ▼</button>
                     </th>
                     <th>
                         <span class="th-title">Acoes</span>
@@ -178,6 +194,7 @@
                     <td>{% if nota.adicionar_estoque %}Sim{% else %}Nao{% endif %}</td>
                     <td>{% if nota.cobrar_no_aluguel %}Sim{% else %}Nao{% endif %}</td>
                     <td>{% if nota.parcelado %}Sim{% else %}Nao{% endif %}</td>
+                    <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
                     <td>{% if nota.mes_cobranca %}{{ nota.mes_cobranca|date:"m/Y" }}{% else %}-{% endif %}</td>
                     <td>R$ {{ nota.valor|floatformat:2 }}</td>
                     <td>R$ {{ nota.total_valor|floatformat:2 }}</td>
@@ -198,7 +215,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="17" class="empty">Nenhuma nota cadastrada.</td></tr>
+                <tr><td colspan="18" class="empty">Nenhuma nota cadastrada.</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -209,8 +226,38 @@
 const comprasTable = document.querySelector('[data-filter-table]');
 const toggleWrap = document.querySelector('[data-column-toggles]');
 const activeFilters = new Map();
+const comprasStorageKey = "compras_table_state_v1";
 
-const getRowText = (row, colIndex) => (row.children[colIndex]?.innerText || '').trim();
+
+const saveTableState = () => {
+    if (!comprasTable) return;
+    const toggles = {};
+    document.querySelectorAll('[data-column-toggles] input[type="checkbox"]').forEach((el) => {
+        toggles[el.dataset.col] = el.checked;
+    });
+    const filters = {};
+    activeFilters.forEach((set, col) => { filters[col] = Array.from(set); });
+    localStorage.setItem(comprasStorageKey, JSON.stringify({ toggles, filters }));
+};
+
+const restoreTableState = () => {
+    const raw = localStorage.getItem(comprasStorageKey);
+    if (!raw) return;
+    try {
+        const state = JSON.parse(raw);
+        Object.entries(state.toggles || {}).forEach(([col, checked]) => {
+            const toggle = document.querySelector(`[data-column-toggles] input[data-col="${col}"]`);
+            if (toggle) toggle.checked = Boolean(checked);
+        });
+        Object.entries(state.filters || {}).forEach(([col, values]) => {
+            activeFilters.set(Number(col), new Set(values));
+        });
+    } catch (e) {
+        localStorage.removeItem(comprasStorageKey);
+    }
+};
+
+const getRowText = (row, colIndex) => (row.children[colIndex]?.innerText || "").trim();
 const normalize = (text) => text.toLowerCase();
 
 const applyFilters = () => {
@@ -291,6 +338,7 @@ const buildPanel = (colIndex) => {
         activeFilters.delete(colIndex);
         closeAllPanels();
         applyFilters();
+        saveTableState();
     });
 
     panel.querySelector('[data-apply]').addEventListener('click', () => {
@@ -302,10 +350,12 @@ const buildPanel = (colIndex) => {
         activeFilters.set(colIndex, selected);
         closeAllPanels();
         applyFilters();
+        saveTableState();
     });
 };
 
 if (comprasTable) {
+    restoreTableState();
     comprasTable.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -318,6 +368,7 @@ if (comprasTable) {
         });
     });
 
+    applyFilters();
     document.addEventListener('click', closeAllPanels);
 }
 
@@ -331,6 +382,8 @@ if (toggleWrap && comprasTable) {
                     cell.style.display = toggle.checked ? '' : 'none';
                 }
             });
+            saveTableState();
+            applyFilters();
         });
     });
 }
