@@ -1101,6 +1101,12 @@ def _registrar_auditoria_evento(*, tipo, descricao, entidade='', entidade_id=Non
     )
 
 
+@receiver(post_save, sender=User)
+def garantir_acesso_usuario_para_user(sender, instance, created, **kwargs):
+    if created:
+        AcessoUsuario.objects.get_or_create(user=instance)
+
+
 @receiver(pre_save, sender=ConfiguracaoFinanceira)
 def _cache_configuracao_financeira_pix(sender, instance, **kwargs):
     anterior = None
