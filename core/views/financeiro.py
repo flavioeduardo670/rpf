@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 from core.forms import (
     AjusteMoradorForm,
     ConfiguracaoFinanceiraForm,
-    ContaFixaForm,
+    ContaFixaMensalForm,
     DescontoMensalForm,
     PendenciaMensalItemForm,
     apply_form_config,
@@ -26,7 +26,7 @@ from core.models import (
     Comodo,
     ComprovantePagamentoMorador,
     ConfiguracaoFinanceira,
-    ContaFixa,
+    ContaFixaMensal,
     LocalArmazenamento,
     Mensalidade,
     Morador,
@@ -39,13 +39,13 @@ from core.models import (
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
-from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
+from core.services.financeiro import calcular_rateio_financeiro, garantir_contas_fixas_mensais, resolver_mes_referencia
 
 from .common import can_edit, setor_required
 from .common import get_user_morador
 
 
-ContaFixaFormSet = forms.modelformset_factory(ContaFixa, form=ContaFixaForm, extra=1, can_delete=True)
+ContaFixaMensalFormSet = forms.modelformset_factory(ContaFixaMensal, form=ContaFixaMensalForm, extra=1, can_delete=True)
 AjusteMoradorFormSet = forms.modelformset_factory(AjusteMorador, form=AjusteMoradorForm, extra=1, can_delete=True)
 PendenciaMensalItemFormSet = forms.modelformset_factory(PendenciaMensalItem, form=PendenciaMensalItemForm, extra=1, can_delete=True)
 
@@ -427,11 +427,20 @@ def financeiro(request):
                     obj.delete()
                 return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'fixas_submit' in request.POST:
-            fs = ContaFixaFormSet(request.POST, queryset=ContaFixa.objects.all())
+            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            garantir_contas_fixas_mensais(mes)
+            fs = ContaFixaMensalFormSet(
+                request.POST,
+                queryset=ContaFixaMensal.objects.filter(mes_referencia=mes).order_by('nome', 'id'),
+            )
             if fs.is_valid():
-                fs.save()
-                mes_ref = request.POST.get('mes_referencia')
-                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_ref[:7]}") if mes_ref else redirect('financeiro_aluguel')
+                contas = fs.save(commit=False)
+                for conta in contas:
+                    conta.mes_referencia = mes
+                    conta.save()
+                for obj in fs.deleted_objects:
+                    obj.delete()
+                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         else:
             configuracao_form = ConfiguracaoFinanceiraForm(request.POST, instance=configuracao)
             if configuracao_form.is_valid():
@@ -455,6 +464,7 @@ def financeiro(request):
         item['status_pagamento'] = 'pago' if item['comprovante'] or divida_morador <= Decimal('1.00') else 'pendente'
 
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+    total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))
     total_expr = ExpressionWrapper(
         Case(
             When(nota__quantidade__gt=0, then=F('nota__quantidade') * F('nota__valor')),
@@ -469,7 +479,7 @@ def financeiro(request):
     ).select_related('nota').annotate(total_valor=total_expr).order_by('-vencimento', '-id')
     return render(request, 'core/financeiro.html', {
         'total_recebido': total_recebido,
-        'saldo': total_recebido - resumo['total_despesas'],
+        'total_a_arrecadar': total_a_arrecadar,
         'notas': parcelas_notas,
         'configuracao_form': configuracao_form,
         'parcelas_abertas': resumo['parcelas_rateio'].filter(status='pendente').order_by('vencimento', 'id'),
@@ -485,7 +495,9 @@ def financeiro(request):
             queryset=AjusteMorador.objects.filter(mes_referencia=mes_referencia).order_by('id'),
             prefix='ajuste',
         ),
-        'fixas_formset': ContaFixaFormSet(queryset=ContaFixa.objects.all()),
+        'fixas_formset': ContaFixaMensalFormSet(
+            queryset=ContaFixaMensal.objects.filter(mes_referencia=mes_referencia).order_by('nome', 'id'),
+        ),
         'rateio_colspan': 9 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,
         **resumo,

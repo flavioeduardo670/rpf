@@ -343,6 +343,29 @@ class ContaFixa(models.Model):
     def __str__(self):
         return f"{self.nome} - R$ {self.valor}"
 
+
+class ContaFixaMensal(models.Model):
+    conta_fixa = models.ForeignKey(
+        ContaFixa,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='valores_mensais',
+    )
+    mes_referencia = models.DateField()
+    nome = models.CharField(max_length=100)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['mes_referencia', 'nome', 'id']
+        indexes = [models.Index(fields=['mes_referencia', 'ativo'])]
+        verbose_name = 'Conta fixa mensal'
+        verbose_name_plural = 'Contas fixas mensais'
+
+    def __str__(self):
+        return f"{self.nome} - {self.mes_referencia.strftime('%m/%Y')} - R$ {self.valor}"
+
 class Setor(models.Model):
     """
     Representa um setor do sistema (Compras, Manutenção etc).
