@@ -6,7 +6,7 @@ from django.test import SimpleTestCase, TestCase
 
 from core.models import DescontoMensal, PendenciaMensal
 from core.models import ContaFixa, ContaFixaMensal, Morador, NotaFiscal, NotaParcela
-from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
+from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia, salvar_registro_financeiro_mensal
 
 
 class ResolverMesReferenciaTests(SimpleTestCase):
@@ -143,4 +143,19 @@ class CalcularRateioFinanceiroTests(TestCase):
         self.assertEqual(resumo_maio['valor_fixas_total'], Decimal('100.00'))
         self.assertEqual(resumo_maio_alterado['valor_fixas_total'], Decimal('250.00'))
         self.assertEqual(resumo_junho['valor_fixas_total'], Decimal('100.00'))
+
+
+    def test_registro_salvo_preserva_morador_desativado_depois(self):
+        mes = date(2026, 5, 1)
+        morador_antigo = Morador.objects.create(nome='Morador Antigo', apelido='Antigo', ativo=True, peso_quarto=Decimal('1.0'))
+        Morador.objects.create(nome='Morador Atual', apelido='Atual', ativo=True, peso_quarto=Decimal('1.0'))
+
+        registro = salvar_registro_financeiro_mensal(mes)
+        morador_antigo.ativo = False
+        morador_antigo.save(update_fields=['ativo'])
+
+        registro.refresh_from_db()
+        self.assertEqual(registro.moradores.count(), 2)
+        self.assertTrue(registro.moradores.filter(morador_apelido='Antigo').exists())
+        self.assertEqual(calcular_rateio_financeiro(mes, incluir_pendencia=True)['total_moradores_ativos'], 1)
 

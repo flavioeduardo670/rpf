@@ -366,6 +366,59 @@ class ContaFixaMensal(models.Model):
     def __str__(self):
         return f"{self.nome} - {self.mes_referencia.strftime('%m/%Y')} - R$ {self.valor}"
 
+
+
+class RegistroFinanceiroMensal(models.Model):
+    mes_referencia = models.DateField(unique=True)
+    valor_aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    valor_fixas_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_caixinha_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_parcelas_mes_rateio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    desconto_total_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    pendencia_total_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_rateio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_a_arrecadar = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_moradores = models.PositiveIntegerField(default=0)
+    salvo_em = models.DateTimeField(auto_now=True)
+    salvo_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-mes_referencia']
+        verbose_name = 'Registro financeiro mensal'
+        verbose_name_plural = 'Registros financeiros mensais'
+
+    def __str__(self):
+        return f"Registro financeiro {self.mes_referencia.strftime('%m/%Y')}"
+
+
+class RegistroFinanceiroMorador(models.Model):
+    registro = models.ForeignKey(RegistroFinanceiroMensal, on_delete=models.CASCADE, related_name='moradores')
+    morador = models.ForeignKey(Morador, on_delete=models.SET_NULL, null=True, blank=True)
+    morador_nome = models.CharField(max_length=100)
+    morador_apelido = models.CharField(max_length=50, blank=True, default='')
+    ordem_hierarquia = models.PositiveIntegerField(default=0)
+    peso_quarto = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fixas = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fixas_detalhe = models.JSONField(default=list, blank=True)
+    caixinha = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    parcelas = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    desconto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    extra = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['ordem_hierarquia', 'morador_nome']
+        verbose_name = 'Registro financeiro por morador'
+        verbose_name_plural = 'Registros financeiros por morador'
+
+    @property
+    def morador_label(self):
+        return self.morador_apelido or self.morador_nome
+
+    def __str__(self):
+        return f"{self.morador_label} - {self.registro.mes_referencia.strftime('%m/%Y')}"
+
 class Setor(models.Model):
     """
     Representa um setor do sistema (Compras, Manutenção etc).

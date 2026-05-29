@@ -12,7 +12,9 @@ from .financeiro import (
     financeiro_home,
     financeiro_prestacao_contas,
     financeiro_prestacao_contas_morador,
+    financeiro_registros_mensais,
     pagar_nota,
+    salvar_registro_financeiro,
     pagar_parcela,
     ver_comprovante_pagamento,
 )

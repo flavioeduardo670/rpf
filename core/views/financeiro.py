@@ -34,12 +34,18 @@ from core.models import (
     NotaParcela,
     ParcelaRateioExclusao,
     PendenciaMensalItem,
+    RegistroFinanceiroMensal,
     Produto,
     RockEvento,
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
-from core.services.financeiro import calcular_rateio_financeiro, garantir_contas_fixas_mensais, resolver_mes_referencia
+from core.services.financeiro import (
+    calcular_rateio_financeiro,
+    garantir_contas_fixas_mensais,
+    resolver_mes_referencia,
+    salvar_registro_financeiro_mensal,
+)
 
 from .common import can_edit, setor_required
 from .common import get_user_morador
@@ -137,6 +143,12 @@ def financeiro_home(request):
             'titulo': 'Prestação de contas',
             'descricao': 'Consolidação de despesas e prestação por período.',
             'url': redirect('financeiro_prestacao_contas').url,
+            'status': 'Ativo',
+        },
+        {
+            'titulo': 'Registros mensais',
+            'descricao': 'Histórico salvo de como o rateio ficou em cada mês.',
+            'url': redirect('financeiro_registros_mensais').url,
             'status': 'Ativo',
         },
         {
@@ -502,6 +514,36 @@ def financeiro(request):
         'can_edit_financeiro': can_edit_financeiro,
         **resumo,
     })
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_registros_mensais(request):
+    registros = RegistroFinanceiroMensal.objects.select_related('salvo_por').prefetch_related('moradores')
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes')) if request.GET.get('mes') else None
+    registro_selecionado = None
+    if mes_referencia:
+        registro_selecionado = registros.filter(mes_referencia=mes_referencia).first()
+    if registro_selecionado is None:
+        registro_selecionado = registros.first()
+
+    return render(request, 'core/financeiro_registros_mensais.html', {
+        'registros': registros,
+        'registro_selecionado': registro_selecionado,
+        'moradores_registro': registro_selecionado.moradores.all() if registro_selecionado else [],
+        'can_edit_financeiro': can_edit(request, 'acesso_financeiro_editar'),
+    })
+
+
+@require_POST
+@setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
+def salvar_registro_financeiro(request):
+    mes_referencia = resolver_mes_referencia(request.POST.get('mes'))
+    salvar_registro_financeiro_mensal(mes_referencia, request.user)
+    messages.success(request, f'Registro financeiro de {mes_referencia.strftime("%m/%Y")} salvo com sucesso.')
+    next_url = request.POST.get('next')
+    if next_url == 'registros':
+        return redirect(f"{redirect('financeiro_registros_mensais').url}?mes={mes_referencia.strftime('%Y-%m')}")
+    return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_referencia.strftime('%Y-%m')}")
 
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')

@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 import unicodedata
 
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -13,6 +14,8 @@ from core.models import (
     Morador,
     NotaParcela,
     PendenciaMensalItem,
+    RegistroFinanceiroMensal,
+    RegistroFinanceiroMorador,
 )
 
 
@@ -213,3 +216,45 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         'pendencia_por_morador': pendencia_por_morador,
         'rateio_moradores': rateio_moradores,
     }
+
+@transaction.atomic
+def salvar_registro_financeiro_mensal(mes_referencia, usuario=None):
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))
+    registro, _ = RegistroFinanceiroMensal.objects.update_or_create(
+        mes_referencia=mes_referencia,
+        defaults={
+            'valor_aluguel': resumo['valor_aluguel'],
+            'valor_fixas_total': resumo['valor_fixas_total'],
+            'total_caixinha_mes': resumo['total_caixinha_mes'],
+            'total_parcelas_mes_rateio': resumo['total_parcelas_mes_rateio'],
+            'desconto_total_mes': resumo['desconto_total_mes'],
+            'pendencia_total_mes': resumo['pendencia_total_mes'],
+            'total_rateio': resumo['total_rateio'],
+            'total_a_arrecadar': total_a_arrecadar,
+            'total_moradores': resumo['total_moradores_ativos'],
+            'salvo_por': usuario if getattr(usuario, 'is_authenticated', False) else None,
+        },
+    )
+    registro.moradores.all().delete()
+    RegistroFinanceiroMorador.objects.bulk_create([
+        RegistroFinanceiroMorador(
+            registro=registro,
+            morador=item['morador'],
+            morador_nome=item['morador'].nome,
+            morador_apelido=item['morador'].apelido or '',
+            ordem_hierarquia=item['morador'].ordem_hierarquia,
+            peso_quarto=item['morador'].peso_quarto or Decimal('0.00'),
+            aluguel=item['aluguel'],
+            fixas=item['fixas'],
+            fixas_detalhe=[str(valor) for valor in item['fixas_detalhe']],
+            caixinha=item['caixinha'],
+            parcelas=item['parcelas'],
+            desconto=item['desconto'],
+            extra=item['extra'],
+            valor=item['valor'],
+        )
+        for item in resumo['rateio_moradores']
+    ])
+    return registro
+
