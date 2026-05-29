@@ -100,6 +100,14 @@
             <a href="{% url 'financeiro_aluguel' %}?mes={{ mes_anterior|date:'Y-m' }}" class="btn btn-invert">Mes anterior</a>
             <span style="font-weight:700;">{{ mes_referencia|date:"m/Y" }}</span>
             <a href="{% url 'financeiro_aluguel' %}?mes={{ mes_proximo|date:'Y-m' }}" class="btn btn-invert">Mes seguinte</a>
+            {% if can_edit_financeiro %}
+            <form method="post" action="{% url 'salvar_registro_financeiro' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="mes" value="{{ mes_referencia|date:'Y-m' }}">
+                <button type="submit" class="btn">Salvar registro do mês</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'financeiro_registros_mensais' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-invert">Ver registros</a>
         </div>
     </section>
 
@@ -124,7 +132,7 @@
     </section>
 
     <section class="config-wrap">
-        <h2>Contas fixas</h2>
+        <h2>Contas fixas do mês {{ mes_referencia|date:"m/Y" }}</h2>
         {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
@@ -143,7 +151,8 @@
                     {% endfor %}
                 </table>
             </div>
-            <button type="submit" name="fixas_submit" class="btn">Salvar contas</button>
+            <p style="margin:8px 0 0;color:#555;font-size:.88rem;">Alterações aqui valem apenas para este mês de referência.</p>
+            <button type="submit" name="fixas_submit" class="btn">Salvar contas do mês</button>
         </form>
         {% else %}
         <div class="table-wrap">
@@ -168,7 +177,7 @@
         <article class="card"><p class="label">Contas fixas</p><p class="value">R$ {{ valor_fixas_total|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Total recebido</p><p class="value">R$ {{ total_recebido|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Total da caixinha</p><p class="value">R$ {{ total_caixinha_mes|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Saldo atual</p><p class="value">R$ {{ saldo|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total a arrecadar</p><p class="value">R$ {{ total_a_arrecadar|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Total para rateio</p><p class="value">R$ {{ total_rateio|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Moradores ativos</p><p class="value">{{ total_moradores_ativos }}</p></article>
         <article class="card"><p class="label">Valor medio por morador</p><p class="value">R$ {{ valor_por_morador|floatformat:2 }}</p></article>
