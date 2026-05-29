@@ -5,7 +5,15 @@ import unicodedata
 from django.db.models import Sum
 from django.utils import timezone
 
-from core.models import AjusteMorador, ConfiguracaoFinanceira, ContaFixa, Morador, NotaParcela, PendenciaMensalItem
+from core.models import (
+    AjusteMorador,
+    ConfiguracaoFinanceira,
+    ContaFixa,
+    ContaFixaMensal,
+    Morador,
+    NotaParcela,
+    PendenciaMensalItem,
+)
 
 
 def _normalizar_tipo_item(tipo_item):
@@ -32,6 +40,27 @@ def resolver_mes_referencia(mes_param):
     return hoje.replace(day=1)
 
 
+
+def garantir_contas_fixas_mensais(mes_referencia):
+    contas_mes = ContaFixaMensal.objects.filter(mes_referencia=mes_referencia)
+    if not contas_mes.exists():
+        contas_base = ContaFixa.objects.all().order_by('nome', 'id')
+        ContaFixaMensal.objects.bulk_create([
+            ContaFixaMensal(
+                conta_fixa=conta,
+                mes_referencia=mes_referencia,
+                nome=conta.nome,
+                valor=conta.valor,
+                ativo=conta.ativo,
+            )
+            for conta in contas_base
+        ])
+    return list(ContaFixaMensal.objects.filter(mes_referencia=mes_referencia).order_by('nome', 'id'))
+
+
+def listar_contas_fixas_ativas_mes(mes_referencia):
+    return [conta for conta in garantir_contas_fixas_mensais(mes_referencia) if conta.ativo]
+
 def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     parcelas_mes = NotaParcela.objects.filter(
         mes_referencia=mes_referencia,
@@ -56,7 +85,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
 
     configuracao = ConfiguracaoFinanceira.objects.order_by('-id').first()
     valor_aluguel = configuracao.valor_aluguel if configuracao else Decimal('0.00')
-    contas_fixas = list(ContaFixa.objects.filter(ativo=True).order_by('nome'))
+    contas_fixas = listar_contas_fixas_ativas_mes(mes_referencia)
     valor_fixas_total = sum((conta.valor for conta in contas_fixas), Decimal('0.00'))
 
     pendencias_items = list(PendenciaMensalItem.objects.filter(mes_referencia=mes_referencia).order_by('id'))
