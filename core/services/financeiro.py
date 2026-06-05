@@ -2,10 +2,21 @@ from datetime import date, timedelta
 from decimal import Decimal
 import unicodedata
 
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from core.models import AjusteMorador, ConfiguracaoFinanceira, ContaFixa, Morador, NotaParcela, PendenciaMensalItem
+from core.models import (
+    AjusteMorador,
+    ConfiguracaoFinanceira,
+    ContaFixa,
+    ContaFixaMensal,
+    Morador,
+    NotaParcela,
+    PendenciaMensalItem,
+    RegistroFinanceiroMensal,
+    RegistroFinanceiroMorador,
+)
 
 
 def _normalizar_tipo_item(tipo_item):
@@ -32,6 +43,27 @@ def resolver_mes_referencia(mes_param):
     return hoje.replace(day=1)
 
 
+
+def garantir_contas_fixas_mensais(mes_referencia):
+    contas_mes = ContaFixaMensal.objects.filter(mes_referencia=mes_referencia)
+    if not contas_mes.exists():
+        contas_base = ContaFixa.objects.all().order_by('nome', 'id')
+        ContaFixaMensal.objects.bulk_create([
+            ContaFixaMensal(
+                conta_fixa=conta,
+                mes_referencia=mes_referencia,
+                nome=conta.nome,
+                valor=conta.valor,
+                ativo=conta.ativo,
+            )
+            for conta in contas_base
+        ])
+    return list(ContaFixaMensal.objects.filter(mes_referencia=mes_referencia).order_by('nome', 'id'))
+
+
+def listar_contas_fixas_ativas_mes(mes_referencia):
+    return [conta for conta in garantir_contas_fixas_mensais(mes_referencia) if conta.ativo]
+
 def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     parcelas_mes = NotaParcela.objects.filter(
         mes_referencia=mes_referencia,
@@ -56,7 +88,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
 
     configuracao = ConfiguracaoFinanceira.objects.order_by('-id').first()
     valor_aluguel = configuracao.valor_aluguel if configuracao else Decimal('0.00')
-    contas_fixas = list(ContaFixa.objects.filter(ativo=True).order_by('nome'))
+    contas_fixas = listar_contas_fixas_ativas_mes(mes_referencia)
     valor_fixas_total = sum((conta.valor for conta in contas_fixas), Decimal('0.00'))
 
     pendencias_items = list(PendenciaMensalItem.objects.filter(mes_referencia=mes_referencia).order_by('id'))
@@ -184,3 +216,45 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         'pendencia_por_morador': pendencia_por_morador,
         'rateio_moradores': rateio_moradores,
     }
+
+@transaction.atomic
+def salvar_registro_financeiro_mensal(mes_referencia, usuario=None):
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))
+    registro, _ = RegistroFinanceiroMensal.objects.update_or_create(
+        mes_referencia=mes_referencia,
+        defaults={
+            'valor_aluguel': resumo['valor_aluguel'],
+            'valor_fixas_total': resumo['valor_fixas_total'],
+            'total_caixinha_mes': resumo['total_caixinha_mes'],
+            'total_parcelas_mes_rateio': resumo['total_parcelas_mes_rateio'],
+            'desconto_total_mes': resumo['desconto_total_mes'],
+            'pendencia_total_mes': resumo['pendencia_total_mes'],
+            'total_rateio': resumo['total_rateio'],
+            'total_a_arrecadar': total_a_arrecadar,
+            'total_moradores': resumo['total_moradores_ativos'],
+            'salvo_por': usuario if getattr(usuario, 'is_authenticated', False) else None,
+        },
+    )
+    registro.moradores.all().delete()
+    RegistroFinanceiroMorador.objects.bulk_create([
+        RegistroFinanceiroMorador(
+            registro=registro,
+            morador=item['morador'],
+            morador_nome=item['morador'].nome,
+            morador_apelido=item['morador'].apelido or '',
+            ordem_hierarquia=item['morador'].ordem_hierarquia,
+            peso_quarto=item['morador'].peso_quarto or Decimal('0.00'),
+            aluguel=item['aluguel'],
+            fixas=item['fixas'],
+            fixas_detalhe=[str(valor) for valor in item['fixas_detalhe']],
+            caixinha=item['caixinha'],
+            parcelas=item['parcelas'],
+            desconto=item['desconto'],
+            extra=item['extra'],
+            valor=item['valor'],
+        )
+        for item in resumo['rateio_moradores']
+    ])
+    return registro
+

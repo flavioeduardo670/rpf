@@ -33,6 +33,7 @@ from .models import (
     PendenciaMensalItem,
     AjusteMorador,
     ContaFixa,
+    ContaFixaMensal,
     Reuniao,
     AtaReuniao,
     AtaParticipante,
@@ -736,6 +737,16 @@ class AjusteMoradorForm(forms.ModelForm):
 class ContaFixaForm(forms.ModelForm):
     class Meta:
         model = ContaFixa
+        fields = ['nome', 'valor', 'ativo']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_form_config(self, 'conta_fixa_form')
+
+
+class ContaFixaMensalForm(forms.ModelForm):
+    class Meta:
+        model = ContaFixaMensal
         fields = ['nome', 'valor', 'ativo']
 
     def __init__(self, *args, **kwargs):
