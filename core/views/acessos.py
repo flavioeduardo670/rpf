@@ -12,6 +12,29 @@ AcessoMoradorFormSet = modelformset_factory(Morador, form=AcessoMoradorForm, ext
 AcessoUsuarioFormSet = modelformset_factory(AcessoUsuario, form=AcessoUsuarioForm, extra=0)
 
 
+ACCESS_FIELDS = [
+    'acesso_financeiro_visualizar',
+    'acesso_financeiro_editar',
+    'acesso_compras_visualizar',
+    'acesso_compras_editar',
+    'acesso_estoque_visualizar',
+    'acesso_estoque_editar',
+    'acesso_manutencao_visualizar',
+    'acesso_manutencao_editar',
+    'acesso_rock_visualizar',
+    'acesso_rock_editar',
+    'acesso_reunioes_visualizar',
+    'acesso_reunioes_editar',
+]
+
+
+def sincronizar_acessos_usuario_para_morador(acesso_usuario, morador):
+    for field in ACCESS_FIELDS:
+        setattr(morador, field, getattr(acesso_usuario, field, False))
+    morador.user = acesso_usuario.user
+    morador.save(update_fields=['user', *ACCESS_FIELDS])
+
+
 @login_required
 def gerenciar_acessos(request):
     if not request.user.is_superuser:
@@ -35,8 +58,7 @@ def gerenciar_acessos(request):
                 morador_id = request.POST.get(f'vinculo_morador_{acesso_usuario.user_id}')
                 if morador_id and str(morador_id).isdigit() and int(morador_id) in moradores_livres:
                     morador = moradores_livres[int(morador_id)]
-                    morador.user = acesso_usuario.user
-                    morador.save(update_fields=['user'])
+                    sincronizar_acessos_usuario_para_morador(acesso_usuario, morador)
                     moradores_livres.pop(int(morador_id), None)
             messages.success(request, 'Acessos atualizados com sucesso.')
             return redirect('gerenciar_acessos')
