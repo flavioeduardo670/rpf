@@ -1,0 +1,95 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Registros mensais | ERP RPF{% endblock %}
+
+{% block content %}
+<section class="rpf-dashboard-grid" style="gap:16px;">
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Financeiro</p>
+    <h1 class="rpf-kpi__value">Registros mensais</h1>
+    <p>Histórico salvo de como as contas e o rateio ficaram no fechamento de cada mês.</p>
+    {% if can_edit_financeiro %}
+    <form method="post" action="{% url 'salvar_registro_financeiro' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      {% csrf_token %}
+      <input type="month" name="mes" value="{% if registro_selecionado %}{{ registro_selecionado.mes_referencia|date:'Y-m' }}{% endif %}" required>
+      <input type="hidden" name="next" value="registros">
+      <button type="submit" class="rpf-btn rpf-btn--primary">Salvar/atualizar registro</button>
+    </form>
+    {% endif %}
+  </article>
+
+  <article class="rpf-card" style="grid-column: span 2;">
+    <p class="rpf-kpi__label">Meses salvos</p>
+    {% if registros %}
+      <div style="display:grid;gap:8px;">
+        {% for registro in registros %}
+        <a class="rpf-btn {% if registro_selecionado and registro.id == registro_selecionado.id %}rpf-btn--primary{% else %}rpf-btn--ghost{% endif %}" href="{% url 'financeiro_registros_mensais' %}?mes={{ registro.mes_referencia|date:'Y-m' }}">
+          {{ registro.mes_referencia|date:'m/Y' }} · R$ {{ registro.total_a_arrecadar|floatformat:2 }}
+        </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>Nenhum registro mensal salvo ainda.</p>
+    {% endif %}
+  </article>
+
+  <article class="rpf-card" style="grid-column: span 4;">
+    {% if registro_selecionado %}
+    <p class="rpf-kpi__label">Registro selecionado</p>
+    <h2 class="rpf-kpi__value">{{ registro_selecionado.mes_referencia|date:'m/Y' }}</h2>
+    <p>Salvo em {{ registro_selecionado.salvo_em|date:'d/m/Y H:i' }}{% if registro_selecionado.salvo_por %} por {{ registro_selecionado.salvo_por.username }}{% endif %}.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">
+      <div><strong>Aluguel</strong><br>R$ {{ registro_selecionado.valor_aluguel|floatformat:2 }}</div>
+      <div><strong>Contas fixas</strong><br>R$ {{ registro_selecionado.valor_fixas_total|floatformat:2 }}</div>
+      <div><strong>Caixinha</strong><br>R$ {{ registro_selecionado.total_caixinha_mes|floatformat:2 }}</div>
+      <div><strong>Parcelas do mês</strong><br>R$ {{ registro_selecionado.total_parcelas_mes_rateio|floatformat:2 }}</div>
+      <div><strong>Extras</strong><br>R$ {{ registro_selecionado.pendencia_total_mes|floatformat:2 }}</div>
+      <div><strong>Descontos</strong><br>R$ {{ registro_selecionado.desconto_total_mes|floatformat:2 }}</div>
+      <div><strong>Total do rateio</strong><br>R$ {{ registro_selecionado.total_rateio|floatformat:2 }}</div>
+      <div><strong>Total a arrecadar</strong><br>R$ {{ registro_selecionado.total_a_arrecadar|floatformat:2 }}</div>
+      <div><strong>Moradores no registro</strong><br>{{ registro_selecionado.total_moradores }}</div>
+    </div>
+    {% else %}
+    <p>Salve um mês para visualizar o registro congelado aqui.</p>
+    {% endif %}
+  </article>
+
+  {% if registro_selecionado %}
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Rateio salvo do mês</p>
+    <div style="overflow:auto;">
+      <table class="rpf-table" style="width:100%;min-width:960px;">
+        <thead>
+          <tr>
+            <th>Morador</th>
+            <th>Aluguel</th>
+            <th>Fixas</th>
+            <th>Caixinha</th>
+            <th>Parcelas do mês</th>
+            <th>Desconto</th>
+            <th>Extra</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in moradores_registro %}
+          <tr>
+            <td>{{ item.morador_label }}</td>
+            <td>R$ {{ item.aluguel|floatformat:2 }}</td>
+            <td>R$ {{ item.fixas|floatformat:2 }}</td>
+            <td>R$ {{ item.caixinha|floatformat:2 }}</td>
+            <td>R$ {{ item.parcelas|floatformat:2 }}</td>
+            <td>R$ {{ item.desconto|floatformat:2 }}</td>
+            <td>R$ {{ item.extra|floatformat:2 }}</td>
+            <td><strong>R$ {{ item.valor|floatformat:2 }}</strong></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8">Nenhum morador salvo neste registro.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}
