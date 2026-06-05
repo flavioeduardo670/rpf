@@ -2,6 +2,12 @@
 {% block title %}Prestação de contas · {{ morador_label }} | ERP RPF{% endblock %}
 {% block content %}
 <style>
+  .extrato-card {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+  }
+
   .extrato-table-wrap {
     overflow-x: auto;
     width: 100%;
@@ -10,7 +16,7 @@
 
   .extrato-table {
     width: 100%;
-    min-width: 1180px;
+    min-width: 1320px;
     table-layout: auto;
   }
 
@@ -25,15 +31,33 @@
   .extrato-table th:nth-child(2),
   .extrato-table td:nth-child(2) { min-width: 150px; }
   .extrato-table th:nth-child(3),
-  .extrato-table td:nth-child(3) { min-width: 240px; }
+  .extrato-table td:nth-child(3) { min-width: 300px; }
   .extrato-table th:nth-child(4),
-  .extrato-table td:nth-child(4) { min-width: 420px; }
+  .extrato-table td:nth-child(4) { min-width: 520px; }
   .extrato-table th:nth-child(5),
   .extrato-table td:nth-child(5),
   .extrato-table th:nth-child(6),
   .extrato-table td:nth-child(6) {
-    min-width: 130px;
+    min-width: 150px;
     white-space: nowrap;
+  }
+
+
+  @media (max-width: 720px) {
+    .extrato-card {
+      grid-column: 1 / -1 !important;
+      width: calc(100vw - 32px);
+      margin-left: calc((100% - (100vw - 32px)) / 2);
+      margin-right: calc((100% - (100vw - 32px)) / 2);
+    }
+
+    .extrato-table-wrap {
+      margin-left: calc(var(--rpf-space-5) * -1);
+      margin-right: calc(var(--rpf-space-5) * -1);
+      width: calc(100% + (var(--rpf-space-5) * 2));
+      padding-left: var(--rpf-space-5);
+      padding-right: var(--rpf-space-5);
+    }
   }
 </style>
 <section class="rpf-dashboard-grid" style="gap:16px;">
@@ -63,7 +87,7 @@
     {% endfor %}
   </article>
 
-  <article class="rpf-card" style="grid-column:1/-1;">
+  <article class="rpf-card extrato-card">
     <p class="rpf-kpi__label">Extrato bancário do mês</p>
     <div class="extrato-table-wrap">
       <table class="rpf-table extrato-table">
