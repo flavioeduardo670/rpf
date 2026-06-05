@@ -1,0 +1,151 @@
+{% extends 'core/base.html' %}
+{% block title %}Prestação de contas · {{ morador_label }} | ERP RPF{% endblock %}
+{% block content %}
+<style>
+  .extrato-table-wrap {
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  .extrato-table {
+    width: 100%;
+    min-width: 920px;
+  }
+
+  .extrato-table td,
+  .extrato-table th {
+    vertical-align: top;
+  }
+
+  @media (max-width: 720px) {
+    .extrato-table-wrap {
+      overflow: visible;
+    }
+
+    .extrato-table {
+      display: block;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .extrato-table thead {
+      display: none;
+    }
+
+    .extrato-table tbody,
+    .extrato-table tfoot,
+    .extrato-table tr,
+    .extrato-table td,
+    .extrato-table th {
+      display: block;
+      width: 100%;
+    }
+
+    .extrato-table tbody tr,
+    .extrato-table tfoot tr {
+      border: 1px solid #e2e2e2;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: #fff;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, .04);
+    }
+
+    .extrato-table td,
+    .extrato-table th {
+      border-bottom: 1px solid #eeeeee;
+      padding: 8px 0;
+      text-align: left;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .extrato-table td:last-child,
+    .extrato-table th:last-child {
+      border-bottom: 0;
+    }
+
+    .extrato-table td::before,
+    .extrato-table tfoot th::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 3px;
+      color: #666;
+      font-size: .76rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+  }
+</style>
+<section class="rpf-dashboard-grid" style="gap:16px;">
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Extrato individual</p>
+    <h1 class="rpf-kpi__value">{{ morador_label }} · {{ mes_referencia|date:'m/Y' }}</h1>
+    <p>Detalhamento do que compõe a sua parte no rateio do mês, item por item.</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+      <a href="{% url 'financeiro_prestacao_contas_morador' item.morador.id %}?mes={{ mes_anterior|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês anterior</a>
+      <a href="{% url 'financeiro_prestacao_contas_morador' item.morador.id %}?mes={{ mes_proximo|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês seguinte</a>
+      <a href="{% url 'financeiro_prestacao_contas' %}?mes={{ mes_referencia|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Voltar para prestação</a>
+    </div>
+  </article>
+
+  <article class="rpf-card" style="grid-column: span 2;">
+    <p class="rpf-kpi__label">Saldo do extrato</p>
+    <h2 class="rpf-kpi__value">R$ {{ saldo_extrato|floatformat:2 }}</h2>
+    <p>Débitos: R$ {{ total_debitos|floatformat:2 }} · Créditos/descontos: R$ {{ total_creditos|floatformat:2 }}</p>
+  </article>
+  <article class="rpf-card" style="grid-column: span 4;">
+    <p class="rpf-kpi__label">Composição percentual</p>
+    {% for c in composicao %}
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;"><span>{{ c.label }}</span><strong>R$ {{ c.valor|floatformat:2 }} · {{ c.percentual }}%</strong></div>
+        <div style="height:10px;background:#ececec;border-radius:999px;overflow:hidden;"><div style="height:100%;width:{{ c.percentual }}%;background:#222;"></div></div>
+      </div>
+    {% endfor %}
+  </article>
+
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Extrato bancário do mês</p>
+    <div class="extrato-table-wrap">
+      <table class="rpf-table extrato-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Categoria</th>
+            <th>Descrição</th>
+            <th>Detalhe do cálculo</th>
+            <th>Débito</th>
+            <th>Crédito</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lancamento in lancamentos %}
+          <tr>
+            <td data-label="Data">{{ lancamento.data|date:'d/m/Y' }}</td>
+            <td data-label="Categoria">{{ lancamento.categoria }}</td>
+            <td data-label="Descrição">{{ lancamento.descricao }}</td>
+            <td data-label="Detalhe do cálculo">{{ lancamento.detalhe|default:'-' }}</td>
+            <td data-label="Débito">{% if lancamento.tipo == 'debito' %}R$ {{ lancamento.valor|floatformat:2 }}{% else %}-{% endif %}</td>
+            <td data-label="Crédito">{% if lancamento.tipo == 'credito' %}R$ {{ lancamento.valor|floatformat:2 }}{% else %}-{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td data-label="Extrato" colspan="6">Nenhum lançamento encontrado para este mês.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th data-label="Resumo" colspan="4">Totais</th>
+            <th data-label="Débitos">R$ {{ total_debitos|floatformat:2 }}</th>
+            <th data-label="Créditos">R$ {{ total_creditos|floatformat:2 }}</th>
+          </tr>
+          <tr>
+            <th data-label="Resumo" colspan="4">Saldo a pagar</th>
+            <th data-label="Valor" colspan="2">R$ {{ saldo_extrato|floatformat:2 }}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}
