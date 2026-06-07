@@ -137,7 +137,11 @@ class FinanceiroTemplateTests(TestCase):
         self.assertTrue(response.content.startswith(b'%PDF-1.4'))
         self.assertIn(b'Extrato pessoal', response.content)
         self.assertIn(b'Data', response.content)
-        self.assertIn('R$ 123,45'.encode('latin-1'), response.content)
+        self.assertIn('Descrição'.encode('cp1252'), response.content)
+        self.assertIn('Pendência'.encode('cp1252'), response.content)
+        self.assertIn(b'Detalhamento por categoria', response.content)
+        self.assertIn('R$ 123,45'.encode('cp1252'), response.content)
+        self.assertNotIn(b'!', response.content)
 
     def test_anexar_comprovante_pagamento(self):
         arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
