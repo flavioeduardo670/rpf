@@ -123,6 +123,22 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Pago')
 
+    def test_extrato_morador_exibe_botao_pdf(self):
+        response = self.client.get(reverse('financeiro_prestacao_contas_morador', args=[self.morador.id]) + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Gerar PDF')
+        self.assertContains(response, reverse('exportar_extrato_morador_pdf', args=[self.morador.id]))
+
+    def test_exportar_extrato_morador_pdf(self):
+        response = self.client.get(reverse('exportar_extrato_morador_pdf', args=[self.morador.id]) + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('extrato_pessoal_morador-teste_2026_05.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF-1.4'))
+        self.assertIn(b'Extrato pessoal', response.content)
+        self.assertIn(b'Data', response.content)
+        self.assertIn('R$ 123,45'.encode('latin-1'), response.content)
+
     def test_anexar_comprovante_pagamento(self):
         arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
         response = self.client.post(

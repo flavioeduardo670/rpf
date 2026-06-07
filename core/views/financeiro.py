@@ -10,6 +10,7 @@ from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef,
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from core.forms import (
@@ -301,6 +302,265 @@ def _montar_extrato_morador(resumo, item, mes_referencia):
     return lancamentos, total_debitos, total_creditos, saldo
 
 
+def _texto_pdf(valor):
+    return str(valor).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _formatar_moeda_pt_br(valor):
+    valor = (valor or Decimal('0.00')).quantize(Decimal('0.01'))
+    texto = f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    return f"R$ {texto}"
+
+
+def _formatar_percentual_pt_br(valor):
+    return f"{str(valor).replace('.', ',')}%"
+
+
+def _quebrar_texto_pdf(texto, largura=72):
+    palavras = str(texto or '').split()
+    if not palavras:
+        return ['']
+    linhas = []
+    linha_atual = ''
+    for palavra in palavras:
+        candidata = f"{linha_atual} {palavra}".strip()
+        if len(candidata) <= largura:
+            linha_atual = candidata
+            continue
+        if linha_atual:
+            linhas.append(linha_atual)
+        while len(palavra) > largura:
+            linhas.append(palavra[:largura])
+            palavra = palavra[largura:]
+        linha_atual = palavra
+    if linha_atual:
+        linhas.append(linha_atual)
+    return linhas
+
+
+def _largura_texto_pdf(texto, tamanho=9):
+    return len(str(texto)) * tamanho * Decimal('0.48')
+
+
+def _comando_texto_pdf(texto, x, y, tamanho=9, fonte='F1', cor='0.10 0.10 0.10 rg'):
+    return f"{cor} BT /{fonte} {tamanho} Tf 1 0 0 1 {x:.2f} {y:.2f} Tm ({_texto_pdf(texto)}) Tj ET"
+
+
+def _comando_texto_direita_pdf(texto, x_direita, y, tamanho=9, fonte='F1', cor='0.10 0.10 0.10 rg'):
+    x = Decimal(str(x_direita)) - _largura_texto_pdf(texto, tamanho)
+    return _comando_texto_pdf(texto, max(x, Decimal('0.00')), y, tamanho, fonte, cor)
+
+
+def _gerar_pdf_extrato_morador(contexto):
+    largura_pagina = Decimal('842')
+    altura_pagina = Decimal('595')
+    margem = Decimal('32')
+    comandos_paginas = []
+    comandos = []
+    pagina_atual = 1
+    y = Decimal('0')
+    mes_referencia = contexto['mes_referencia']
+    titulo = f"Extrato pessoal do morador - {mes_referencia.strftime('%m/%Y')}"
+
+    def adicionar_pagina():
+        nonlocal comandos, y, pagina_atual
+        if comandos:
+            comandos.append(_comando_texto_pdf(f"Página {pagina_atual}", largura_pagina - margem - Decimal('55'), Decimal('18'), 8))
+            comandos_paginas.append(comandos)
+            pagina_atual += 1
+        comandos = [
+            '0.10 0.16 0.28 rg 0 552 842 43 re f',
+            _comando_texto_pdf('RPF · Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
+            _comando_texto_pdf(titulo, margem, Decimal('558'), 16, 'F2', '1 1 1 rg'),
+            _comando_texto_direita_pdf(
+                f"Gerado em {timezone.localtime().strftime('%d/%m/%Y às %H:%M')}",
+                largura_pagina - margem,
+                Decimal('575'),
+                8,
+                'F1',
+                '1 1 1 rg',
+            ),
+        ]
+        y = Decimal('530')
+
+    def fechar_pdf():
+        if comandos:
+            comandos.append(_comando_texto_pdf(f"Página {pagina_atual}", largura_pagina - margem - Decimal('55'), Decimal('18'), 8))
+            comandos_paginas.append(comandos)
+
+    def garantir_espaco(altura_necessaria):
+        if y - Decimal(str(altura_necessaria)) < Decimal('42'):
+            adicionar_pagina()
+
+    adicionar_pagina()
+
+    # Cartões de resumo
+    comandos.append('0.96 0.97 0.99 rg 32 454 778 68 re f')
+    comandos.append('0.82 0.86 0.92 RG 32 454 778 68 re S')
+    resumo = [
+        ('Morador', contexto['morador_label']),
+        ('Mês de referência', mes_referencia.strftime('%m/%Y')),
+        ('Total de débitos', _formatar_moeda_pt_br(contexto['total_debitos'])),
+        ('Créditos/descontos', _formatar_moeda_pt_br(contexto['total_creditos'])),
+        ('Saldo a pagar', _formatar_moeda_pt_br(contexto['saldo_extrato'])),
+    ]
+    x_card = margem + Decimal('14')
+    largura_card = Decimal('150')
+    for label, valor in resumo:
+        comandos.append(_comando_texto_pdf(label, x_card, Decimal('500'), 8))
+        comandos.append(_comando_texto_pdf(valor, x_card, Decimal('480'), 11, 'F2'))
+        x_card += largura_card
+    y = Decimal('430')
+
+    comandos.append(_comando_texto_pdf('Composição do extrato', margem, y, 12, 'F2'))
+    y -= Decimal('18')
+    x_comp = margem
+    for item in contexto['composicao']:
+        percentual = _formatar_percentual_pt_br(item['percentual'])
+        texto = f"{item['label']}: {_formatar_moeda_pt_br(item['valor'])} ({percentual})"
+        comandos.append('0.93 0.95 0.98 rg {:.2f} {:.2f} 145 24 re f'.format(x_comp, y - Decimal('6')))
+        comandos.append('0.82 0.86 0.92 RG {:.2f} {:.2f} 145 24 re S'.format(x_comp, y - Decimal('6')))
+        comandos.append(_comando_texto_pdf(texto, x_comp + Decimal('8'), y + Decimal('2'), 7))
+        x_comp += Decimal('154')
+    y -= Decimal('46')
+
+    comandos.append(_comando_texto_pdf('Lançamentos', margem, y, 12, 'F2'))
+    y -= Decimal('20')
+
+    colunas = [
+        ('Data', Decimal('32'), Decimal('58')),
+        ('Categoria', Decimal('90'), Decimal('92')),
+        ('Descrição e detalhe do cálculo', Decimal('182'), Decimal('410')),
+        ('Débito', Decimal('592'), Decimal('105')),
+        ('Crédito', Decimal('697'), Decimal('105')),
+    ]
+
+    def cabecalho_tabela():
+        nonlocal y
+        comandos.append('0.12 0.18 0.30 rg 32 {:.2f} 778 22 re f'.format(y - Decimal('15')))
+        for titulo_coluna, x, largura in colunas:
+            comandos.append(_comando_texto_pdf(titulo_coluna, x + Decimal('6'), y - Decimal('8'), 8, 'F2', '1 1 1 rg'))
+        y -= Decimal('24')
+
+    cabecalho_tabela()
+    if not contexto['lancamentos']:
+        garantir_espaco(28)
+        comandos.append('0.99 0.99 0.99 rg 32 {:.2f} 778 24 re f'.format(y - Decimal('14')))
+        comandos.append('0.86 0.86 0.86 RG 32 {:.2f} 778 24 re S'.format(y - Decimal('14')))
+        comandos.append(_comando_texto_pdf('Nenhum lançamento encontrado para este mês.', margem + Decimal('6'), y - Decimal('7'), 8))
+        y -= Decimal('28')
+    else:
+        for indice, lancamento in enumerate(contexto['lancamentos']):
+            descricao = lancamento['descricao']
+            detalhe = lancamento.get('detalhe') or '-'
+            linhas_descricao = _quebrar_texto_pdf(f"{descricao} — {detalhe}", 88)
+            altura_linha = Decimal(str(max(30, 14 + (len(linhas_descricao) * 9))))
+            if y - altura_linha - Decimal('8') < Decimal('42'):
+                adicionar_pagina()
+                comandos.append(_comando_texto_pdf('Lançamentos (continuação)', margem, y, 12, 'F2'))
+                y -= Decimal('20')
+                cabecalho_tabela()
+            cor_fundo = '1 1 1 rg' if indice % 2 == 0 else '0.97 0.98 0.99 rg'
+            comandos.append(f'{cor_fundo} 32 {y - altura_linha + Decimal("6"):.2f} 778 {altura_linha:.2f} re f')
+            comandos.append(f'0.86 0.86 0.86 RG 32 {y - altura_linha + Decimal("6"):.2f} 778 {altura_linha:.2f} re S')
+            for _, x, _ in colunas[1:]:
+                y_base = y - altura_linha + Decimal('6')
+                comandos.append(f'0.90 0.90 0.90 RG {x:.2f} {y_base:.2f} m {x:.2f} {y_base + altura_linha:.2f} l S')
+            comandos.append(_comando_texto_pdf(lancamento['data'].strftime('%d/%m/%Y'), Decimal('38'), y - Decimal('8'), 8))
+            comandos.append(_comando_texto_pdf(lancamento['categoria'], Decimal('96'), y - Decimal('8'), 8))
+            y_texto = y - Decimal('8')
+            for linha in linhas_descricao:
+                comandos.append(_comando_texto_pdf(linha, Decimal('188'), y_texto, 7))
+                y_texto -= Decimal('9')
+            debito = _formatar_moeda_pt_br(lancamento['valor']) if lancamento['tipo'] == 'debito' else '-'
+            credito = _formatar_moeda_pt_br(lancamento['valor']) if lancamento['tipo'] == 'credito' else '-'
+            comandos.append(_comando_texto_direita_pdf(debito, Decimal('690'), y - Decimal('8'), 8))
+            comandos.append(_comando_texto_direita_pdf(credito, Decimal('802'), y - Decimal('8'), 8))
+            y -= altura_linha
+
+    garantir_espaco(62)
+    comandos.append('0.10 0.16 0.28 rg 485 {:.2f} 325 48 re f'.format(y - Decimal('40')))
+    comandos.append(_comando_texto_pdf('Totais', Decimal('498'), y - Decimal('10'), 9, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"Débitos: {_formatar_moeda_pt_br(contexto['total_debitos'])}", Decimal('575'), y - Decimal('10'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"Créditos: {_formatar_moeda_pt_br(contexto['total_creditos'])}", Decimal('575'), y - Decimal('24'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"Saldo a pagar: {_formatar_moeda_pt_br(contexto['saldo_extrato'])}", Decimal('575'), y - Decimal('38'), 9, 'F2', '1 1 1 rg'))
+
+    fechar_pdf()
+
+    objetos = [b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"]
+    kids = []
+    fonte_regular_obj = 3 + (len(comandos_paginas) * 2)
+    fonte_bold_obj = fonte_regular_obj + 1
+    for indice, comandos_pagina in enumerate(comandos_paginas):
+        pagina_obj = 3 + (indice * 2)
+        conteudo_obj = pagina_obj + 1
+        kids.append(f"{pagina_obj} 0 R")
+        stream = '\n'.join(comandos_pagina).encode('latin-1', errors='replace')
+        objetos.append(
+            f"{pagina_obj} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 {largura_pagina} {altura_pagina}] /Resources << /Font << /F1 {fonte_regular_obj} 0 R /F2 {fonte_bold_obj} 0 R >> >> /Contents {conteudo_obj} 0 R >> endobj\n".encode('latin-1')
+        )
+        objetos.append(
+            f"{conteudo_obj} 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1')
+            + stream
+            + b"\nendstream endobj\n"
+        )
+    objetos.insert(
+        1,
+        f"2 0 obj << /Type /Pages /Kids [{' '.join(kids)}] /Count {len(comandos_paginas)} >> endobj\n".encode('latin-1'),
+    )
+    objetos.append(f"{fonte_regular_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n".encode('latin-1'))
+    objetos.append(f"{fonte_bold_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj\n".encode('latin-1'))
+
+    pdf = b'%PDF-1.4\n'
+    offsets = [0]
+    for obj in objetos:
+        offsets.append(len(pdf))
+        pdf += obj
+    xref_start = len(pdf)
+    pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1') + b"0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
+    pdf += (f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF").encode('latin-1')
+    return pdf
+
+
+def _contexto_extrato_morador(request, morador_id):
+    if not _usuario_pode_ver_extrato_morador(request, morador_id):
+        raise PermissionDenied('Você só pode acessar o seu próprio extrato individual.')
+
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    item = next((i for i in resumo['rateio_moradores'] if i['morador'].id == morador_id), None)
+    if item is None:
+        raise PermissionDenied('Morador não encontrado no rateio do mês.')
+
+    morador_label = item['morador'].apelido or item['morador'].nome
+    total = item['valor'] or Decimal('0.00')
+    composicao = []
+    for label, valor in [
+        ('Aluguel', item['aluguel']),
+        ('Contas fixas', item['fixas']),
+        ('Caixinha/consumo', item['caixinha']),
+        ('Parcelas do mês', item['parcelas']),
+        ('Extras', item['extra']),
+    ]:
+        composicao.append({'label': label, 'valor': valor, 'percentual': _valor_percentual(valor, total)})
+
+    lancamentos, total_debitos, total_creditos, saldo_extrato = _montar_extrato_morador(resumo, item, mes_referencia)
+    return {
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'item': item,
+        'morador_label': morador_label,
+        'composicao': composicao,
+        'lancamentos': lancamentos,
+        'total_debitos': total_debitos,
+        'total_creditos': total_creditos,
+        'saldo_extrato': saldo_extrato,
+    }
+
+
 @login_required
 def financeiro_prestacao_contas(request):
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
@@ -357,40 +617,22 @@ def financeiro_prestacao_contas(request):
 
 @login_required
 def financeiro_prestacao_contas_morador(request, morador_id):
-    if not _usuario_pode_ver_extrato_morador(request, morador_id):
-        raise PermissionDenied('Você só pode acessar o seu próprio extrato individual.')
+    contexto = _contexto_extrato_morador(request, morador_id)
+    return render(request, 'core/financeiro_prestacao_contas_detalhe.html', contexto)
 
-    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
-    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
-    item = next((i for i in resumo['rateio_moradores'] if i['morador'].id == morador_id), None)
-    if item is None:
-        raise PermissionDenied('Morador não encontrado no rateio do mês.')
 
-    morador_label = item['morador'].apelido or item['morador'].nome
-    total = item['valor'] or Decimal('0.00')
-    composicao = []
-    for label, valor in [
-        ('Aluguel', item['aluguel']),
-        ('Contas fixas', item['fixas']),
-        ('Caixinha/consumo', item['caixinha']),
-        ('Parcelas do mês', item['parcelas']),
-        ('Extras', item['extra']),
-    ]:
-        composicao.append({'label': label, 'valor': valor, 'percentual': _valor_percentual(valor, total)})
+@login_required
+def exportar_extrato_morador_pdf(request, morador_id):
+    contexto = _contexto_extrato_morador(request, morador_id)
+    mes_referencia = contexto['mes_referencia']
+    pdf = _gerar_pdf_extrato_morador(contexto)
+    nome_morador = slugify(contexto['morador_label']) or f"morador-{morador_id}"
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="extrato_pessoal_{nome_morador}_{mes_referencia.strftime("%Y_%m")}.pdf"'
+    )
+    return response
 
-    lancamentos, total_debitos, total_creditos, saldo_extrato = _montar_extrato_morador(resumo, item, mes_referencia)
-    return render(request, 'core/financeiro_prestacao_contas_detalhe.html', {
-        'mes_referencia': mes_referencia,
-        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
-        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
-        'item': item,
-        'morador_label': morador_label,
-        'composicao': composicao,
-        'lancamentos': lancamentos,
-        'total_debitos': total_debitos,
-        'total_creditos': total_creditos,
-        'saldo_extrato': saldo_extrato,
-    })
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
