@@ -431,16 +431,35 @@ def _gerar_pdf_extrato_morador(contexto):
     y = Decimal('430')
 
     comandos.append(_comando_texto_pdf('Composição do extrato', margem, y, 12, 'F2'))
-    y -= Decimal('18')
-    x_comp = margem
-    for item in contexto['composicao']:
+    y -= Decimal('28')
+
+    def desenhar_item_composicao(item, x, y_topo, largura, altura=Decimal('42'), destaque=False):
         percentual = _formatar_percentual_pt_br(item['percentual'])
-        texto = f"{item['label']}: {_formatar_moeda_pt_br(item['valor'])} ({percentual})"
-        comandos.append('0.93 0.95 0.98 rg {:.2f} {:.2f} 145 24 re f'.format(x_comp, y - Decimal('6')))
-        comandos.append('0.82 0.86 0.92 RG {:.2f} {:.2f} 145 24 re S'.format(x_comp, y - Decimal('6')))
-        comandos.append(_comando_texto_pdf(texto, x_comp + Decimal('8'), y + Decimal('2'), 7))
-        x_comp += Decimal('154')
-    y -= Decimal('40')
+        fundo = '0.90 0.94 0.99 rg' if destaque else '0.95 0.97 0.99 rg'
+        borda = '0.33 0.49 0.72 RG' if destaque else '0.82 0.86 0.92 RG'
+        comandos.append(f'{fundo} {x:.2f} {y_topo - altura:.2f} {largura:.2f} {altura:.2f} re f')
+        comandos.append(f'{borda} {x:.2f} {y_topo - altura:.2f} {largura:.2f} {altura:.2f} re S')
+        comandos.append(_comando_texto_pdf(item['label'], x + Decimal('10'), y_topo - Decimal('13'), 7, 'F2'))
+        comandos.append(_comando_texto_pdf(_formatar_moeda_pt_br(item['valor']), x + Decimal('10'), y_topo - Decimal('28'), 10, 'F2'))
+        comandos.append(_comando_texto_direita_pdf(percentual, x + largura - Decimal('10'), y_topo - Decimal('28'), 7))
+
+    item_parcelas = next((item for item in contexto['composicao'] if item['label'] == 'Parcelas do mês'), None)
+    demais_itens = [item for item in contexto['composicao'] if item['label'] != 'Parcelas do mês']
+    largura_total = largura_pagina - (margem * 2)
+    if item_parcelas:
+        desenhar_item_composicao(item_parcelas, margem, y, largura_total, Decimal('44'), destaque=True)
+        y -= Decimal('56')
+
+    espaco_coluna = Decimal('12')
+    largura_item = (largura_total - (espaco_coluna * Decimal('3'))) / Decimal('4')
+    for indice, item in enumerate(demais_itens):
+        coluna = Decimal(str(indice % 4))
+        linha = Decimal(str(indice // 4))
+        x_comp = margem + (coluna * (largura_item + espaco_coluna))
+        y_topo = y - (linha * Decimal('52'))
+        desenhar_item_composicao(item, x_comp, y_topo, largura_item)
+    linhas_demais = Decimal(str((len(demais_itens) + 3) // 4)) if demais_itens else Decimal('0')
+    y -= (linhas_demais * Decimal('52')) + Decimal('12')
 
     comandos.append(_comando_texto_pdf('Detalhamento por categoria', margem, y, 12, 'F2'))
     y -= Decimal('18')
@@ -534,6 +553,7 @@ def _gerar_pdf_extrato_morador(contexto):
             comandos.append(_comando_texto_direita_pdf(credito, Decimal('802'), y - Decimal('8'), 8))
             y -= altura_linha
 
+    y -= Decimal('14')
     garantir_espaco(62)
     comandos.append('0.10 0.16 0.28 rg 485 {:.2f} 325 48 re f'.format(y - Decimal('40')))
     comandos.append(_comando_texto_pdf('Totais', Decimal('498'), y - Decimal('10'), 9, 'F2', '1 1 1 rg'))
