@@ -306,7 +306,17 @@ def _texto_pdf(valor):
     return str(valor).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
 
 
-def _quebrar_texto_pdf(texto, largura=96):
+def _formatar_moeda_pt_br(valor):
+    valor = (valor or Decimal('0.00')).quantize(Decimal('0.01'))
+    texto = f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    return f"R$ {texto}"
+
+
+def _formatar_percentual_pt_br(valor):
+    return f"{str(valor).replace('.', ',')}%"
+
+
+def _quebrar_texto_pdf(texto, largura=72):
     palavras = str(texto or '').split()
     if not palavras:
         return ['']
@@ -328,48 +338,166 @@ def _quebrar_texto_pdf(texto, largura=96):
     return linhas
 
 
-def _gerar_pdf_textual(titulo, secoes):
-    paginas = []
-    linhas_pagina = []
+def _largura_texto_pdf(texto, tamanho=9):
+    return len(str(texto)) * tamanho * Decimal('0.48')
 
-    def adicionar_linha(linha=''):
-        nonlocal linhas_pagina
-        if len(linhas_pagina) >= 48:
-            paginas.append(linhas_pagina)
-            linhas_pagina = []
-        linhas_pagina.append(linha)
 
-    adicionar_linha(titulo)
-    adicionar_linha('')
-    for secao in secoes:
-        cabecalho = secao.get('titulo')
-        if cabecalho:
-            if linhas_pagina and len(linhas_pagina) >= 44:
-                paginas.append(linhas_pagina)
-                linhas_pagina = []
-            adicionar_linha(cabecalho)
-        for linha in secao.get('linhas', []):
-            for parte in _quebrar_texto_pdf(linha):
-                adicionar_linha(parte)
-        adicionar_linha('')
-    if linhas_pagina:
-        paginas.append(linhas_pagina)
+def _comando_texto_pdf(texto, x, y, tamanho=9, fonte='F1', cor='0.10 0.10 0.10 rg'):
+    return f"{cor} BT /{fonte} {tamanho} Tf 1 0 0 1 {x:.2f} {y:.2f} Tm ({_texto_pdf(texto)}) Tj ET"
+
+
+def _comando_texto_direita_pdf(texto, x_direita, y, tamanho=9, fonte='F1', cor='0.10 0.10 0.10 rg'):
+    x = Decimal(str(x_direita)) - _largura_texto_pdf(texto, tamanho)
+    return _comando_texto_pdf(texto, max(x, Decimal('0.00')), y, tamanho, fonte, cor)
+
+
+def _gerar_pdf_extrato_morador(contexto):
+    largura_pagina = Decimal('842')
+    altura_pagina = Decimal('595')
+    margem = Decimal('32')
+    comandos_paginas = []
+    comandos = []
+    pagina_atual = 1
+    y = Decimal('0')
+    mes_referencia = contexto['mes_referencia']
+    titulo = f"Extrato pessoal do morador - {mes_referencia.strftime('%m/%Y')}"
+
+    def adicionar_pagina():
+        nonlocal comandos, y, pagina_atual
+        if comandos:
+            comandos.append(_comando_texto_pdf(f"Página {pagina_atual}", largura_pagina - margem - Decimal('55'), Decimal('18'), 8))
+            comandos_paginas.append(comandos)
+            pagina_atual += 1
+        comandos = [
+            '0.10 0.16 0.28 rg 0 552 842 43 re f',
+            _comando_texto_pdf('RPF · Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
+            _comando_texto_pdf(titulo, margem, Decimal('558'), 16, 'F2', '1 1 1 rg'),
+            _comando_texto_direita_pdf(
+                f"Gerado em {timezone.localtime().strftime('%d/%m/%Y às %H:%M')}",
+                largura_pagina - margem,
+                Decimal('575'),
+                8,
+                'F1',
+                '1 1 1 rg',
+            ),
+        ]
+        y = Decimal('530')
+
+    def fechar_pdf():
+        if comandos:
+            comandos.append(_comando_texto_pdf(f"Página {pagina_atual}", largura_pagina - margem - Decimal('55'), Decimal('18'), 8))
+            comandos_paginas.append(comandos)
+
+    def garantir_espaco(altura_necessaria):
+        if y - Decimal(str(altura_necessaria)) < Decimal('42'):
+            adicionar_pagina()
+
+    adicionar_pagina()
+
+    # Cartões de resumo
+    comandos.append('0.96 0.97 0.99 rg 32 454 778 68 re f')
+    comandos.append('0.82 0.86 0.92 RG 32 454 778 68 re S')
+    resumo = [
+        ('Morador', contexto['morador_label']),
+        ('Mês de referência', mes_referencia.strftime('%m/%Y')),
+        ('Total de débitos', _formatar_moeda_pt_br(contexto['total_debitos'])),
+        ('Créditos/descontos', _formatar_moeda_pt_br(contexto['total_creditos'])),
+        ('Saldo a pagar', _formatar_moeda_pt_br(contexto['saldo_extrato'])),
+    ]
+    x_card = margem + Decimal('14')
+    largura_card = Decimal('150')
+    for label, valor in resumo:
+        comandos.append(_comando_texto_pdf(label, x_card, Decimal('500'), 8))
+        comandos.append(_comando_texto_pdf(valor, x_card, Decimal('480'), 11, 'F2'))
+        x_card += largura_card
+    y = Decimal('430')
+
+    comandos.append(_comando_texto_pdf('Composição do extrato', margem, y, 12, 'F2'))
+    y -= Decimal('18')
+    x_comp = margem
+    for item in contexto['composicao']:
+        percentual = _formatar_percentual_pt_br(item['percentual'])
+        texto = f"{item['label']}: {_formatar_moeda_pt_br(item['valor'])} ({percentual})"
+        comandos.append('0.93 0.95 0.98 rg {:.2f} {:.2f} 145 24 re f'.format(x_comp, y - Decimal('6')))
+        comandos.append('0.82 0.86 0.92 RG {:.2f} {:.2f} 145 24 re S'.format(x_comp, y - Decimal('6')))
+        comandos.append(_comando_texto_pdf(texto, x_comp + Decimal('8'), y + Decimal('2'), 7))
+        x_comp += Decimal('154')
+    y -= Decimal('46')
+
+    comandos.append(_comando_texto_pdf('Lançamentos', margem, y, 12, 'F2'))
+    y -= Decimal('20')
+
+    colunas = [
+        ('Data', Decimal('32'), Decimal('58')),
+        ('Categoria', Decimal('90'), Decimal('92')),
+        ('Descrição e detalhe do cálculo', Decimal('182'), Decimal('410')),
+        ('Débito', Decimal('592'), Decimal('105')),
+        ('Crédito', Decimal('697'), Decimal('105')),
+    ]
+
+    def cabecalho_tabela():
+        nonlocal y
+        comandos.append('0.12 0.18 0.30 rg 32 {:.2f} 778 22 re f'.format(y - Decimal('15')))
+        for titulo_coluna, x, largura in colunas:
+            comandos.append(_comando_texto_pdf(titulo_coluna, x + Decimal('6'), y - Decimal('8'), 8, 'F2', '1 1 1 rg'))
+        y -= Decimal('24')
+
+    cabecalho_tabela()
+    if not contexto['lancamentos']:
+        garantir_espaco(28)
+        comandos.append('0.99 0.99 0.99 rg 32 {:.2f} 778 24 re f'.format(y - Decimal('14')))
+        comandos.append('0.86 0.86 0.86 RG 32 {:.2f} 778 24 re S'.format(y - Decimal('14')))
+        comandos.append(_comando_texto_pdf('Nenhum lançamento encontrado para este mês.', margem + Decimal('6'), y - Decimal('7'), 8))
+        y -= Decimal('28')
+    else:
+        for indice, lancamento in enumerate(contexto['lancamentos']):
+            descricao = lancamento['descricao']
+            detalhe = lancamento.get('detalhe') or '-'
+            linhas_descricao = _quebrar_texto_pdf(f"{descricao} — {detalhe}", 88)
+            altura_linha = Decimal(str(max(30, 14 + (len(linhas_descricao) * 9))))
+            if y - altura_linha - Decimal('8') < Decimal('42'):
+                adicionar_pagina()
+                comandos.append(_comando_texto_pdf('Lançamentos (continuação)', margem, y, 12, 'F2'))
+                y -= Decimal('20')
+                cabecalho_tabela()
+            cor_fundo = '1 1 1 rg' if indice % 2 == 0 else '0.97 0.98 0.99 rg'
+            comandos.append(f'{cor_fundo} 32 {y - altura_linha + Decimal("6"):.2f} 778 {altura_linha:.2f} re f')
+            comandos.append(f'0.86 0.86 0.86 RG 32 {y - altura_linha + Decimal("6"):.2f} 778 {altura_linha:.2f} re S')
+            for _, x, _ in colunas[1:]:
+                y_base = y - altura_linha + Decimal('6')
+                comandos.append(f'0.90 0.90 0.90 RG {x:.2f} {y_base:.2f} m {x:.2f} {y_base + altura_linha:.2f} l S')
+            comandos.append(_comando_texto_pdf(lancamento['data'].strftime('%d/%m/%Y'), Decimal('38'), y - Decimal('8'), 8))
+            comandos.append(_comando_texto_pdf(lancamento['categoria'], Decimal('96'), y - Decimal('8'), 8))
+            y_texto = y - Decimal('8')
+            for linha in linhas_descricao:
+                comandos.append(_comando_texto_pdf(linha, Decimal('188'), y_texto, 7))
+                y_texto -= Decimal('9')
+            debito = _formatar_moeda_pt_br(lancamento['valor']) if lancamento['tipo'] == 'debito' else '-'
+            credito = _formatar_moeda_pt_br(lancamento['valor']) if lancamento['tipo'] == 'credito' else '-'
+            comandos.append(_comando_texto_direita_pdf(debito, Decimal('690'), y - Decimal('8'), 8))
+            comandos.append(_comando_texto_direita_pdf(credito, Decimal('802'), y - Decimal('8'), 8))
+            y -= altura_linha
+
+    garantir_espaco(62)
+    comandos.append('0.10 0.16 0.28 rg 485 {:.2f} 325 48 re f'.format(y - Decimal('40')))
+    comandos.append(_comando_texto_pdf('Totais', Decimal('498'), y - Decimal('10'), 9, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"Débitos: {_formatar_moeda_pt_br(contexto['total_debitos'])}", Decimal('575'), y - Decimal('10'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"Créditos: {_formatar_moeda_pt_br(contexto['total_creditos'])}", Decimal('575'), y - Decimal('24'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"Saldo a pagar: {_formatar_moeda_pt_br(contexto['saldo_extrato'])}", Decimal('575'), y - Decimal('38'), 9, 'F2', '1 1 1 rg'))
+
+    fechar_pdf()
 
     objetos = [b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"]
     kids = []
-    fonte_obj = 3 + (len(paginas) * 2)
-    for indice, pagina in enumerate(paginas):
+    fonte_regular_obj = 3 + (len(comandos_paginas) * 2)
+    fonte_bold_obj = fonte_regular_obj + 1
+    for indice, comandos_pagina in enumerate(comandos_paginas):
         pagina_obj = 3 + (indice * 2)
         conteudo_obj = pagina_obj + 1
         kids.append(f"{pagina_obj} 0 R")
-        comandos = ['BT /F1 10 Tf 40 800 Td 14 TL']
-        for idx, linha in enumerate(pagina):
-            prefixo = '' if idx == 0 else 'T* '
-            comandos.append(f"{prefixo}({_texto_pdf(linha)}) Tj")
-        comandos.append('ET')
-        stream = '\n'.join(comandos).encode('latin-1', errors='replace')
+        stream = '\n'.join(comandos_pagina).encode('latin-1', errors='replace')
         objetos.append(
-            f"{pagina_obj} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 {fonte_obj} 0 R >> >> /Contents {conteudo_obj} 0 R >> endobj\n".encode('latin-1')
+            f"{pagina_obj} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 {largura_pagina} {altura_pagina}] /Resources << /Font << /F1 {fonte_regular_obj} 0 R /F2 {fonte_bold_obj} 0 R >> >> /Contents {conteudo_obj} 0 R >> endobj\n".encode('latin-1')
         )
         objetos.append(
             f"{conteudo_obj} 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1')
@@ -378,9 +506,10 @@ def _gerar_pdf_textual(titulo, secoes):
         )
     objetos.insert(
         1,
-        f"2 0 obj << /Type /Pages /Kids [{' '.join(kids)}] /Count {len(paginas)} >> endobj\n".encode('latin-1'),
+        f"2 0 obj << /Type /Pages /Kids [{' '.join(kids)}] /Count {len(comandos_paginas)} >> endobj\n".encode('latin-1'),
     )
-    objetos.append(f"{fonte_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n".encode('latin-1'))
+    objetos.append(f"{fonte_regular_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n".encode('latin-1'))
+    objetos.append(f"{fonte_bold_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj\n".encode('latin-1'))
 
     pdf = b'%PDF-1.4\n'
     offsets = [0]
@@ -496,38 +625,7 @@ def financeiro_prestacao_contas_morador(request, morador_id):
 def exportar_extrato_morador_pdf(request, morador_id):
     contexto = _contexto_extrato_morador(request, morador_id)
     mes_referencia = contexto['mes_referencia']
-    secoes = [
-        {
-            'titulo': 'Resumo',
-            'linhas': [
-                f"Morador: {contexto['morador_label']}",
-                f"Mês de referência: {mes_referencia.strftime('%m/%Y')}",
-                f"Débitos: R$ {contexto['total_debitos']:.2f}",
-                f"Créditos/descontos: R$ {contexto['total_creditos']:.2f}",
-                f"Saldo a pagar: R$ {contexto['saldo_extrato']:.2f}",
-            ],
-        },
-        {
-            'titulo': 'Composição percentual',
-            'linhas': [
-                f"{item['label']}: R$ {item['valor']:.2f} ({item['percentual']}%)"
-                for item in contexto['composicao']
-            ],
-        },
-        {
-            'titulo': 'Lançamentos',
-            'linhas': [
-                (
-                    f"{lancamento['data'].strftime('%d/%m/%Y')} | {lancamento['categoria']} | "
-                    f"{lancamento['descricao']} | {lancamento.get('detalhe') or '-'} | "
-                    f"{'Débito' if lancamento['tipo'] == 'debito' else 'Crédito'}: R$ {lancamento['valor']:.2f}"
-                )
-                for lancamento in contexto['lancamentos']
-            ] or ['Nenhum lançamento encontrado para este mês.'],
-        },
-    ]
-    titulo = f"Extrato individual - {contexto['morador_label']} - {mes_referencia.strftime('%m/%Y')}"
-    pdf = _gerar_pdf_textual(titulo, secoes)
+    pdf = _gerar_pdf_extrato_morador(contexto)
     nome_morador = slugify(contexto['morador_label']) or f"morador-{morador_id}"
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = (

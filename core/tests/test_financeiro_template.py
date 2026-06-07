@@ -135,7 +135,9 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertIn('extrato_pessoal_morador-teste_2026_05.pdf', response['Content-Disposition'])
         self.assertTrue(response.content.startswith(b'%PDF-1.4'))
-        self.assertIn(b'Extrato individual', response.content)
+        self.assertIn(b'Extrato pessoal', response.content)
+        self.assertIn(b'Data', response.content)
+        self.assertIn('R$ 123,45'.encode('latin-1'), response.content)
 
     def test_anexar_comprovante_pagamento(self):
         arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
