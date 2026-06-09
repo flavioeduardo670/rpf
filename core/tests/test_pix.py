@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.models import IngressoRock, PedidoIngressoRock, RockEvento, LoteIngressoRock
+from core.models import CobrancaAluguel, IngressoRock, Mensalidade, Morador, PedidoIngressoRock, RockEvento, LoteIngressoRock
 from core.services.rock import (
     confirmar_pagamento_pedido,
     criar_ingresso_rock,
@@ -105,6 +105,30 @@ class PixWebhookTests(TestCase):
         self.lote.refresh_from_db()
         self.assertEqual(self.pedido.status, 'pago')
         self.assertEqual(self.lote.quantidade_vendida, 2)
+
+
+    def test_webhook_confirma_pagamento_aluguel_e_mensalidade(self):
+        morador = Morador.objects.create(nome='Morador Pix', ativo=True)
+        cobranca = CobrancaAluguel.objects.create(
+            morador=morador,
+            mes_referencia='2026-05-01',
+            valor=Decimal('850.00'),
+            txid='RPFAL000000000000000000000000000001',
+            status='aguardando_pagamento',
+        )
+        body = json.dumps({'txid': cobranca.txid, 'status': 'pago', 'valor': '850.00'}).encode('utf-8')
+        response = self.client.post(
+            reverse('webhook_pix'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_WEBHOOK_SIGNATURE=self._assinatura(body),
+        )
+        self.assertEqual(response.status_code, 200)
+        cobranca.refresh_from_db()
+        self.assertEqual(cobranca.status, 'pago')
+        mensalidade = Mensalidade.objects.get(morador=morador, mes_referencia='2026-05-01')
+        self.assertTrue(mensalidade.pago)
+        self.assertEqual(mensalidade.valor, Decimal('850.00'))
 
     def test_concorrencia_simulada_confirmacao_idempotente(self):
         confirmar_pagamento_pedido(self.pedido)

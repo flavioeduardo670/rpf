@@ -2,6 +2,8 @@ import csv
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+import segno
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -26,6 +28,7 @@ from core.models import (
     AjusteMorador,
     Comodo,
     ComprovantePagamentoMorador,
+    CobrancaAluguel,
     ConfiguracaoFinanceira,
     ContaFixaMensal,
     LocalArmazenamento,
@@ -41,6 +44,7 @@ from core.models import (
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
+from core.services.pix_gateway import criar_cobranca_pix_avulsa
 from core.services.financeiro import (
     calcular_rateio_financeiro,
     garantir_contas_fixas_mensais,
@@ -600,6 +604,164 @@ def _gerar_pdf_extrato_morador(contexto):
     return pdf
 
 
+
+def _montar_pdf_por_comandos(comandos_paginas, largura_pagina, altura_pagina):
+    objetos = [b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"]
+    kids = []
+    fonte_regular_obj = 3 + (len(comandos_paginas) * 2)
+    fonte_bold_obj = fonte_regular_obj + 1
+    for indice, comandos_pagina in enumerate(comandos_paginas):
+        pagina_obj = 3 + (indice * 2)
+        conteudo_obj = pagina_obj + 1
+        kids.append(f"{pagina_obj} 0 R")
+        stream = '\n'.join(comandos_pagina).encode('cp1252', errors='replace')
+        objetos.append(
+            f"{pagina_obj} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 {largura_pagina} {altura_pagina}] /Resources << /Font << /F1 {fonte_regular_obj} 0 R /F2 {fonte_bold_obj} 0 R >> >> /Contents {conteudo_obj} 0 R >> endobj\n".encode('latin-1')
+        )
+        objetos.append(
+            f"{conteudo_obj} 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1')
+            + stream
+            + b"\nendstream endobj\n"
+        )
+    objetos.insert(
+        1,
+        f"2 0 obj << /Type /Pages /Kids [{' '.join(kids)}] /Count {len(comandos_paginas)} >> endobj\n".encode('latin-1'),
+    )
+    objetos.append(f"{fonte_regular_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> endobj\n".encode('latin-1'))
+    objetos.append(f"{fonte_bold_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> endobj\n".encode('latin-1'))
+
+    pdf = b'%PDF-1.4\n'
+    offsets = [0]
+    for obj in objetos:
+        offsets.append(len(pdf))
+        pdf += obj
+    xref_start = len(pdf)
+    pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1') + b"0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
+    pdf += (f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF").encode('latin-1')
+    return pdf
+
+
+def _comandos_qrcode_pdf(payload_pix, x, y_topo, tamanho=Decimal('142')):
+    if not payload_pix:
+        return []
+    qr = segno.make(payload_pix, error='m')
+    matriz = list(qr.matrix)
+    if not matriz:
+        return []
+    margem_modulos = Decimal('4')
+    modulos = Decimal(str(len(matriz))) + (margem_modulos * Decimal('2'))
+    modulo = Decimal(str(tamanho)) / modulos
+    comandos = [f'1 1 1 rg {x:.2f} {y_topo - tamanho:.2f} {tamanho:.2f} {tamanho:.2f} re f', '0 0 0 rg']
+    for linha_idx, linha in enumerate(matriz):
+        for coluna_idx, escuro in enumerate(linha):
+            if not escuro:
+                continue
+            x_modulo = Decimal(str(x)) + ((Decimal(str(coluna_idx)) + margem_modulos) * modulo)
+            y_modulo = Decimal(str(y_topo)) - ((Decimal(str(linha_idx)) + margem_modulos + Decimal('1')) * modulo)
+            comandos.append(f'{x_modulo:.2f} {y_modulo:.2f} {modulo:.2f} {modulo:.2f} re f')
+    comandos.append(f'0.10 0.16 0.28 RG {x:.2f} {y_topo - tamanho:.2f} {tamanho:.2f} {tamanho:.2f} re S')
+    return comandos
+
+
+def _resolver_chave_pix_aluguel():
+    config = ConfiguracaoFinanceira.objects.order_by('-atualizado_em', '-id').first()
+    if not config:
+        return ''
+    return config.conta_recebimentos_pix or config.conta_principal_pix or config.conta_pagamentos_pix or ''
+
+
+def _gerar_ou_atualizar_cobranca_aluguel(contexto):
+    morador = contexto['item']['morador']
+    mes_referencia = contexto['mes_referencia']
+    valor = (contexto['saldo_extrato'] or Decimal('0.00')).quantize(Decimal('0.01'))
+    cobranca, criada = CobrancaAluguel.objects.get_or_create(
+        morador=morador,
+        mes_referencia=mes_referencia,
+        defaults={'valor': valor},
+    )
+    deve_recriar = criada or cobranca.status != 'pago' or cobranca.valor != valor or not cobranca.payload_pix
+    if deve_recriar:
+        cobranca.valor = valor
+        if not cobranca.txid or len(cobranca.txid) > 25:
+            cobranca.save()
+            cobranca.txid = f"RPFAL{cobranca.id:020d}"
+        resultado = criar_cobranca_pix_avulsa(
+            txid=cobranca.txid,
+            valor=valor,
+            chave_pix=_resolver_chave_pix_aluguel(),
+            nome_pagador=contexto['morador_label'],
+            categoria='Aluguel',
+        )
+        cobranca.txid = resultado.get('txid') or cobranca.txid
+        cobranca.payload_pix = resultado.get('payload_pix') or cobranca.payload_pix
+        cobranca.status_gateway = resultado.get('status_gateway') or cobranca.status_gateway
+        cobranca.provider_payload = resultado.get('provider_payload') or {}
+        cobranca.status = 'aguardando_pagamento' if cobranca.status != 'pago' else cobranca.status
+        cobranca.save()
+    return cobranca
+
+
+def _gerar_pdf_boleto_aluguel(contexto, cobranca):
+    largura_pagina = Decimal('595')
+    altura_pagina = Decimal('842')
+    margem = Decimal('36')
+    y = Decimal('0')
+    valor = _formatar_moeda_pt_br(cobranca.valor)
+    vencimento = contexto['mes_referencia'].replace(day=10)
+    chave_pix = _resolver_chave_pix_aluguel()
+    payload = cobranca.payload_pix or 'PIX indisponível: configure a chave PIX de recebimentos.'
+    comandos = [
+        '1 1 1 rg 0 0 595 842 re f',
+        '0.10 0.16 0.28 rg 0 778 595 64 re f',
+        _comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf('Boleto PIX - Cobrança de Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_direita_pdf(f'Emitido em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
+    ]
+    comandos.append('0.96 0.98 1 rg 36 682 523 72 re f')
+    comandos.append('0.72 0.80 0.92 RG 36 682 523 72 re S')
+    resumo = [
+        ('Morador', contexto['morador_label']),
+        ('Referência', contexto['mes_referencia'].strftime('%m/%Y')),
+        ('Classificação', 'Aluguel'),
+        ('Valor', valor),
+    ]
+    x = margem + Decimal('14')
+    for label, conteudo in resumo:
+        comandos.append(_comando_texto_pdf(label, x, Decimal('730'), 8, 'F2'))
+        comandos.append(_comando_texto_pdf(conteudo, x, Decimal('708'), 11, 'F2'))
+        x += Decimal('126')
+
+    comandos.append(_comando_texto_pdf('Beneficiário', margem, Decimal('650'), 9, 'F2'))
+    comandos.append(_comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('632'), 11, 'F2'))
+    comandos.append(_comando_texto_pdf('Tipo de cobrança: Aluguel', margem, Decimal('615'), 9))
+    comandos.append(_comando_texto_pdf(f'Chave PIX: {chave_pix or "não configurada"}', margem, Decimal('598'), 9))
+    comandos.append(_comando_texto_pdf(f'TXID: {cobranca.txid}', margem, Decimal('581'), 8))
+    comandos.append(_comando_texto_pdf(f'Vencimento: {vencimento.strftime("%d/%m/%Y")}', margem, Decimal('564'), 9))
+
+    comandos.append('0.10 0.16 0.28 rg 36 540 523 30 re f')
+    comandos.append(_comando_texto_pdf('Pagamento via PIX', Decimal('50'), Decimal('552'), 12, 'F2', '1 1 1 rg'))
+    comandos.append('0.98 0.98 0.98 rg 36 308 523 232 re f')
+    comandos.append('0.82 0.86 0.92 RG 36 308 523 232 re S')
+    comandos.extend(_comandos_qrcode_pdf(cobranca.payload_pix, Decimal('56'), Decimal('514'), Decimal('150')))
+    comandos.append(_comando_texto_pdf('Aponte a câmera do banco para o QR Code', Decimal('230'), Decimal('500'), 11, 'F2'))
+    comandos.append(_comando_texto_pdf('ou use o PIX copia e cola abaixo.', Decimal('230'), Decimal('482'), 9))
+    comandos.append(_comando_texto_pdf(f'Valor a pagar: {valor}', Decimal('230'), Decimal('455'), 13, 'F2'))
+
+    comandos.append(_comando_texto_pdf('PIX copia e cola', margem, Decimal('278'), 10, 'F2'))
+    comandos.append('0.95 0.97 0.99 rg 36 122 523 142 re f')
+    comandos.append('0.82 0.86 0.92 RG 36 122 523 142 re S')
+    y = Decimal('246')
+    for linha in _quebrar_texto_pdf(payload, 86)[:12]:
+        comandos.append(_comando_texto_pdf(linha, Decimal('48'), y, 7))
+        y -= Decimal('10')
+
+    comandos.append('0.10 0.16 0.28 rg 36 64 523 34 re f')
+    comandos.append(_comando_texto_pdf('Documento gerado pelo ERP RPF. Confirme recebedor, valor e TXID antes de pagar.', Decimal('48'), Decimal('77'), 8, 'F2', '1 1 1 rg'))
+    return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
+
+
 def _contexto_extrato_morador(request, morador_id):
     if not _usuario_pode_ver_extrato_morador(request, morador_id):
         raise PermissionDenied('Você só pode acessar o seu próprio extrato individual.')
@@ -695,6 +857,20 @@ def financeiro_prestacao_contas(request):
 def financeiro_prestacao_contas_morador(request, morador_id):
     contexto = _contexto_extrato_morador(request, morador_id)
     return render(request, 'core/financeiro_prestacao_contas_detalhe.html', contexto)
+
+
+@login_required
+def exportar_boleto_aluguel_morador_pdf(request, morador_id):
+    contexto = _contexto_extrato_morador(request, morador_id)
+    cobranca = _gerar_ou_atualizar_cobranca_aluguel(contexto)
+    mes_referencia = contexto['mes_referencia']
+    pdf = _gerar_pdf_boleto_aluguel(contexto, cobranca)
+    nome_morador = slugify(contexto['morador_label']) or f"morador-{morador_id}"
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="boleto_aluguel_{nome_morador}_{mes_referencia.strftime("%Y_%m")}.pdf"'
+    )
+    return response
 
 
 @login_required

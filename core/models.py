@@ -288,6 +288,36 @@ class ComprovantePagamentoMorador(models.Model):
         return f"{self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
 
 
+
+
+class CobrancaAluguel(models.Model):
+    STATUS_CHOICES = [
+        ('aguardando_pagamento', 'Aguardando pagamento'),
+        ('pago', 'Pago'),
+        ('cancelado', 'Cancelado'),
+    ]
+
+    morador = models.ForeignKey(Morador, on_delete=models.CASCADE, related_name='cobrancas_aluguel')
+    mes_referencia = models.DateField()
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    txid = models.CharField(max_length=40, blank=True, default='', db_index=True)
+    payload_pix = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='aguardando_pagamento')
+    status_gateway = models.CharField(max_length=40, blank=True, default='')
+    provider_payload = models.JSONField(default=dict, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    webhook_recebido_em = models.DateTimeField(blank=True, null=True)
+    pago_em = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-mes_referencia', 'morador__nome']
+        unique_together = ('morador', 'mes_referencia')
+
+    def __str__(self):
+        return f"Aluguel {self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
+
+
 class NotificacaoMorador(models.Model):
     TIPO_CHOICES = [
         ('lembrete_aluguel', 'Lembrete de aluguel'),
