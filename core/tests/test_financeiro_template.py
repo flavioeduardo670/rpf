@@ -159,9 +159,15 @@ class FinanceiroTemplateTests(TestCase):
         self.assertIn('Boleto PIX'.encode('cp1252'), response.content)
         self.assertIn(b'Aluguel', response.content)
         self.assertIn(b'PIX copia e cola', response.content)
+        self.assertIn('Tipo de cobrança: Aluguel'.encode('cp1252'), response.content)
+        self.assertIn(b'Chave PIX: financeiro@rpf.test', response.content)
+        self.assertIn(b'Vencimento: 10/05/2026', response.content)
+        self.assertNotIn(b'Vencimento sugerido', response.content)
+        self.assertNotIn(b'Status no ERP', response.content)
         cobranca = CobrancaAluguel.objects.get(morador=self.morador, mes_referencia=self.mes)
         self.assertEqual(cobranca.valor, Decimal('123.45'))
         self.assertTrue(cobranca.txid.startswith('RPFAL'))
+        self.assertLessEqual(len(cobranca.txid), 25)
         self.assertIn('br.gov.bcb.pix', cobranca.payload_pix)
 
     def test_anexar_comprovante_pagamento(self):

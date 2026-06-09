@@ -650,15 +650,16 @@ def _comandos_qrcode_pdf(payload_pix, x, y_topo, tamanho=Decimal('142')):
     matriz = list(qr.matrix)
     if not matriz:
         return []
-    modulos = Decimal(str(len(matriz)))
+    margem_modulos = Decimal('4')
+    modulos = Decimal(str(len(matriz))) + (margem_modulos * Decimal('2'))
     modulo = Decimal(str(tamanho)) / modulos
     comandos = [f'1 1 1 rg {x:.2f} {y_topo - tamanho:.2f} {tamanho:.2f} {tamanho:.2f} re f', '0 0 0 rg']
     for linha_idx, linha in enumerate(matriz):
         for coluna_idx, escuro in enumerate(linha):
             if not escuro:
                 continue
-            x_modulo = Decimal(str(x)) + (Decimal(str(coluna_idx)) * modulo)
-            y_modulo = Decimal(str(y_topo)) - ((Decimal(str(linha_idx)) + Decimal('1')) * modulo)
+            x_modulo = Decimal(str(x)) + ((Decimal(str(coluna_idx)) + margem_modulos) * modulo)
+            y_modulo = Decimal(str(y_topo)) - ((Decimal(str(linha_idx)) + margem_modulos + Decimal('1')) * modulo)
             comandos.append(f'{x_modulo:.2f} {y_modulo:.2f} {modulo:.2f} {modulo:.2f} re f')
     comandos.append(f'0.10 0.16 0.28 RG {x:.2f} {y_topo - tamanho:.2f} {tamanho:.2f} {tamanho:.2f} re S')
     return comandos
@@ -683,9 +684,9 @@ def _gerar_ou_atualizar_cobranca_aluguel(contexto):
     deve_recriar = criada or cobranca.status != 'pago' or cobranca.valor != valor or not cobranca.payload_pix
     if deve_recriar:
         cobranca.valor = valor
-        if not cobranca.txid:
+        if not cobranca.txid or len(cobranca.txid) > 25:
             cobranca.save()
-            cobranca.txid = f"RPFAL{cobranca.id:030d}"[-35:]
+            cobranca.txid = f"RPFAL{cobranca.id:020d}"
         resultado = criar_cobranca_pix_avulsa(
             txid=cobranca.txid,
             valor=valor,
@@ -709,6 +710,7 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     y = Decimal('0')
     valor = _formatar_moeda_pt_br(cobranca.valor)
     vencimento = contexto['mes_referencia'].replace(day=10)
+    chave_pix = _resolver_chave_pix_aluguel()
     payload = cobranca.payload_pix or 'PIX indisponível: configure a chave PIX de recebimentos.'
     comandos = [
         '1 1 1 rg 0 0 595 842 re f',
@@ -733,9 +735,10 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
 
     comandos.append(_comando_texto_pdf('Beneficiário', margem, Decimal('650'), 9, 'F2'))
     comandos.append(_comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('632'), 11, 'F2'))
-    comandos.append(_comando_texto_pdf('Tipo de cobrança: Aluguel mensal interno ERP RPF', margem, Decimal('615'), 9))
-    comandos.append(_comando_texto_pdf(f'TXID: {cobranca.txid}', margem, Decimal('598'), 8))
-    comandos.append(_comando_texto_pdf(f'Vencimento sugerido: {vencimento.strftime("%d/%m/%Y")}', margem, Decimal('581'), 9))
+    comandos.append(_comando_texto_pdf('Tipo de cobrança: Aluguel', margem, Decimal('615'), 9))
+    comandos.append(_comando_texto_pdf(f'Chave PIX: {chave_pix or "não configurada"}', margem, Decimal('598'), 9))
+    comandos.append(_comando_texto_pdf(f'TXID: {cobranca.txid}', margem, Decimal('581'), 8))
+    comandos.append(_comando_texto_pdf(f'Vencimento: {vencimento.strftime("%d/%m/%Y")}', margem, Decimal('564'), 9))
 
     comandos.append('0.10 0.16 0.28 rg 36 540 523 30 re f')
     comandos.append(_comando_texto_pdf('Pagamento via PIX', Decimal('50'), Decimal('552'), 12, 'F2', '1 1 1 rg'))
@@ -745,7 +748,6 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     comandos.append(_comando_texto_pdf('Aponte a câmera do banco para o QR Code', Decimal('230'), Decimal('500'), 11, 'F2'))
     comandos.append(_comando_texto_pdf('ou use o PIX copia e cola abaixo.', Decimal('230'), Decimal('482'), 9))
     comandos.append(_comando_texto_pdf(f'Valor a pagar: {valor}', Decimal('230'), Decimal('455'), 13, 'F2'))
-    comandos.append(_comando_texto_pdf('Status no ERP após webhook: mensalidade marcada como paga automaticamente.', Decimal('230'), Decimal('435'), 8))
 
     comandos.append(_comando_texto_pdf('PIX copia e cola', margem, Decimal('278'), 10, 'F2'))
     comandos.append('0.95 0.97 0.99 rg 36 122 523 142 re f')
