@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from core.models import PedidoIngressoRock
+from core.models import CobrancaAluguel, Mensalidade, PedidoIngressoRock
 from core.services.pix_gateway import validar_assinatura_webhook
 from core.services.rock import confirmar_pagamento_pedido
 
@@ -28,14 +28,33 @@ def webhook_pix(request):
         return HttpResponseBadRequest('txid obrigatorio.')
 
     pedido = PedidoIngressoRock.objects.filter(txid=txid).first()
-    if not pedido:
+    if pedido:
+        pedido.status_gateway = status or pedido.status_gateway
+        pedido.webhook_recebido_em = timezone.now()
+        pedido.save(update_fields=['status_gateway', 'webhook_recebido_em'])
+
+        if status in {'pago', 'paid', 'concluido', 'approved'} and pedido.status != 'pago':
+            confirmar_pagamento_pedido(pedido)
+
+        return JsonResponse({'ok': True})
+
+    cobranca = CobrancaAluguel.objects.select_related('morador').filter(txid=txid).first()
+    if not cobranca:
         return JsonResponse({'ok': True, 'detail': 'pedido_nao_encontrado'})
 
-    pedido.status_gateway = status or pedido.status_gateway
-    pedido.webhook_recebido_em = timezone.now()
-    pedido.save(update_fields=['status_gateway', 'webhook_recebido_em'])
+    cobranca.status_gateway = status or cobranca.status_gateway
+    cobranca.webhook_recebido_em = timezone.now()
+    cobranca.provider_payload = payload
+    update_fields = ['status_gateway', 'webhook_recebido_em', 'provider_payload', 'atualizado_em']
+    if status in {'pago', 'paid', 'concluido', 'approved'} and cobranca.status != 'pago':
+        cobranca.status = 'pago'
+        cobranca.pago_em = timezone.now()
+        update_fields.extend(['status', 'pago_em'])
+        Mensalidade.objects.update_or_create(
+            morador=cobranca.morador,
+            mes_referencia=cobranca.mes_referencia,
+            defaults={'valor': cobranca.valor, 'pago': True, 'data_pagamento': timezone.localdate(cobranca.pago_em)},
+        )
+    cobranca.save(update_fields=update_fields)
 
-    if status in {'pago', 'paid', 'concluido', 'approved'} and pedido.status != 'pago':
-        confirmar_pagamento_pedido(pedido)
-
-    return JsonResponse({'ok': True})
+    return JsonResponse({'ok': True, 'tipo': 'aluguel'})

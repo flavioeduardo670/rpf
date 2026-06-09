@@ -25,5 +25,10 @@ class FinanceiroPrestacaoUrlsTests(SimpleTestCase):
             reverse('financeiro_prestacao_contas_morador', kwargs={'morador_id': 7}),
             '/financeiro/prestacao-contas/morador/7/',
         )
+        self.assertEqual(
+            reverse('exportar_boleto_aluguel_morador_pdf', kwargs={'morador_id': 7}),
+            '/financeiro/prestacao-contas/morador/7/boleto/',
+        )
         self.assertEqual(reverse('financeiro_registros_mensais'), '/financeiro/registros/')
         self.assertEqual(reverse('salvar_registro_financeiro'), '/financeiro/registros/salvar/')
+        self.assertEqual(reverse('webhook_pix_financeiro'), '/financeiro/pix/webhook/')
