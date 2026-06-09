@@ -10,6 +10,7 @@ from .models import (
     AtaParticipante,
     AtaReuniao,
     AtaTopico,
+    CobrancaAluguel,
     ConfiguracaoFinanceira,
     Morador,
     Mensalidade,
@@ -159,6 +160,33 @@ class AtaReuniaoAdmin(admin.ModelAdmin):
     ordering = ('-ano', '-numero_sequencial')
     inlines = (AtaParticipanteInline, AtaTopicoInline, AtaLinha5W2HInline)
 
+
+@admin.register(CobrancaAluguel)
+class CobrancaAluguelAdmin(admin.ModelAdmin):
+    list_display = (
+        'morador',
+        'mes_referencia',
+        'valor',
+        'status',
+        'status_gateway',
+        'txid',
+        'criado_em',
+        'pago_em',
+    )
+    list_filter = ('status', 'status_gateway', 'mes_referencia')
+    search_fields = ('morador__nome', 'morador__apelido', 'txid')
+    readonly_fields = (
+        'txid',
+        'payload_pix',
+        'status_gateway',
+        'provider_payload',
+        'criado_em',
+        'atualizado_em',
+        'webhook_recebido_em',
+        'pago_em',
+    )
+    autocomplete_fields = ('morador',)
+    ordering = ('-mes_referencia', 'morador__nome')
 
 @admin.register(ConfiguracaoFinanceira)
 class ConfiguracaoFinanceiraAdmin(admin.ModelAdmin):
