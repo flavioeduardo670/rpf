@@ -44,7 +44,7 @@ from core.models import (
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
-from core.services.pix_gateway import criar_cobranca_pix_avulsa
+from core.services.pix_gateway import criar_cobranca_pix_avulsa, normalizar_chave_pix
 from core.services.financeiro import (
     calcular_rateio_financeiro,
     garantir_contas_fixas_mensais,
@@ -669,7 +669,7 @@ def _resolver_chave_pix_aluguel():
     config = ConfiguracaoFinanceira.objects.order_by('-atualizado_em', '-id').first()
     if not config:
         return ''
-    return config.conta_recebimentos_pix or config.conta_principal_pix or config.conta_pagamentos_pix or ''
+    return normalizar_chave_pix(config.conta_recebimentos_pix or config.conta_principal_pix or config.conta_pagamentos_pix or '')
 
 
 def _gerar_ou_atualizar_cobranca_aluguel(contexto):

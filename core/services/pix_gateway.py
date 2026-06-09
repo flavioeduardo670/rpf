@@ -5,6 +5,7 @@ import hmac
 import json
 import base64
 import logging
+import re
 from io import BytesIO
 from decimal import Decimal
 from typing import Any
@@ -21,6 +22,41 @@ def _pix_tlv(pid: str, value: Any) -> str:
     return f"{pid}{len(value):02d}{value}"
 
 
+
+_DDDS_BRASIL = {
+    '11', '12', '13', '14', '15', '16', '17', '18', '19',
+    '21', '22', '24', '27', '28',
+    '31', '32', '33', '34', '35', '37', '38',
+    '41', '42', '43', '44', '45', '46', '47', '48', '49',
+    '51', '53', '54', '55',
+    '61', '62', '63', '64', '65', '66', '67', '68', '69',
+    '71', '73', '74', '75', '77', '79',
+    '81', '82', '83', '84', '85', '86', '87', '88', '89',
+    '91', '92', '93', '94', '95', '96', '97', '98', '99',
+}
+
+
+def normalizar_chave_pix(chave_pix: str) -> str:
+    chave = (chave_pix or '').strip()
+    if not chave:
+        return ''
+
+    chave_sem_separadores = re.sub(r'[\s().-]+', '', chave)
+    if chave.startswith('+'):
+        return f"+{re.sub(r'\D', '', chave)}"
+
+    if chave_sem_separadores.isdigit():
+        if len(chave_sem_separadores) == 13 and chave_sem_separadores.startswith('55'):
+            return f'+{chave_sem_separadores}'
+        if (
+            len(chave_sem_separadores) == 11
+            and chave_sem_separadores[:2] in _DDDS_BRASIL
+            and chave_sem_separadores[2] == '9'
+        ):
+            return f'+55{chave_sem_separadores}'
+
+    return chave
+
 def _pix_crc16(payload: str) -> str:
     data = (payload + '6304').encode('utf-8')
     crc = 0xFFFF
@@ -35,6 +71,7 @@ def _pix_crc16(payload: str) -> str:
 
 
 def gerar_payload_pix(chave_pix: str, valor: Decimal, txid: str, *, nome_recebedor: str = 'REPUBLICA RPF', cidade: str = 'SAO PAULO') -> str:
+    chave_pix = normalizar_chave_pix(chave_pix)
     merchant_account = _pix_tlv('00', 'br.gov.bcb.pix') + _pix_tlv('01', chave_pix)
     payload = (
         _pix_tlv('00', '01')

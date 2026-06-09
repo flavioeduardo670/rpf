@@ -149,7 +149,7 @@ class FinanceiroTemplateTests(TestCase):
     def test_exportar_boleto_aluguel_morador_pdf_cria_cobranca_pix(self):
         ConfiguracaoFinanceira.objects.create(
             valor_aluguel=Decimal('1000.00'),
-            conta_recebimentos_pix='financeiro@rpf.test',
+            conta_recebimentos_pix='15998509135',
         )
         response = self.client.get(reverse('exportar_boleto_aluguel_morador_pdf', args=[self.morador.id]) + '?mes=2026-05')
         self.assertEqual(response.status_code, 200)
@@ -160,7 +160,7 @@ class FinanceiroTemplateTests(TestCase):
         self.assertIn(b'Aluguel', response.content)
         self.assertIn(b'PIX copia e cola', response.content)
         self.assertIn('Tipo de cobrança: Aluguel'.encode('cp1252'), response.content)
-        self.assertIn(b'Chave PIX: financeiro@rpf.test', response.content)
+        self.assertIn(b'Chave PIX: +5515998509135', response.content)
         self.assertIn(b'Vencimento: 10/05/2026', response.content)
         self.assertNotIn(b'Vencimento sugerido', response.content)
         self.assertNotIn(b'Status no ERP', response.content)
@@ -169,6 +169,7 @@ class FinanceiroTemplateTests(TestCase):
         self.assertTrue(cobranca.txid.startswith('RPFAL'))
         self.assertLessEqual(len(cobranca.txid), 25)
         self.assertIn('br.gov.bcb.pix', cobranca.payload_pix)
+        self.assertIn('+5515998509135', cobranca.payload_pix)
 
     def test_anexar_comprovante_pagamento(self):
         arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
