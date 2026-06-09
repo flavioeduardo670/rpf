@@ -7,6 +7,7 @@ from .financeiro import (
     editar_parcela,
     editar_rateio_parcela,
     exportar_compras_csv,
+    exportar_boleto_aluguel_morador_pdf,
     exportar_extrato_morador_pdf,
     exportar_financeiro_csv,
     financeiro,

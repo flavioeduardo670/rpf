@@ -83,6 +83,7 @@
       <a href="{% url 'financeiro_prestacao_contas_morador' item.morador.id %}?mes={{ mes_proximo|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês seguinte</a>
       <a href="{% url 'financeiro_prestacao_contas' %}?mes={{ mes_referencia|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Voltar para prestação</a>
       <a href="{% url 'exportar_extrato_morador_pdf' item.morador.id %}?mes={{ mes_referencia|date:'Y-m' }}" class="rpf-btn">Gerar PDF</a>
+      <a href="{% url 'exportar_boleto_aluguel_morador_pdf' item.morador.id %}?mes={{ mes_referencia|date:'Y-m' }}" class="rpf-btn">Gerar boleto de aluguel</a>
     </div>
   </article>
 
