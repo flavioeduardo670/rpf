@@ -288,6 +288,36 @@ class ComprovantePagamentoMorador(models.Model):
         return f"{self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
 
 
+
+
+class CobrancaAluguel(models.Model):
+    STATUS_CHOICES = [
+        ('aguardando_pagamento', 'Aguardando pagamento'),
+        ('pago', 'Pago'),
+        ('cancelado', 'Cancelado'),
+    ]
+
+    morador = models.ForeignKey(Morador, on_delete=models.CASCADE, related_name='cobrancas_aluguel')
+    mes_referencia = models.DateField()
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    txid = models.CharField(max_length=40, blank=True, default='', db_index=True)
+    payload_pix = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='aguardando_pagamento')
+    status_gateway = models.CharField(max_length=40, blank=True, default='')
+    provider_payload = models.JSONField(default=dict, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    webhook_recebido_em = models.DateTimeField(blank=True, null=True)
+    pago_em = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-mes_referencia', 'morador__nome']
+        unique_together = ('morador', 'mes_referencia')
+
+    def __str__(self):
+        return f"Aluguel {self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
+
+
 class NotificacaoMorador(models.Model):
     TIPO_CHOICES = [
         ('lembrete_aluguel', 'Lembrete de aluguel'),
@@ -342,6 +372,82 @@ class ContaFixa(models.Model):
 
     def __str__(self):
         return f"{self.nome} - R$ {self.valor}"
+
+
+class ContaFixaMensal(models.Model):
+    conta_fixa = models.ForeignKey(
+        ContaFixa,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='valores_mensais',
+    )
+    mes_referencia = models.DateField()
+    nome = models.CharField(max_length=100)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['mes_referencia', 'nome', 'id']
+        indexes = [models.Index(fields=['mes_referencia', 'ativo'])]
+        verbose_name = 'Conta fixa mensal'
+        verbose_name_plural = 'Contas fixas mensais'
+
+    def __str__(self):
+        return f"{self.nome} - {self.mes_referencia.strftime('%m/%Y')} - R$ {self.valor}"
+
+
+
+class RegistroFinanceiroMensal(models.Model):
+    mes_referencia = models.DateField(unique=True)
+    valor_aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    valor_fixas_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_caixinha_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_parcelas_mes_rateio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    desconto_total_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    pendencia_total_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_rateio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_a_arrecadar = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_moradores = models.PositiveIntegerField(default=0)
+    salvo_em = models.DateTimeField(auto_now=True)
+    salvo_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-mes_referencia']
+        verbose_name = 'Registro financeiro mensal'
+        verbose_name_plural = 'Registros financeiros mensais'
+
+    def __str__(self):
+        return f"Registro financeiro {self.mes_referencia.strftime('%m/%Y')}"
+
+
+class RegistroFinanceiroMorador(models.Model):
+    registro = models.ForeignKey(RegistroFinanceiroMensal, on_delete=models.CASCADE, related_name='moradores')
+    morador = models.ForeignKey(Morador, on_delete=models.SET_NULL, null=True, blank=True)
+    morador_nome = models.CharField(max_length=100)
+    morador_apelido = models.CharField(max_length=50, blank=True, default='')
+    ordem_hierarquia = models.PositiveIntegerField(default=0)
+    peso_quarto = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fixas = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fixas_detalhe = models.JSONField(default=list, blank=True)
+    caixinha = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    parcelas = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    desconto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    extra = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['ordem_hierarquia', 'morador_nome']
+        verbose_name = 'Registro financeiro por morador'
+        verbose_name_plural = 'Registros financeiros por morador'
+
+    @property
+    def morador_label(self):
+        return self.morador_apelido or self.morador_nome
+
+    def __str__(self):
+        return f"{self.morador_label} - {self.registro.mes_referencia.strftime('%m/%Y')}"
 
 class Setor(models.Model):
     """
@@ -1023,6 +1129,12 @@ def _registrar_auditoria_evento(*, tipo, descricao, entidade='', entidade_id=Non
         entidade_id=entidade_id,
         dados=dados or {},
     )
+
+
+@receiver(post_save, sender=User)
+def garantir_acesso_usuario_para_user(sender, instance, created, **kwargs):
+    if created:
+        AcessoUsuario.objects.get_or_create(user=instance)
 
 
 @receiver(pre_save, sender=ConfiguracaoFinanceira)

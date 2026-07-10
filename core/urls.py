@@ -42,6 +42,7 @@ urlpatterns = [
     path('rock/', views.rock, name='rock'),
     path('rock/comprar/', views.comprar_rocks, name='comprar_rocks'),
     path('rock/pix/webhook/', views.webhook_pix, name='webhook_pix'),
+    path('financeiro/pix/webhook/', views.webhook_pix, name='webhook_pix_financeiro'),
     path('rock/editar/<int:evento_id>/', views.editar_rock, name='editar_rock'),
     path('rock/<int:evento_id>/lotes/', views.lotes_rock, name='lotes_rock'),
     path('rock/<int:evento_id>/ingressos/', views.ingressos_rock, name='ingressos_rock'),

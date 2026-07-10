@@ -2,6 +2,8 @@ import csv
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+import segno
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,12 +12,13 @@ from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef,
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from core.forms import (
     AjusteMoradorForm,
     ConfiguracaoFinanceiraForm,
-    ContaFixaForm,
+    ContaFixaMensalForm,
     DescontoMensalForm,
     PendenciaMensalItemForm,
     apply_form_config,
@@ -25,8 +28,9 @@ from core.models import (
     AjusteMorador,
     Comodo,
     ComprovantePagamentoMorador,
+    CobrancaAluguel,
     ConfiguracaoFinanceira,
-    ContaFixa,
+    ContaFixaMensal,
     LocalArmazenamento,
     Mensalidade,
     Morador,
@@ -34,18 +38,25 @@ from core.models import (
     NotaParcela,
     ParcelaRateioExclusao,
     PendenciaMensalItem,
+    RegistroFinanceiroMensal,
     Produto,
     RockEvento,
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
-from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia
+from core.services.pix_gateway import criar_cobranca_pix_avulsa, normalizar_chave_pix
+from core.services.financeiro import (
+    calcular_rateio_financeiro,
+    garantir_contas_fixas_mensais,
+    resolver_mes_referencia,
+    salvar_registro_financeiro_mensal,
+)
 
 from .common import can_edit, setor_required
 from .common import get_user_morador
 
 
-ContaFixaFormSet = forms.modelformset_factory(ContaFixa, form=ContaFixaForm, extra=1, can_delete=True)
+ContaFixaMensalFormSet = forms.modelformset_factory(ContaFixaMensal, form=ContaFixaMensalForm, extra=1, can_delete=True)
 AjusteMoradorFormSet = forms.modelformset_factory(AjusteMorador, form=AjusteMoradorForm, extra=1, can_delete=True)
 PendenciaMensalItemFormSet = forms.modelformset_factory(PendenciaMensalItem, form=PendenciaMensalItemForm, extra=1, can_delete=True)
 
@@ -277,11 +288,20 @@ def financeiro(request):
                     obj.delete()
                 return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'fixas_submit' in request.POST:
-            fs = ContaFixaFormSet(request.POST, queryset=ContaFixa.objects.all())
+            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            garantir_contas_fixas_mensais(mes)
+            fs = ContaFixaMensalFormSet(
+                request.POST,
+                queryset=ContaFixaMensal.objects.filter(mes_referencia=mes).order_by('nome', 'id'),
+            )
             if fs.is_valid():
-                fs.save()
-                mes_ref = request.POST.get('mes_referencia')
-                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_ref[:7]}") if mes_ref else redirect('financeiro_aluguel')
+                contas = fs.save(commit=False)
+                for conta in contas:
+                    conta.mes_referencia = mes
+                    conta.save()
+                for obj in fs.deleted_objects:
+                    obj.delete()
+                return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         else:
             configuracao_form = ConfiguracaoFinanceiraForm(request.POST, instance=configuracao)
             if configuracao_form.is_valid():
@@ -305,6 +325,7 @@ def financeiro(request):
         item['status_pagamento'] = 'pago' if item['comprovante'] or divida_morador <= Decimal('1.00') else 'pendente'
 
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+    total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))
     total_expr = ExpressionWrapper(
         Case(
             When(nota__quantidade__gt=0, then=F('nota__quantidade') * F('nota__valor')),
@@ -319,7 +340,7 @@ def financeiro(request):
     ).select_related('nota').annotate(total_valor=total_expr).order_by('-vencimento', '-id')
     return render(request, 'core/financeiro.html', {
         'total_recebido': total_recebido,
-        'saldo': total_recebido - resumo['total_despesas'],
+        'total_a_arrecadar': total_a_arrecadar,
         'notas': parcelas_notas,
         'configuracao_form': configuracao_form,
         'parcelas_abertas': resumo['parcelas_rateio'].filter(status='pendente').order_by('vencimento', 'id'),
@@ -335,11 +356,43 @@ def financeiro(request):
             queryset=AjusteMorador.objects.filter(mes_referencia=mes_referencia).order_by('id'),
             prefix='ajuste',
         ),
-        'fixas_formset': ContaFixaFormSet(queryset=ContaFixa.objects.all()),
+        'fixas_formset': ContaFixaMensalFormSet(
+            queryset=ContaFixaMensal.objects.filter(mes_referencia=mes_referencia).order_by('nome', 'id'),
+        ),
         'rateio_colspan': 9 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,
         **resumo,
     })
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_registros_mensais(request):
+    registros = RegistroFinanceiroMensal.objects.select_related('salvo_por').prefetch_related('moradores')
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes')) if request.GET.get('mes') else None
+    registro_selecionado = None
+    if mes_referencia:
+        registro_selecionado = registros.filter(mes_referencia=mes_referencia).first()
+    if registro_selecionado is None:
+        registro_selecionado = registros.first()
+
+    return render(request, 'core/financeiro_registros_mensais.html', {
+        'registros': registros,
+        'registro_selecionado': registro_selecionado,
+        'moradores_registro': registro_selecionado.moradores.all() if registro_selecionado else [],
+        'can_edit_financeiro': can_edit(request, 'acesso_financeiro_editar'),
+    })
+
+
+@require_POST
+@setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
+def salvar_registro_financeiro(request):
+    mes_referencia = resolver_mes_referencia(request.POST.get('mes'))
+    salvar_registro_financeiro_mensal(mes_referencia, request.user)
+    messages.success(request, f'Registro financeiro de {mes_referencia.strftime("%m/%Y")} salvo com sucesso.')
+    next_url = request.POST.get('next')
+    if next_url == 'registros':
+        return redirect(f"{redirect('financeiro_registros_mensais').url}?mes={mes_referencia.strftime('%Y-%m')}")
+    return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes_referencia.strftime('%Y-%m')}")
 
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
@@ -523,11 +576,31 @@ def compras(request):
         default=F('valor'),
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
-    notas = NotaFiscal.objects.filter(setor='compras').annotate(
+    notas_base = NotaFiscal.objects.filter(setor='compras').annotate(
         total_valor=ExpressionWrapper(total_valor_expr, output_field=DecimalField(max_digits=12, decimal_places=2)),
         mes_cobranca=Subquery(mes_cobranca_sub),
-    ).order_by('-data_emissao')
-    return render(request, 'core/compras.html', {'form': form, 'notas': notas, 'can_edit_compras': can_edit_compras, 'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'), 'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome')})
+    )
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    notas = notas_base.filter(mes_cobranca=mes_referencia).order_by('-data_emissao', '-id')
+
+    meses_disponiveis = list(
+        notas_base.exclude(mes_cobranca__isnull=True)
+        .values_list('mes_cobranca', flat=True)
+        .distinct()
+        .order_by('-mes_cobranca')
+    )
+
+    return render(request, 'core/compras.html', {
+        'form': form,
+        'notas': notas,
+        'can_edit_compras': can_edit_compras,
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'meses_disponiveis': meses_disponiveis,
+        'comodos': Comodo.objects.select_related('andar').order_by('andar__nome', 'nome'),
+        'locais': LocalArmazenamento.objects.select_related('comodo').order_by('nome'),
+    })
 
 
 @setor_required(group_name='Compras', morador_view_attr='acesso_compras_visualizar')
