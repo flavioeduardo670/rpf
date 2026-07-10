@@ -3,6 +3,7 @@ from decimal import Decimal
 import unicodedata
 
 from django.db import transaction
+from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -11,6 +12,7 @@ from core.models import (
     ConfiguracaoFinanceira,
     ContaFixa,
     ContaFixaMensal,
+    ContaCasa,
     Morador,
     NotaParcela,
     PendenciaMensalItem,
@@ -62,7 +64,34 @@ def garantir_contas_fixas_mensais(mes_referencia):
 
 
 def listar_contas_fixas_ativas_mes(mes_referencia):
-    return [conta for conta in garantir_contas_fixas_mensais(mes_referencia) if conta.ativo]
+    return listar_contas_casa_mes(mes_referencia)
+
+
+def _ultimo_dia_mes(ano, mes):
+    proximo = date(ano, mes, 28) + timedelta(days=4)
+    return (proximo - timedelta(days=proximo.day)).day
+
+
+def _data_vencimento_no_mes(data_base, mes_referencia):
+    dia = min(data_base.day, _ultimo_dia_mes(mes_referencia.year, mes_referencia.month))
+    return mes_referencia.replace(day=dia)
+
+
+def listar_contas_casa_mes(mes_referencia):
+    mes = mes_referencia.replace(day=1)
+    contas = ContaCasa.objects.filter(ativo=True).filter(
+        models.Q(mes_cobranca_aluguel=mes)
+        | models.Q(repetir_meses_futuros=True, mes_cobranca_aluguel__lte=mes)
+    ).order_by('data_vencimento', 'nome', 'id')
+    resultado = []
+    for conta in contas:
+        conta.vencimento_rateio = (
+            _data_vencimento_no_mes(conta.data_vencimento, mes)
+            if conta.repetir_meses_futuros and conta.mes_cobranca_aluguel < mes
+            else conta.data_vencimento
+        )
+        resultado.append(conta)
+    return resultado
 
 def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
     parcelas_mes = NotaParcela.objects.filter(

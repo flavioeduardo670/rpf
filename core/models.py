@@ -398,6 +398,28 @@ class ContaFixaMensal(models.Model):
 
 
 
+class ContaCasa(models.Model):
+    nome = models.CharField(max_length=100)
+    data_vencimento = models.DateField()
+    mes_cobranca_aluguel = models.DateField()
+    valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    forma_pagamento = models.CharField(max_length=100, blank=True, default='')
+    repetir_meses_futuros = models.BooleanField(default=False)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['mes_cobranca_aluguel', 'data_vencimento', 'nome', 'id']
+        indexes = [
+            models.Index(fields=['mes_cobranca_aluguel', 'ativo']),
+            models.Index(fields=['data_vencimento']),
+        ]
+        verbose_name = 'Conta da casa'
+        verbose_name_plural = 'Contas da casa'
+
+    def __str__(self):
+        return f"{self.nome} - {self.mes_cobranca_aluguel.strftime('%m/%Y')} - R$ {self.valor}"
+
+
 class RegistroFinanceiroMensal(models.Model):
     mes_referencia = models.DateField(unique=True)
     valor_aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)

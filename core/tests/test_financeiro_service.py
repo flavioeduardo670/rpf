@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase
 
 from core.models import DescontoMensal, PendenciaMensal
-from core.models import ContaFixa, ContaFixaMensal, Morador, NotaFiscal, NotaParcela
+from core.models import ContaCasa, Morador, NotaFiscal, NotaParcela
 from core.services.financeiro import calcular_rateio_financeiro, resolver_mes_referencia, salvar_registro_financeiro_mensal
 
 
@@ -127,22 +127,42 @@ class CalcularRateioFinanceiroTests(TestCase):
         self.assertEqual(resumo['total_parcelas_mes_rateio'], Decimal('0.00'))
         self.assertEqual(resumo['caixinha_por_morador'], Decimal('0.00'))
 
-    def test_conta_fixa_mensal_nao_altera_outros_meses(self):
+    def test_conta_da_casa_recorrente_entra_nos_meses_futuros(self):
         maio = date(2026, 5, 1)
         junho = date(2026, 6, 1)
         Morador.objects.create(nome='Morador 1', ativo=True, peso_quarto=Decimal('1.0'))
         Morador.objects.create(nome='Morador 2', ativo=True, peso_quarto=Decimal('1.0'))
-        ContaFixa.objects.create(nome='Energia', valor=Decimal('100.00'), ativo=True)
+        ContaCasa.objects.create(
+            nome='Energia',
+            valor=Decimal('100.00'),
+            data_vencimento=date(2026, 5, 15),
+            mes_cobranca_aluguel=maio,
+            forma_pagamento='PIX',
+            repetir_meses_futuros=True,
+            ativo=True,
+        )
 
         resumo_maio = calcular_rateio_financeiro(maio, incluir_pendencia=True)
-        ContaFixaMensal.objects.filter(mes_referencia=maio, nome='Energia').update(valor=Decimal('250.00'))
-
-        resumo_maio_alterado = calcular_rateio_financeiro(maio, incluir_pendencia=True)
         resumo_junho = calcular_rateio_financeiro(junho, incluir_pendencia=True)
 
         self.assertEqual(resumo_maio['valor_fixas_total'], Decimal('100.00'))
-        self.assertEqual(resumo_maio_alterado['valor_fixas_total'], Decimal('250.00'))
         self.assertEqual(resumo_junho['valor_fixas_total'], Decimal('100.00'))
+        self.assertEqual(resumo_junho['contas_fixas'][0].vencimento_rateio, date(2026, 6, 15))
+
+    def test_conta_da_casa_nao_recorrente_nao_entra_em_outros_meses(self):
+        maio = date(2026, 5, 1)
+        junho = date(2026, 6, 1)
+        ContaCasa.objects.create(
+            nome='Internet',
+            valor=Decimal('80.00'),
+            data_vencimento=date(2026, 5, 20),
+            mes_cobranca_aluguel=maio,
+            repetir_meses_futuros=False,
+            ativo=True,
+        )
+
+        self.assertEqual(calcular_rateio_financeiro(maio, incluir_pendencia=True)['valor_fixas_total'], Decimal('80.00'))
+        self.assertEqual(calcular_rateio_financeiro(junho, incluir_pendencia=True)['valor_fixas_total'], Decimal('0.00'))
 
 
     def test_registro_salvo_preserva_morador_desativado_depois(self):

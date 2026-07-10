@@ -19,6 +19,7 @@ from core.forms import (
     AjusteMoradorForm,
     ConfiguracaoFinanceiraForm,
     ContaFixaMensalForm,
+    ContaCasaForm,
     DescontoMensalForm,
     PendenciaMensalItemForm,
     apply_form_config,
@@ -31,6 +32,7 @@ from core.models import (
     CobrancaAluguel,
     ConfiguracaoFinanceira,
     ContaFixaMensal,
+    ContaCasa,
     LocalArmazenamento,
     Mensalidade,
     Morador,
@@ -57,6 +59,7 @@ from .common import get_user_morador
 
 
 ContaFixaMensalFormSet = forms.modelformset_factory(ContaFixaMensal, form=ContaFixaMensalForm, extra=1, can_delete=True)
+ContaCasaFormSet = forms.modelformset_factory(ContaCasa, form=ContaCasaForm, extra=1, can_delete=True)
 AjusteMoradorFormSet = forms.modelformset_factory(AjusteMorador, form=AjusteMoradorForm, extra=1, can_delete=True)
 PendenciaMensalItemFormSet = forms.modelformset_factory(PendenciaMensalItem, form=PendenciaMensalItemForm, extra=1, can_delete=True)
 
@@ -287,17 +290,17 @@ def financeiro(request):
                 for obj in fs.deleted_objects:
                     obj.delete()
                 return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
-        elif 'fixas_submit' in request.POST:
+        elif 'contas_casa_submit' in request.POST:
             mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
-            garantir_contas_fixas_mensais(mes)
-            fs = ContaFixaMensalFormSet(
+            fs = ContaCasaFormSet(
                 request.POST,
-                queryset=ContaFixaMensal.objects.filter(mes_referencia=mes).order_by('nome', 'id'),
+                queryset=ContaCasa.objects.all().order_by('data_vencimento', 'nome', 'id'),
+                prefix='contas_casa',
             )
             if fs.is_valid():
                 contas = fs.save(commit=False)
                 for conta in contas:
-                    conta.mes_referencia = mes
+                    conta.mes_cobranca_aluguel = conta.mes_cobranca_aluguel.replace(day=1)
                     conta.save()
                 for obj in fs.deleted_objects:
                     obj.delete()
@@ -356,8 +359,9 @@ def financeiro(request):
             queryset=AjusteMorador.objects.filter(mes_referencia=mes_referencia).order_by('id'),
             prefix='ajuste',
         ),
-        'fixas_formset': ContaFixaMensalFormSet(
-            queryset=ContaFixaMensal.objects.filter(mes_referencia=mes_referencia).order_by('nome', 'id'),
+        'contas_casa_formset': ContaCasaFormSet(
+            queryset=ContaCasa.objects.all().order_by('data_vencimento', 'nome', 'id'),
+            prefix='contas_casa',
         ),
         'rateio_colspan': 9 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,

@@ -34,6 +34,7 @@ from .models import (
     AjusteMorador,
     ContaFixa,
     ContaFixaMensal,
+    ContaCasa,
     Reuniao,
     AtaReuniao,
     AtaParticipante,
@@ -752,6 +753,26 @@ class ContaFixaMensalForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         apply_form_config(self, 'conta_fixa_form')
+
+
+class ContaCasaForm(forms.ModelForm):
+    class Meta:
+        model = ContaCasa
+        fields = ['nome', 'data_vencimento', 'mes_cobranca_aluguel', 'valor', 'forma_pagamento', 'repetir_meses_futuros', 'ativo']
+        widgets = {
+            'data_vencimento': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'mes_cobranca_aluguel': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+        }
+        labels = {
+            'data_vencimento': 'Data de vencimento',
+            'mes_cobranca_aluguel': 'Mês de cobrança no aluguel',
+            'forma_pagamento': 'Forma de pagamento',
+            'repetir_meses_futuros': 'Repetir nos meses futuros',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_form_config(self, 'conta_casa_form')
 
 
 class CadastroForm(UserCreationForm):
