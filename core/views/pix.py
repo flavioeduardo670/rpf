@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from core.models import CobrancaAluguel, Mensalidade, PedidoIngressoRock
-from core.services.pix_gateway import consultar_pagamento_mercado_pago, validar_assinatura_webhook
+from core.services.pix_gateway import consultar_evento_mercado_pago, validar_assinatura_webhook
 from core.services.rock import confirmar_pagamento_pedido
 
 
@@ -26,7 +26,8 @@ def _extrair_identificadores_webhook(request, payload):
         or ''
     ).strip()
     txid = str(payload.get('txid') or payload.get('external_reference') or '').strip()
-    return payment_id, txid
+    event_type = str(payload.get('type') or request.GET.get('type') or '').strip().lower()
+    return payment_id, txid, event_type
 
 
 @csrf_exempt
@@ -37,7 +38,7 @@ def webhook_pix(request):
     except (UnicodeDecodeError, json.JSONDecodeError):
         return HttpResponseBadRequest('Payload invalido.')
 
-    payment_id, txid = _extrair_identificadores_webhook(request, payload)
+    payment_id, txid, event_type = _extrair_identificadores_webhook(request, payload)
     assinatura = request.headers.get('X-Signature') or request.headers.get('X-Webhook-Signature', '')
     request_id = request.headers.get('X-Request-Id', '')
     data_id = request.GET.get('data.id') or payment_id
@@ -47,10 +48,13 @@ def webhook_pix(request):
     status = (payload.get('status') or '').strip().lower()
     provider_payload = payload
     if payment_id:
-        resultado = consultar_pagamento_mercado_pago(payment_id)
+        resultado = consultar_evento_mercado_pago(payment_id, event_type)
         txid = resultado.get('txid') or txid
         status = resultado.get('status') or status
         provider_payload = resultado.get('provider_payload') or provider_payload
+        if status in {'nao_encontrado', 'ignorado'} and not txid:
+            logger.warning('Webhook PIX Mercado Pago ignorado sem pagamento processavel.', extra={'event': 'pix.webhook.ignored', 'event_type': event_type, 'payment_id': payment_id, 'status': status})
+            return JsonResponse({'ok': True, 'detail': status})
 
     if not txid and not payment_id:
         return HttpResponseBadRequest('Identificador do pagamento obrigatorio.')

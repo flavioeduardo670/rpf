@@ -1,10 +1,11 @@
 import json
 from decimal import Decimal
+from urllib import error
 from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase, override_settings
 
-from core.services.pix_gateway import criar_cobranca_pix_avulsa, consultar_status_por_txid, validar_assinatura_webhook
+from core.services.pix_gateway import criar_cobranca_pix_avulsa, consultar_evento_mercado_pago, consultar_pagamento_mercado_pago, consultar_status_por_txid, validar_assinatura_webhook
 
 
 class PixGatewayMercadoPagoTests(SimpleTestCase):
@@ -64,6 +65,23 @@ class PixGatewayMercadoPagoTests(SimpleTestCase):
         self.assertEqual(resultado['status'], 'pago')
         self.assertEqual(resultado['payment_id'], '123456')
         self.assertEqual(resultado['txid'], 'RPFAL0001')
+
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
+    @patch('core.services.pix_gateway.request.urlopen')
+    def test_consultar_pagamento_ignora_404_mercado_pago(self, urlopen):
+        urlopen.side_effect = error.HTTPError('https://api.mercadopago.com/v1/payments/123456', 404, 'Not Found', None, None)
+
+        resultado = consultar_pagamento_mercado_pago('123456')
+
+        self.assertEqual(resultado['status'], 'nao_encontrado')
+        self.assertEqual(resultado['payment_id'], '123456')
+
+    def test_consultar_evento_order_ignora_sem_chamar_api(self):
+        resultado = consultar_evento_mercado_pago('123456', 'order')
+
+        self.assertEqual(resultado['status'], 'ignorado')
+        self.assertEqual(resultado['provider_payload'], {'tipo': 'order', 'id': '123456'})
 
     @override_settings(MERCADOPAGO_WEBHOOK_SECRET='segredo')
     def test_validar_assinatura_webhook_mercado_pago(self):
