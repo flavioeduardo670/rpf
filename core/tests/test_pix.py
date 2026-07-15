@@ -104,6 +104,18 @@ class PixWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {'ok': True, 'detail': 'pagamento_nao_encontrado'})
 
+
+    def test_webhook_ignora_simulacao_order_mercado_pago(self):
+        body = json.dumps({'type': 'order', 'data': {'id': '123456'}}).encode('utf-8')
+        response = self.client.post(
+            f"{reverse('webhook_pix')}?data.id=123456&type=order",
+            data=body,
+            content_type='application/json',
+            **self._headers_assinatura('123456'),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {'ok': True, 'detail': 'ignorado'})
+
     def test_webhook_confirma_pagamento(self):
         body = json.dumps({'txid': self.pedido.txid, 'status': 'paid'}).encode('utf-8')
         response = self.client.post(

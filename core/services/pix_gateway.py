@@ -249,7 +249,13 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
 
 
 def consultar_pagamento_mercado_pago(payment_id: str) -> dict[str, Any]:
-    data = _mercado_pago_request('GET', f'/v1/payments/{payment_id}')
+    try:
+        data = _mercado_pago_request('GET', f'/v1/payments/{payment_id}')
+    except error.HTTPError as exc:
+        if exc.code == 404:
+            logger.warning('Pagamento Mercado Pago inexistente ignorado.', extra={'event': 'pix.mercadopago.payment_not_found', 'payment_id': payment_id})
+            return {'txid': '', 'payment_id': str(payment_id or ''), 'status': 'nao_encontrado', 'status_gateway': 'nao_encontrado', 'provider_payload': {'erro': 'payment_not_found'}}
+        raise
     pix = _extrair_dados_pix_mercado_pago(data)
     return {
         'txid': data.get('external_reference') or '',
@@ -262,6 +268,42 @@ def consultar_pagamento_mercado_pago(payment_id: str) -> dict[str, Any]:
         'ticket_url': pix['ticket_url'],
         'provider_payload': data,
     }
+
+
+def consultar_merchant_order_mercado_pago(order_id: str) -> dict[str, Any]:
+    try:
+        data = _mercado_pago_request('GET', f'/merchant_orders/{order_id}')
+    except error.HTTPError as exc:
+        if exc.code == 404:
+            logger.warning('Merchant order Mercado Pago inexistente ignorada.', extra={'event': 'pix.mercadopago.merchant_order_not_found', 'order_id': order_id})
+            return {'txid': '', 'payment_id': '', 'status': 'nao_encontrado', 'status_gateway': 'nao_encontrado', 'provider_payload': {'erro': 'merchant_order_not_found'}}
+        raise
+
+    payments = data.get('payments') or []
+    approved_payment = next((payment for payment in payments if (payment.get('status') or '').lower() in STATUS_PAGO_MERCADO_PAGO), None)
+    payment = approved_payment or (payments[0] if payments else {})
+    payment_id = str(payment.get('id') or '')
+    status = _mapear_status_mercado_pago(payment.get('status') or data.get('status') or '')
+    return {
+        'txid': data.get('external_reference') or payment.get('external_reference') or '',
+        'payment_id': payment_id,
+        'status': status,
+        'status_gateway': status,
+        'provider_payload': data,
+    }
+
+
+def consultar_evento_mercado_pago(resource_id: str, event_type: str = '') -> dict[str, Any]:
+    event_type = (event_type or '').strip().lower()
+    if event_type == 'payment':
+        return consultar_pagamento_mercado_pago(resource_id)
+    if event_type == 'merchant_order':
+        return consultar_merchant_order_mercado_pago(resource_id)
+    if event_type == 'order':
+        logger.warning('Evento order do Mercado Pago ignorado; pagamentos PIX sao processados via payment ou merchant_order.', extra={'event': 'pix.mercadopago.order_ignored', 'order_id': resource_id})
+        return {'txid': '', 'payment_id': '', 'status': 'ignorado', 'status_gateway': 'ignorado', 'provider_payload': {'tipo': 'order', 'id': resource_id}}
+    logger.warning('Tipo de evento Mercado Pago desconhecido; tentativa como payment.', extra={'event': 'pix.mercadopago.event_type_unknown', 'event_type': event_type, 'resource_id': resource_id})
+    return consultar_pagamento_mercado_pago(resource_id)
 
 
 def consultar_status_por_txid(txid: str) -> dict[str, Any]:
