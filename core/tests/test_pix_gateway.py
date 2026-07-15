@@ -45,6 +45,30 @@ class PixGatewayMercadoPagoTests(SimpleTestCase):
         self.assertEqual(req.headers['Authorization'], 'Bearer TEST-123')
 
 
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='Bearer TEST-123')
+    @patch('core.services.pix_gateway.request.urlopen')
+    def test_criar_cobranca_pix_avulsa_normaliza_token_com_bearer(self, urlopen):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = json.dumps({
+            'id': 123456,
+            'status': 'pending',
+            'external_reference': 'RPFAL0001',
+            'point_of_interaction': {'transaction_data': {'qr_code': 'pix-code'}},
+        }).encode('utf-8')
+        urlopen.return_value = response
+
+        criar_cobranca_pix_avulsa(
+            txid='RPFAL0001',
+            valor=Decimal('123.45'),
+            chave_pix='',
+            nome_pagador='Morador Teste',
+            categoria='Aluguel',
+        )
+
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.headers['Authorization'], 'Bearer TEST-123')
+
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.services.pix_gateway.request.urlopen')
     def test_criar_cobranca_pix_avulsa_retorna_erro_autorizacao_sem_fallback_local(self, urlopen):

@@ -101,7 +101,10 @@ def gerar_qr_code_data_uri(payload_pix: str) -> str:
 
 
 def _mercado_pago_access_token() -> str:
-    return getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '').strip()
+    token = getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '').strip().strip('\"\'')
+    if token.lower().startswith('bearer '):
+        token = token[7:].strip()
+    return token
 
 
 def _mercado_pago_request(method: str, path: str, *, payload: dict[str, Any] | None = None, idempotency_key: str = '') -> dict[str, Any]:
