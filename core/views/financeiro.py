@@ -8,6 +8,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.mail import EmailMessage
 from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, When
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -765,6 +766,80 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
 
 
+
+def _gerar_pdf_comprovante_aluguel(cobranca):
+    largura_pagina = Decimal('595')
+    altura_pagina = Decimal('842')
+    margem = Decimal('36')
+    morador_label = cobranca.morador.apelido or cobranca.morador.nome
+    valor = _formatar_moeda_pt_br(cobranca.valor)
+    pago_em = timezone.localtime(cobranca.pago_em or timezone.now())
+    comandos = [
+        '1 1 1 rg 0 0 595 842 re f',
+        '0.10 0.16 0.28 rg 0 778 595 64 re f',
+        _comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf('Comprovante de Pagamento - Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_direita_pdf(f'Gerado em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
+    ]
+    comandos.append('0.90 0.98 0.93 rg 36 682 523 72 re f')
+    comandos.append('0.46 0.76 0.55 RG 36 682 523 72 re S')
+    resumo = [
+        ('Status', 'Pago'),
+        ('Morador', morador_label),
+        ('Referência', cobranca.mes_referencia.strftime('%m/%Y')),
+        ('Valor pago', valor),
+    ]
+    x = margem + Decimal('14')
+    for label, conteudo in resumo:
+        comandos.append(_comando_texto_pdf(label, x, Decimal('730'), 8, 'F2'))
+        comandos.append(_comando_texto_pdf(conteudo, x, Decimal('708'), 11, 'F2'))
+        x += Decimal('126')
+
+    comandos.append(_comando_texto_pdf('Dados da confirmação', margem, Decimal('650'), 12, 'F2'))
+    linhas = [
+        ('Beneficiário', 'Associação Cultural República Portão dos Fundos'),
+        ('Tipo de cobrança', 'Aluguel'),
+        ('Data do pagamento', pago_em.strftime('%d/%m/%Y às %H:%M')),
+        ('TXID', cobranca.txid or '-'),
+        ('Status no gateway', cobranca.status_gateway or '-'),
+    ]
+    y = Decimal('626')
+    for label, conteudo in linhas:
+        comandos.append('0.97 0.98 0.99 rg 36 {:.2f} 523 30 re f'.format(y - Decimal('18')))
+        comandos.append('0.86 0.89 0.94 RG 36 {:.2f} 523 30 re S'.format(y - Decimal('18')))
+        comandos.append(_comando_texto_pdf(label, Decimal('50'), y - Decimal('6'), 8, 'F2'))
+        comandos.append(_comando_texto_pdf(str(conteudo), Decimal('190'), y - Decimal('6'), 9))
+        y -= Decimal('34')
+
+    comandos.append('0.10 0.16 0.28 rg 36 204 523 44 re f')
+    comandos.append(_comando_texto_pdf('Este comprovante foi gerado automaticamente a partir da confirmação PIX recebida pelo ERP RPF.', Decimal('50'), Decimal('230'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf('Guarde este documento para sua conferência mensal.', Decimal('50'), Decimal('214'), 8, 'F1', '1 1 1 rg'))
+    return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
+
+
+def enviar_comprovante_aluguel_por_email(cobranca):
+    email_morador = (cobranca.morador.email or '').strip()
+    if not email_morador:
+        return False
+    pdf = _gerar_pdf_comprovante_aluguel(cobranca)
+    morador_label = cobranca.morador.apelido or cobranca.morador.nome
+    mes = cobranca.mes_referencia.strftime('%m/%Y')
+    assunto = f'Comprovante de pagamento do aluguel - {mes}'
+    corpo = (
+        f'Olá, {morador_label}!\n\n'
+        f'Recebemos a confirmação do pagamento do aluguel de {mes}. '
+        'O comprovante está anexado a este email.\n\n'
+        f'TXID: {cobranca.txid}\n'
+        f'Valor: {_formatar_moeda_pt_br(cobranca.valor)}\n\n'
+        'República Portão dos Fundos'
+    )
+    nome_morador = slugify(morador_label) or f'morador-{cobranca.morador_id}'
+    filename = f'comprovante_aluguel_{nome_morador}_{cobranca.mes_referencia.strftime("%Y_%m")}.pdf'
+    mensagem = EmailMessage(assunto, corpo, to=[email_morador])
+    mensagem.attach(filename, pdf, 'application/pdf')
+    mensagem.send(fail_silently=False)
+    return True
+
 def _contexto_extrato_morador(request, morador_id):
     if not _usuario_pode_ver_extrato_morador(request, morador_id):
         raise PermissionDenied('Você só pode acessar o seu próprio extrato individual.')
@@ -967,10 +1042,29 @@ def financeiro(request):
             morador__in=resumo['moradores_ativos'],
         ).select_related('morador')
     }
+    cobrancas_pagas_ids = set(
+        CobrancaAluguel.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+            status='pago',
+        ).values_list('morador_id', flat=True)
+    )
+    mensalidades_pagas_ids = set(
+        Mensalidade.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+            pago=True,
+        ).values_list('morador_id', flat=True)
+    )
     for item in resumo['rateio_moradores']:
-        item['comprovante'] = comprovantes_map.get(item['morador'].id)
+        morador_id = item['morador'].id
+        item['comprovante'] = comprovantes_map.get(morador_id)
         divida_morador = item['valor'] if item['valor'] is not None else Decimal('0.00')
-        item['status_pagamento'] = 'pago' if item['comprovante'] or divida_morador <= Decimal('1.00') else 'pendente'
+        item['status_pagamento'] = (
+            'pago'
+            if item['comprovante'] or morador_id in cobrancas_pagas_ids or morador_id in mensalidades_pagas_ids or divida_morador <= Decimal('1.00')
+            else 'pendente'
+        )
 
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
     total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))

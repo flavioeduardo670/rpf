@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -108,7 +109,7 @@ class PixWebhookTests(TestCase):
 
 
     def test_webhook_confirma_pagamento_aluguel_e_mensalidade(self):
-        morador = Morador.objects.create(nome='Morador Pix', ativo=True)
+        morador = Morador.objects.create(nome='Morador Pix', email='morador.pix@example.com', ativo=True)
         cobranca = CobrancaAluguel.objects.create(
             morador=morador,
             mes_referencia='2026-05-01',
@@ -129,6 +130,13 @@ class PixWebhookTests(TestCase):
         mensalidade = Mensalidade.objects.get(morador=morador, mes_referencia='2026-05-01')
         self.assertTrue(mensalidade.pago)
         self.assertEqual(mensalidade.valor, Decimal('850.00'))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['morador.pix@example.com'])
+        self.assertIn('Comprovante de pagamento do aluguel - 05/2026', mail.outbox[0].subject)
+        self.assertIn('TXID: RPFAL000000000000000000000000000001', mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].attachments[0][0], 'comprovante_aluguel_morador-pix_2026_05.pdf')
+        self.assertEqual(mail.outbox[0].attachments[0][2], 'application/pdf')
+        self.assertTrue(mail.outbox[0].attachments[0][1].startswith(b'%PDF-1.4'))
 
     def test_concorrencia_simulada_confirmacao_idempotente(self):
         confirmar_pagamento_pedido(self.pedido)
