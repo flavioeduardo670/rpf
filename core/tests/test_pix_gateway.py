@@ -83,6 +83,23 @@ class PixGatewayMercadoPagoTests(SimpleTestCase):
         self.assertEqual(resultado['status'], 'ignorado')
         self.assertEqual(resultado['provider_payload'], {'tipo': 'order', 'id': '123456'})
 
+
+    def test_consultar_evento_order_com_external_reference_processa_payload(self):
+        resultado = consultar_evento_mercado_pago('123456', 'order', {
+            'type': 'order',
+            'data': {
+                'external_reference': 'ext_ref_1234',
+                'id': '123456',
+                'status': 'processed',
+                'status_detail': 'accredited',
+                'transactions': {'payments': [{'id': 'PAY01', 'status': 'processed', 'status_detail': 'accredited'}]},
+            },
+        })
+
+        self.assertEqual(resultado['txid'], 'ext_ref_1234')
+        self.assertEqual(resultado['payment_id'], 'PAY01')
+        self.assertEqual(resultado['status'], 'pago')
+
     @override_settings(MERCADOPAGO_WEBHOOK_SECRET='segredo')
     def test_validar_assinatura_webhook_mercado_pago(self):
         import hashlib

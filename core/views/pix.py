@@ -48,10 +48,11 @@ def webhook_pix(request):
     status = (payload.get('status') or '').strip().lower()
     provider_payload = payload
     if payment_id:
-        resultado = consultar_evento_mercado_pago(payment_id, event_type)
+        resultado = consultar_evento_mercado_pago(payment_id, event_type, payload)
         txid = resultado.get('txid') or txid
         status = resultado.get('status') or status
         provider_payload = resultado.get('provider_payload') or provider_payload
+        payment_id = resultado.get('payment_id') or payment_id
         if status in {'nao_encontrado', 'ignorado'} and not txid:
             logger.warning('Webhook PIX Mercado Pago ignorado sem pagamento processavel.', extra={'event': 'pix.webhook.ignored', 'event_type': event_type, 'payment_id': payment_id, 'status': status})
             return JsonResponse({'ok': True, 'detail': status})

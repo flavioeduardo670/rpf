@@ -161,6 +161,57 @@ class PixWebhookTests(TestCase):
         self.assertEqual(mail.outbox[0].attachments[0][2], 'application/pdf')
         self.assertTrue(mail.outbox[0].attachments[0][1].startswith(b'%PDF-1.4'))
 
+
+    def test_webhook_order_processado_confirma_aluguel_e_envia_comprovante(self):
+        morador = Morador.objects.create(nome='Morador Order', email='morador.order@example.com', ativo=True)
+        cobranca = CobrancaAluguel.objects.create(
+            morador=morador,
+            mes_referencia='2026-06-01',
+            valor=Decimal('1000.00'),
+            txid='ext_ref_1234',
+            status='aguardando_pagamento',
+        )
+        body = json.dumps({
+            'action': 'order.processed',
+            'api_version': 'v1',
+            'data': {
+                'external_reference': cobranca.txid,
+                'id': '123456',
+                'status': 'processed',
+                'status_detail': 'accredited',
+                'total_paid_amount': 100000,
+                'transactions': {
+                    'payments': [{
+                        'amount': 100000,
+                        'id': 'PAY01K7S9596QBWZRTY02NF',
+                        'paid_amount': 100000,
+                        'status': 'processed',
+                        'status_detail': 'accredited',
+                    }],
+                },
+                'type': 'point',
+                'version': 3,
+            },
+            'type': 'order',
+        }).encode('utf-8')
+
+        response = self.client.post(
+            reverse('webhook_pix'),
+            data=body,
+            content_type='application/json',
+            **self._headers_assinatura(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        cobranca.refresh_from_db()
+        self.assertEqual(cobranca.status, 'pago')
+        self.assertEqual(cobranca.status_gateway, 'pago')
+        self.assertEqual(cobranca.payment_id, 'PAY01K7S9596QBWZRTY02NF')
+        mensalidade = Mensalidade.objects.get(morador=morador, mes_referencia='2026-06-01')
+        self.assertTrue(mensalidade.pago)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['morador.order@example.com'])
+
     def test_concorrencia_simulada_confirmacao_idempotente(self):
         confirmar_pagamento_pedido(self.pedido)
         confirmar_pagamento_pedido(self.pedido)
