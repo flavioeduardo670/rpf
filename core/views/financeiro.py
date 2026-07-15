@@ -689,7 +689,9 @@ def _gerar_ou_atualizar_cobranca_aluguel(contexto):
         mes_referencia=mes_referencia,
         defaults={'valor': valor},
     )
-    deve_recriar = criada or cobranca.status != 'pago' or cobranca.valor != valor or not cobranca.payload_pix
+    valor_alterado = cobranca.valor != valor
+    precisa_payload = not (cobranca.payload_pix or cobranca.qr_code)
+    deve_recriar = criada or (cobranca.status != 'pago' and (valor_alterado or precisa_payload))
     if deve_recriar:
         cobranca.valor = valor
         if not cobranca.txid or len(cobranca.txid) > 25:
