@@ -221,7 +221,35 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
             'qr_code_data_uri': pix['qr_code_data_uri'],
             'provider_payload': data,
         }
-    except (RuntimeError, error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+    except error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            logger.error('Mercado Pago recusou a credencial configurada para criar cobranca PIX', extra={'event': 'pix.mercadopago.authorization_error', 'txid': txid, 'http_status': exc.code})
+            return {
+                'txid': txid,
+                'payment_id': '',
+                'payload_pix': '',
+                'qr_code': '',
+                'qr_code_base64': '',
+                'ticket_url': '',
+                'status_gateway': 'erro_autorizacao',
+                'qr_code_url': '',
+                'qr_code_data_uri': '',
+                'provider_payload': {'erro': 'mercadopago_authorization_error', 'http_status': exc.code},
+            }
+        logger.exception('Falha HTTP ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_http_error', 'txid': txid, 'http_status': exc.code})
+        return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
+            'txid': txid,
+            'payment_id': '',
+            'payload_pix': '',
+            'qr_code': '',
+            'qr_code_base64': '',
+            'ticket_url': '',
+            'status_gateway': 'erro_gateway',
+            'qr_code_url': '',
+            'qr_code_data_uri': '',
+            'provider_payload': {'erro': 'mercadopago_payment_create_error', 'http_status': exc.code},
+        }
+    except (RuntimeError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
         logger.exception('Falha ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_error', 'txid': txid})
         return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
             'txid': txid,

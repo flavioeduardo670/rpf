@@ -44,6 +44,24 @@ class PixGatewayMercadoPagoTests(SimpleTestCase):
         self.assertEqual(req.full_url, 'https://api.mercadopago.com/v1/payments')
         self.assertEqual(req.headers['Authorization'], 'Bearer TEST-123')
 
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
+    @patch('core.services.pix_gateway.request.urlopen')
+    def test_criar_cobranca_pix_avulsa_retorna_erro_autorizacao_sem_fallback_local(self, urlopen):
+        urlopen.side_effect = error.HTTPError('https://api.mercadopago.com/v1/payments', 401, 'Unauthorized', None, None)
+
+        resultado = criar_cobranca_pix_avulsa(
+            txid='RPFAL0002',
+            valor=Decimal('123.45'),
+            chave_pix='11999999999',
+            nome_pagador='Morador Teste',
+            categoria='Aluguel',
+        )
+
+        self.assertEqual(resultado['status_gateway'], 'erro_autorizacao')
+        self.assertEqual(resultado['payload_pix'], '')
+        self.assertEqual(resultado['provider_payload']['http_status'], 401)
+
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.services.pix_gateway.request.urlopen')
     def test_consultar_status_por_txid_retorna_pagamento_aprovado(self, urlopen):
