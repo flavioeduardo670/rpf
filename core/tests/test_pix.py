@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -18,7 +19,7 @@ from core.services.rock import (
 )
 
 
-@override_settings(PIX_WEBHOOK_SECRET='segredo-webhook')
+@override_settings(MERCADOPAGO_WEBHOOK_SECRET='segredo-webhook')
 class PixWebhookTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='comprador_pix', password='123456')
@@ -49,15 +50,26 @@ class PixWebhookTests(TestCase):
             status='pendente',
         )
 
-    def _assinatura(self, body: bytes) -> str:
-        return hmac.new(b'segredo-webhook', body, hashlib.sha256).hexdigest()
+    def _headers_assinatura(self, data_id: str = '') -> dict[str, str]:
+        request_id = 'request-test'
+        ts = '1700000000'
+        manifest = ''
+        if data_id:
+            manifest += f'id:{data_id};'
+        manifest += f'request-id:{request_id};ts:{ts};'
+        assinatura = hmac.new(b'segredo-webhook', manifest.encode('utf-8'), hashlib.sha256).hexdigest()
+        return {
+            'HTTP_X_SIGNATURE': f'ts={ts},v1={assinatura}',
+            'HTTP_X_REQUEST_ID': request_id,
+        }
 
     def test_webhook_rejeita_assinatura_invalida(self):
         response = self.client.post(
             reverse('webhook_pix'),
             data=json.dumps({'txid': self.pedido.txid, 'status': 'pago'}),
             content_type='application/json',
-            HTTP_X_WEBHOOK_SIGNATURE='assinatura-invalida',
+            HTTP_X_SIGNATURE='ts=1700000000,v1=assinatura-invalida',
+            HTTP_X_REQUEST_ID='request-test',
         )
         self.assertEqual(response.status_code, 400)
 
@@ -67,7 +79,7 @@ class PixWebhookTests(TestCase):
             reverse('webhook_pix'),
             data=payload_invalido,
             content_type='application/json',
-            HTTP_X_WEBHOOK_SIGNATURE=self._assinatura(payload_invalido),
+            **self._headers_assinatura(),
         )
         self.assertEqual(response.status_code, 400)
 
@@ -77,7 +89,7 @@ class PixWebhookTests(TestCase):
             reverse('webhook_pix'),
             data=body,
             content_type='application/json',
-            HTTP_X_WEBHOOK_SIGNATURE=self._assinatura(body),
+            **self._headers_assinatura(),
         )
         self.assertEqual(response.status_code, 400)
 
@@ -87,10 +99,10 @@ class PixWebhookTests(TestCase):
             reverse('webhook_pix'),
             data=body,
             content_type='application/json',
-            HTTP_X_WEBHOOK_SIGNATURE=self._assinatura(body),
+            **self._headers_assinatura(),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'ok': True, 'detail': 'pedido_nao_encontrado'})
+        self.assertJSONEqual(response.content, {'ok': True, 'detail': 'pagamento_nao_encontrado'})
 
     def test_webhook_confirma_pagamento(self):
         body = json.dumps({'txid': self.pedido.txid, 'status': 'paid'}).encode('utf-8')
@@ -98,7 +110,7 @@ class PixWebhookTests(TestCase):
             reverse('webhook_pix'),
             data=body,
             content_type='application/json',
-            HTTP_X_WEBHOOK_SIGNATURE=self._assinatura(body),
+            **self._headers_assinatura(),
         )
         self.assertEqual(response.status_code, 200)
         self.pedido.refresh_from_db()
@@ -108,7 +120,7 @@ class PixWebhookTests(TestCase):
 
 
     def test_webhook_confirma_pagamento_aluguel_e_mensalidade(self):
-        morador = Morador.objects.create(nome='Morador Pix', ativo=True)
+        morador = Morador.objects.create(nome='Morador Pix', email='morador.pix@example.com', ativo=True)
         cobranca = CobrancaAluguel.objects.create(
             morador=morador,
             mes_referencia='2026-05-01',
@@ -121,7 +133,7 @@ class PixWebhookTests(TestCase):
             reverse('webhook_pix'),
             data=body,
             content_type='application/json',
-            HTTP_X_WEBHOOK_SIGNATURE=self._assinatura(body),
+            **self._headers_assinatura(),
         )
         self.assertEqual(response.status_code, 200)
         cobranca.refresh_from_db()
@@ -129,6 +141,13 @@ class PixWebhookTests(TestCase):
         mensalidade = Mensalidade.objects.get(morador=morador, mes_referencia='2026-05-01')
         self.assertTrue(mensalidade.pago)
         self.assertEqual(mensalidade.valor, Decimal('850.00'))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['morador.pix@example.com'])
+        self.assertIn('Comprovante de pagamento do aluguel - 05/2026', mail.outbox[0].subject)
+        self.assertIn('TXID: RPFAL000000000000000000000000000001', mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].attachments[0][0], 'comprovante_aluguel_morador-pix_2026_05.pdf')
+        self.assertEqual(mail.outbox[0].attachments[0][2], 'application/pdf')
+        self.assertTrue(mail.outbox[0].attachments[0][1].startswith(b'%PDF-1.4'))
 
     def test_concorrencia_simulada_confirmacao_idempotente(self):
         confirmar_pagamento_pedido(self.pedido)

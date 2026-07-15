@@ -1,4 +1,5 @@
 import csv
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -8,6 +9,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.mail import EmailMessage
 from django.db.models import Case, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, When
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -46,7 +48,7 @@ from core.models import (
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
-from core.services.pix_gateway import criar_cobranca_pix_avulsa, normalizar_chave_pix
+from core.services.pix_gateway import criar_cobranca_pix_avulsa, consultar_status_por_txid, normalizar_chave_pix
 from core.services.financeiro import (
     calcular_rateio_financeiro,
     garantir_contas_fixas_mensais,
@@ -62,6 +64,9 @@ ContaFixaMensalFormSet = forms.modelformset_factory(ContaFixaMensal, form=ContaF
 ContaCasaFormSet = forms.modelformset_factory(ContaCasa, form=ContaCasaForm, extra=1, can_delete=True)
 AjusteMoradorFormSet = forms.modelformset_factory(AjusteMorador, form=AjusteMoradorForm, extra=1, can_delete=True)
 PendenciaMensalItemFormSet = forms.modelformset_factory(PendenciaMensalItem, form=PendenciaMensalItemForm, extra=1, can_delete=True)
+
+
+logger = logging.getLogger(__name__)
 
 
 class ParcelaForm(forms.ModelForm):
@@ -698,7 +703,11 @@ def _gerar_ou_atualizar_cobranca_aluguel(contexto):
             categoria='Aluguel',
         )
         cobranca.txid = resultado.get('txid') or cobranca.txid
+        cobranca.payment_id = resultado.get('payment_id') or cobranca.payment_id
         cobranca.payload_pix = resultado.get('payload_pix') or cobranca.payload_pix
+        cobranca.qr_code = resultado.get('qr_code') or cobranca.qr_code or cobranca.payload_pix
+        cobranca.qr_code_base64 = resultado.get('qr_code_base64') or cobranca.qr_code_base64
+        cobranca.ticket_url = resultado.get('ticket_url') or cobranca.ticket_url
         cobranca.status_gateway = resultado.get('status_gateway') or cobranca.status_gateway
         cobranca.provider_payload = resultado.get('provider_payload') or {}
         cobranca.status = 'aguardando_pagamento' if cobranca.status != 'pago' else cobranca.status
@@ -714,7 +723,7 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     valor = _formatar_moeda_pt_br(cobranca.valor)
     vencimento = contexto['mes_referencia'].replace(day=10)
     chave_pix = _resolver_chave_pix_aluguel()
-    payload = cobranca.payload_pix or 'PIX indisponível: configure a chave PIX de recebimentos.'
+    payload = cobranca.qr_code or cobranca.payload_pix or 'PIX indisponível: configure o Mercado Pago.'
     comandos = [
         '1 1 1 rg 0 0 595 842 re f',
         '0.10 0.16 0.28 rg 0 778 595 64 re f',
@@ -741,13 +750,15 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     comandos.append(_comando_texto_pdf('Tipo de cobrança: Aluguel', margem, Decimal('615'), 9))
     comandos.append(_comando_texto_pdf(f'Chave PIX: {chave_pix or "não configurada"}', margem, Decimal('598'), 9))
     comandos.append(_comando_texto_pdf(f'TXID: {cobranca.txid}', margem, Decimal('581'), 8))
+    if cobranca.payment_id:
+        comandos.append(_comando_texto_pdf(f'Pagamento Mercado Pago: {cobranca.payment_id}', margem, Decimal('548'), 8))
     comandos.append(_comando_texto_pdf(f'Vencimento: {vencimento.strftime("%d/%m/%Y")}', margem, Decimal('564'), 9))
 
     comandos.append('0.10 0.16 0.28 rg 36 540 523 30 re f')
     comandos.append(_comando_texto_pdf('Pagamento via PIX', Decimal('50'), Decimal('552'), 12, 'F2', '1 1 1 rg'))
     comandos.append('0.98 0.98 0.98 rg 36 308 523 232 re f')
     comandos.append('0.82 0.86 0.92 RG 36 308 523 232 re S')
-    comandos.extend(_comandos_qrcode_pdf(cobranca.payload_pix, Decimal('56'), Decimal('514'), Decimal('150')))
+    comandos.extend(_comandos_qrcode_pdf(cobranca.qr_code or cobranca.payload_pix, Decimal('56'), Decimal('514'), Decimal('150')))
     comandos.append(_comando_texto_pdf('Aponte a câmera do banco para o QR Code', Decimal('230'), Decimal('500'), 11, 'F2'))
     comandos.append(_comando_texto_pdf('ou use o PIX copia e cola abaixo.', Decimal('230'), Decimal('482'), 9))
     comandos.append(_comando_texto_pdf(f'Valor a pagar: {valor}', Decimal('230'), Decimal('455'), 13, 'F2'))
@@ -764,6 +775,135 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     comandos.append(_comando_texto_pdf('Documento gerado pelo ERP RPF. Confirme recebedor, valor e TXID antes de pagar.', Decimal('48'), Decimal('77'), 8, 'F2', '1 1 1 rg'))
     return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
 
+
+
+
+def _status_pix_pago(status):
+    return (status or '').strip().lower() in {'pago', 'paid', 'concluido', 'approved'}
+
+
+def _marcar_cobranca_aluguel_como_paga(cobranca, *, provider_payload=None, status_gateway=''):
+    if cobranca.status == 'pago':
+        return False
+    agora = timezone.now()
+    cobranca.status = 'pago'
+    cobranca.pago_em = agora
+    if status_gateway:
+        cobranca.status_gateway = status_gateway
+    if provider_payload is not None:
+        cobranca.provider_payload = provider_payload
+    cobranca.save(update_fields=['status', 'pago_em', 'status_gateway', 'provider_payload', 'atualizado_em'])
+    Mensalidade.objects.update_or_create(
+        morador=cobranca.morador,
+        mes_referencia=cobranca.mes_referencia,
+        defaults={'valor': cobranca.valor, 'pago': True, 'data_pagamento': timezone.localdate(agora)},
+    )
+    enviar_comprovante_aluguel_por_email(cobranca)
+    return True
+
+
+def _sincronizar_cobrancas_pix_aluguel(mes_referencia, moradores):
+    moradores_ids = [morador.id for morador in moradores]
+    if not moradores_ids:
+        return 0
+    sincronizadas = 0
+    cobrancas = CobrancaAluguel.objects.select_related('morador').filter(
+        mes_referencia=mes_referencia,
+        morador_id__in=moradores_ids,
+        status='aguardando_pagamento',
+    ).exclude(txid='')
+    for cobranca in cobrancas:
+        resultado = consultar_status_por_txid(cobranca.txid)
+        status_gateway = resultado.get('status') or ''
+        provider_payload = resultado.get('provider_payload') or resultado
+        if _status_pix_pago(status_gateway):
+            try:
+                if _marcar_cobranca_aluguel_como_paga(
+                    cobranca,
+                    provider_payload=provider_payload,
+                    status_gateway=status_gateway,
+                ):
+                    sincronizadas += 1
+            except Exception:
+                logger.exception('Falha ao sincronizar cobranca PIX de aluguel paga.', extra={'cobranca_id': cobranca.id})
+        elif status_gateway and status_gateway != cobranca.status_gateway:
+            cobranca.status_gateway = status_gateway
+            cobranca.provider_payload = provider_payload
+            cobranca.save(update_fields=['status_gateway', 'provider_payload', 'atualizado_em'])
+    return sincronizadas
+
+def _gerar_pdf_comprovante_aluguel(cobranca):
+    largura_pagina = Decimal('595')
+    altura_pagina = Decimal('842')
+    margem = Decimal('36')
+    morador_label = cobranca.morador.apelido or cobranca.morador.nome
+    valor = _formatar_moeda_pt_br(cobranca.valor)
+    pago_em = timezone.localtime(cobranca.pago_em or timezone.now())
+    comandos = [
+        '1 1 1 rg 0 0 595 842 re f',
+        '0.10 0.16 0.28 rg 0 778 595 64 re f',
+        _comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf('Comprovante de Pagamento - Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_direita_pdf(f'Gerado em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
+    ]
+    comandos.append('0.90 0.98 0.93 rg 36 682 523 72 re f')
+    comandos.append('0.46 0.76 0.55 RG 36 682 523 72 re S')
+    resumo = [
+        ('Status', 'Pago'),
+        ('Morador', morador_label),
+        ('Referência', cobranca.mes_referencia.strftime('%m/%Y')),
+        ('Valor pago', valor),
+    ]
+    x = margem + Decimal('14')
+    for label, conteudo in resumo:
+        comandos.append(_comando_texto_pdf(label, x, Decimal('730'), 8, 'F2'))
+        comandos.append(_comando_texto_pdf(conteudo, x, Decimal('708'), 11, 'F2'))
+        x += Decimal('126')
+
+    comandos.append(_comando_texto_pdf('Dados da confirmação', margem, Decimal('650'), 12, 'F2'))
+    linhas = [
+        ('Beneficiário', 'Associação Cultural República Portão dos Fundos'),
+        ('Tipo de cobrança', 'Aluguel'),
+        ('Data do pagamento', pago_em.strftime('%d/%m/%Y às %H:%M')),
+        ('TXID', cobranca.txid or '-'),
+        ('Status no gateway', cobranca.status_gateway or '-'),
+    ]
+    y = Decimal('626')
+    for label, conteudo in linhas:
+        comandos.append('0.97 0.98 0.99 rg 36 {:.2f} 523 30 re f'.format(y - Decimal('18')))
+        comandos.append('0.86 0.89 0.94 RG 36 {:.2f} 523 30 re S'.format(y - Decimal('18')))
+        comandos.append(_comando_texto_pdf(label, Decimal('50'), y - Decimal('6'), 8, 'F2'))
+        comandos.append(_comando_texto_pdf(str(conteudo), Decimal('190'), y - Decimal('6'), 9))
+        y -= Decimal('34')
+
+    comandos.append('0.10 0.16 0.28 rg 36 204 523 44 re f')
+    comandos.append(_comando_texto_pdf('Este comprovante foi gerado automaticamente a partir da confirmação PIX recebida pelo ERP RPF.', Decimal('50'), Decimal('230'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf('Guarde este documento para sua conferência mensal.', Decimal('50'), Decimal('214'), 8, 'F1', '1 1 1 rg'))
+    return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
+
+
+def enviar_comprovante_aluguel_por_email(cobranca):
+    email_morador = (cobranca.morador.email or '').strip()
+    if not email_morador:
+        return False
+    pdf = _gerar_pdf_comprovante_aluguel(cobranca)
+    morador_label = cobranca.morador.apelido or cobranca.morador.nome
+    mes = cobranca.mes_referencia.strftime('%m/%Y')
+    assunto = f'Comprovante de pagamento do aluguel - {mes}'
+    corpo = (
+        f'Olá, {morador_label}!\n\n'
+        f'Recebemos a confirmação do pagamento do aluguel de {mes}. '
+        'O comprovante está anexado a este email.\n\n'
+        f'TXID: {cobranca.txid}\n'
+        f'Valor: {_formatar_moeda_pt_br(cobranca.valor)}\n\n'
+        'República Portão dos Fundos'
+    )
+    nome_morador = slugify(morador_label) or f'morador-{cobranca.morador_id}'
+    filename = f'comprovante_aluguel_{nome_morador}_{cobranca.mes_referencia.strftime("%Y_%m")}.pdf'
+    mensagem = EmailMessage(assunto, corpo, to=[email_morador])
+    mensagem.attach(filename, pdf, 'application/pdf')
+    mensagem.send(fail_silently=False)
+    return True
 
 def _contexto_extrato_morador(request, morador_id):
     if not _usuario_pode_ver_extrato_morador(request, morador_id):
@@ -960,6 +1100,7 @@ def financeiro(request):
 
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
     resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    _sincronizar_cobrancas_pix_aluguel(mes_referencia, resumo['moradores_ativos'])
     comprovantes_map = {
         item.morador_id: item
         for item in ComprovantePagamentoMorador.objects.filter(
@@ -967,10 +1108,29 @@ def financeiro(request):
             morador__in=resumo['moradores_ativos'],
         ).select_related('morador')
     }
+    cobrancas_pagas_ids = set(
+        CobrancaAluguel.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+            status='pago',
+        ).values_list('morador_id', flat=True)
+    )
+    mensalidades_pagas_ids = set(
+        Mensalidade.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+            pago=True,
+        ).values_list('morador_id', flat=True)
+    )
     for item in resumo['rateio_moradores']:
-        item['comprovante'] = comprovantes_map.get(item['morador'].id)
+        morador_id = item['morador'].id
+        item['comprovante'] = comprovantes_map.get(morador_id)
         divida_morador = item['valor'] if item['valor'] is not None else Decimal('0.00')
-        item['status_pagamento'] = 'pago' if item['comprovante'] or divida_morador <= Decimal('1.00') else 'pendente'
+        item['status_pagamento'] = (
+            'pago'
+            if item['comprovante'] or morador_id in cobrancas_pagas_ids or morador_id in mensalidades_pagas_ids or divida_morador <= Decimal('1.00')
+            else 'pendente'
+        )
 
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
     total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))
