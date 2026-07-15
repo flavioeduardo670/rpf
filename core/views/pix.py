@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.utils import timezone
@@ -8,6 +9,9 @@ from django.views.decorators.http import require_POST
 from core.models import CobrancaAluguel, Mensalidade, PedidoIngressoRock
 from core.services.pix_gateway import validar_assinatura_webhook
 from core.services.rock import confirmar_pagamento_pedido
+
+
+logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
@@ -46,6 +50,7 @@ def webhook_pix(request):
     cobranca.webhook_recebido_em = timezone.now()
     cobranca.provider_payload = payload
     update_fields = ['status_gateway', 'webhook_recebido_em', 'provider_payload', 'atualizado_em']
+    enviar_comprovante = False
     if status in {'pago', 'paid', 'concluido', 'approved'} and cobranca.status != 'pago':
         cobranca.status = 'pago'
         cobranca.pago_em = timezone.now()
@@ -55,6 +60,13 @@ def webhook_pix(request):
             mes_referencia=cobranca.mes_referencia,
             defaults={'valor': cobranca.valor, 'pago': True, 'data_pagamento': timezone.localdate(cobranca.pago_em)},
         )
+        enviar_comprovante = True
     cobranca.save(update_fields=update_fields)
+    if enviar_comprovante:
+        from core.views.financeiro import enviar_comprovante_aluguel_por_email
+        try:
+            enviar_comprovante_aluguel_por_email(cobranca)
+        except Exception:
+            logger.exception('Falha ao enviar comprovante de aluguel por email.', extra={'cobranca_id': cobranca.id})
 
     return JsonResponse({'ok': True, 'tipo': 'aluguel'})
