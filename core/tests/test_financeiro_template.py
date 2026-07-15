@@ -3,6 +3,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
+from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -134,6 +135,31 @@ class FinanceiroTemplateTests(TestCase):
         response = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Pago')
+
+    @patch('core.views.financeiro.consultar_status_por_txid')
+    def test_financeiro_sincroniza_cobranca_pix_paga_no_gateway(self, consultar_status):
+        self.morador.email = 'morador.teste@example.com'
+        self.morador.save(update_fields=['email'])
+        cobranca = CobrancaAluguel.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            valor=Decimal('123.45'),
+            txid='RPFAL0000000000000002',
+            status='aguardando_pagamento',
+        )
+        consultar_status.return_value = {
+            'txid': cobranca.txid,
+            'status': 'pago',
+            'provider_payload': {'status': 'pago'},
+        }
+
+        response = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pago')
+        cobranca.refresh_from_db()
+        self.assertEqual(cobranca.status, 'pago')
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_extrato_morador_exibe_botao_pdf(self):
         response = self.client.get(reverse('financeiro_prestacao_contas_morador', args=[self.morador.id]) + '?mes=2026-05')

@@ -6,21 +6,23 @@ import json
 import base64
 import logging
 import re
+import uuid
 from io import BytesIO
 from decimal import Decimal
 from typing import Any
-from urllib import error, request
+from urllib import error, parse, request
 
 import segno
 from django.conf import settings
 
 logger = logging.getLogger('core.services.pix_gateway')
+MERCADO_PAGO_API_BASE_URL = 'https://api.mercadopago.com'
+STATUS_PAGO_MERCADO_PAGO = {'approved', 'accredited'}
 
 
 def _pix_tlv(pid: str, value: Any) -> str:
     value = str(value)
     return f"{pid}{len(value):02d}{value}"
-
 
 
 _DDDS_BRASIL = {
@@ -56,6 +58,7 @@ def normalizar_chave_pix(chave_pix: str) -> str:
             return f'+55{chave_sem_separadores}'
 
     return chave
+
 
 def _pix_crc16(payload: str) -> str:
     data = (payload + '6304').encode('utf-8')
@@ -97,21 +100,58 @@ def gerar_qr_code_data_uri(payload_pix: str) -> str:
     return f'data:image/png;base64,{encoded}'
 
 
-def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome_pagador: str = '', categoria: str = '') -> dict[str, Any]:
-    if not chave_pix:
-        logger.error(
-            'Chave PIX nao configurada para criar cobranca avulsa',
-            extra={'event': 'pix.charge.configuration_error', 'txid': txid},
-        )
-        return {
-            'txid': txid,
-            'payload_pix': '',
-            'status_gateway': 'erro_configuracao',
-            'qr_code_url': '',
-            'qr_code_data_uri': '',
-            'provider_payload': {'erro': 'chave_pix_nao_configurada'},
-        }
+def _mercado_pago_access_token() -> str:
+    return getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '').strip()
 
+
+def _mercado_pago_request(method: str, path: str, *, payload: dict[str, Any] | None = None, idempotency_key: str = '') -> dict[str, Any]:
+    token = _mercado_pago_access_token()
+    if not token:
+        raise RuntimeError('MERCADOPAGO_ACCESS_TOKEN nao configurado.')
+
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+    }
+    if idempotency_key:
+        headers['X-Idempotency-Key'] = idempotency_key
+
+    req = request.Request(
+        url=f"{MERCADO_PAGO_API_BASE_URL}{path}",
+        headers=headers,
+        data=json.dumps(payload).encode('utf-8') if payload is not None else None,
+        method=method,
+    )
+    with request.urlopen(req, timeout=getattr(settings, 'MERCADOPAGO_TIMEOUT', 10)) as response:
+        return json.loads(response.read().decode('utf-8'))
+
+
+def _extrair_dados_pix_mercado_pago(data: dict[str, Any]) -> dict[str, str]:
+    transaction_data = (data.get('point_of_interaction') or {}).get('transaction_data') or {}
+    qr_code = transaction_data.get('qr_code') or ''
+    qr_code_base64 = transaction_data.get('qr_code_base64') or ''
+    return {
+        'payload_pix': qr_code,
+        'qr_code': qr_code,
+        'qr_code_base64': qr_code_base64,
+        'qr_code_data_uri': f'data:image/png;base64,{qr_code_base64}' if qr_code_base64 else gerar_qr_code_data_uri(qr_code),
+        'ticket_url': transaction_data.get('ticket_url') or '',
+    }
+
+
+def _mapear_status_mercado_pago(status: str) -> str:
+    status = (status or '').strip().lower()
+    if status in STATUS_PAGO_MERCADO_PAGO:
+        return 'pago'
+    if status in {'cancelled', 'refunded', 'charged_back'}:
+        return 'cancelado'
+    if status in {'rejected'}:
+        return 'rejeitado'
+    return status or 'desconhecido'
+
+
+def _fallback_pix_local(*, txid: str, valor: Decimal, chave_pix: str, categoria: str = '') -> dict[str, Any]:
     payload_pix = gerar_payload_pix(
         chave_pix=chave_pix,
         valor=valor,
@@ -119,9 +159,13 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
         nome_recebedor='ASSOC CULT RPF',
         cidade='SAO PAULO',
     )
-    fallback = {
+    return {
         'txid': txid,
+        'payment_id': '',
         'payload_pix': payload_pix,
+        'qr_code': payload_pix,
+        'qr_code_base64': '',
+        'ticket_url': '',
         'status_gateway': 'aguardando',
         'qr_code_url': '',
         'qr_code_data_uri': gerar_qr_code_data_uri(payload_pix),
@@ -132,166 +176,138 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
         },
     }
 
-    base_url = getattr(settings, 'PIX_PSP_BASE_URL', '').strip()
-    token = getattr(settings, 'PIX_PSP_API_TOKEN', '').strip()
-    if not base_url or not token:
-        logger.warning(
-            'Gateway PIX nao configurado. Usando modo local para cobranca avulsa',
-            extra={'event': 'pix.charge.local_mode', 'txid': txid},
-        )
-        return fallback
+
+def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome_pagador: str = '', categoria: str = '') -> dict[str, Any]:
+    if not _mercado_pago_access_token():
+        logger.error('Mercado Pago nao configurado para criar cobranca PIX', extra={'event': 'pix.mercadopago.configuration_error', 'txid': txid})
+        return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
+            'txid': txid,
+            'payment_id': '',
+            'payload_pix': '',
+            'qr_code': '',
+            'qr_code_base64': '',
+            'ticket_url': '',
+            'status_gateway': 'erro_configuracao',
+            'qr_code_url': '',
+            'qr_code_data_uri': '',
+            'provider_payload': {'erro': 'mercadopago_access_token_nao_configurado'},
+        }
+
+    payer_email = getattr(settings, 'MERCADOPAGO_PAYER_EMAIL_FALLBACK', 'pagador@example.com')
+    payload = {
+        'transaction_amount': float(Decimal(valor).quantize(Decimal('0.01'))),
+        'description': f'{categoria or "Cobranca"} - {nome_pagador or txid}',
+        'payment_method_id': 'pix',
+        'external_reference': txid,
+        'payer': {'email': payer_email},
+    }
+    notification_url = getattr(settings, 'MERCADOPAGO_NOTIFICATION_URL', '').strip()
+    if notification_url:
+        payload['notification_url'] = notification_url
 
     try:
-        req = request.Request(
-            url=f"{base_url.rstrip('/')}/pix/cobrancas",
-            headers={
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json',
-            },
-            data=json.dumps({
-                'txid': txid,
-                'valor': f"{Decimal(valor):.2f}",
-                'nome_pagador': nome_pagador,
-                'categoria': categoria,
-            }).encode('utf-8'),
-            method='POST',
-        )
-        with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
-            data = json.loads(response.read().decode('utf-8'))
-        logger.info(
-            'Cobranca PIX avulsa criada via PSP',
-            extra={'event': 'pix.charge.created', 'txid': data.get('txid') or txid, 'status_gateway': data.get('status', 'aguardando')},
-        )
+        data = _mercado_pago_request('POST', '/v1/payments', payload=payload, idempotency_key=f'rpf-{txid}-{uuid.uuid4()}')
+        pix = _extrair_dados_pix_mercado_pago(data)
+        logger.info('Cobranca PIX criada no Mercado Pago', extra={'event': 'pix.mercadopago.payment_created', 'txid': txid, 'payment_id': data.get('id'), 'status_gateway': data.get('status')})
         return {
-            'txid': data.get('txid') or txid,
-            'payload_pix': data.get('payload_pix') or payload_pix,
-            'status_gateway': data.get('status', 'aguardando'),
-            'qr_code_url': '',
-            'qr_code_data_uri': fallback['qr_code_data_uri'],
+            'txid': txid,
+            'payment_id': str(data.get('id') or ''),
+            'payload_pix': pix['payload_pix'],
+            'qr_code': pix['qr_code'],
+            'qr_code_base64': pix['qr_code_base64'],
+            'ticket_url': pix['ticket_url'],
+            'status_gateway': _mapear_status_mercado_pago(data.get('status') or ''),
+            'qr_code_url': pix['ticket_url'],
+            'qr_code_data_uri': pix['qr_code_data_uri'],
             'provider_payload': data,
         }
-    except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
-        logger.exception('Falha ao criar cobranca avulsa no PSP. Aplicando fallback local', extra={'event': 'pix.charge.gateway_error', 'txid': txid})
-        return fallback
+    except (RuntimeError, error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        logger.exception('Falha ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_error', 'txid': txid})
+        return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
+            'txid': txid,
+            'payment_id': '',
+            'payload_pix': '',
+            'qr_code': '',
+            'qr_code_base64': '',
+            'ticket_url': '',
+            'status_gateway': 'erro_gateway',
+            'qr_code_url': '',
+            'qr_code_data_uri': '',
+            'provider_payload': {'erro': 'mercadopago_payment_create_error'},
+        }
 
 
 def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
     txid = f"RPF{pedido.id:08d}"
-    if not chave_pix:
-        logger.error(
-            'Chave PIX nao configurada para criar cobranca',
-            extra={'event': 'pix.charge.configuration_error', 'pedido_id': pedido.id, 'txid': txid},
-        )
-        return {
-            'txid': txid,
-            'payload_pix': '',
-            'status_gateway': 'erro_configuracao',
-            'qr_code_url': '',
-            'qr_code_data_uri': '',
-            'provider_payload': {'erro': 'chave_pix_nao_configurada'},
-        }
+    return criar_cobranca_pix_avulsa(
+        txid=txid,
+        valor=pedido.valor_total,
+        chave_pix=chave_pix,
+        nome_pagador=pedido.nome_comprador,
+        categoria='Ingresso',
+    )
 
-    payload_pix = gerar_payload_pix(chave_pix=chave_pix, valor=pedido.valor_total, txid=txid)
-    fallback = {
-        'txid': txid,
-        'payload_pix': payload_pix,
-        'status_gateway': 'aguardando',
-        'qr_code_url': '',
-        'qr_code_data_uri': gerar_qr_code_data_uri(payload_pix),
-        'provider_payload': {
-            'modo': 'local',
-            'payload_pix': payload_pix,
-        },
+
+def consultar_pagamento_mercado_pago(payment_id: str) -> dict[str, Any]:
+    data = _mercado_pago_request('GET', f'/v1/payments/{payment_id}')
+    pix = _extrair_dados_pix_mercado_pago(data)
+    return {
+        'txid': data.get('external_reference') or '',
+        'payment_id': str(data.get('id') or payment_id),
+        'status': _mapear_status_mercado_pago(data.get('status') or ''),
+        'status_gateway': _mapear_status_mercado_pago(data.get('status') or ''),
+        'payload_pix': pix['payload_pix'],
+        'qr_code': pix['qr_code'],
+        'qr_code_base64': pix['qr_code_base64'],
+        'ticket_url': pix['ticket_url'],
+        'provider_payload': data,
     }
-
-    base_url = getattr(settings, 'PIX_PSP_BASE_URL', '').strip()
-    token = getattr(settings, 'PIX_PSP_API_TOKEN', '').strip()
-    if not base_url or not token:
-        logger.warning(
-            'Gateway PIX nao configurado. Usando modo local',
-            extra={'event': 'pix.charge.local_mode', 'pedido_id': pedido.id, 'txid': txid},
-        )
-        return fallback
-
-    try:
-        req = request.Request(
-            url=f"{base_url.rstrip('/')}/pix/cobrancas",
-            headers={
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json',
-            },
-            data=json.dumps({
-                'txid': txid,
-                'valor': f"{pedido.valor_total:.2f}",
-                'nome_comprador': pedido.nome_comprador,
-            }).encode('utf-8'),
-            method='POST',
-        )
-        with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
-            data = json.loads(response.read().decode('utf-8'))
-        logger.info(
-            'Cobranca PIX criada via PSP',
-            extra={
-                'event': 'pix.charge.created',
-                'pedido_id': pedido.id,
-                'txid': data.get('txid') or txid,
-                'status_gateway': data.get('status', 'aguardando'),
-            },
-        )
-        return {
-            'txid': data.get('txid') or txid,
-            'payload_pix': data.get('payload_pix') or payload_pix,
-            'status_gateway': data.get('status', 'aguardando'),
-            'qr_code_url': '',
-            'qr_code_data_uri': fallback['qr_code_data_uri'],
-            'provider_payload': data,
-        }
-    except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
-        logger.exception(
-            'Falha ao criar cobranca no PSP. Aplicando fallback local',
-            extra={'event': 'pix.charge.gateway_error', 'pedido_id': pedido.id, 'txid': txid},
-        )
-        return fallback
 
 
 def consultar_status_por_txid(txid: str) -> dict[str, Any]:
-    base_url = getattr(settings, 'PIX_PSP_BASE_URL', '').strip()
-    token = getattr(settings, 'PIX_PSP_API_TOKEN', '').strip()
-    if not base_url or not token:
-        logger.warning(
-            'Consulta de status PIX sem configuracao de gateway',
-            extra={'event': 'pix.status.configuration_missing', 'txid': txid},
-        )
+    if not _mercado_pago_access_token():
+        logger.warning('Consulta de status PIX sem Mercado Pago configurado', extra={'event': 'pix.mercadopago.status.configuration_missing', 'txid': txid})
         return {'txid': txid, 'status': 'desconhecido'}
 
     try:
-        req = request.Request(
-            url=f"{base_url.rstrip('/')}/pix/cobrancas/{txid}",
-            headers={'Authorization': f'Bearer {token}'},
-            method='GET',
-        )
-        with request.urlopen(req, timeout=getattr(settings, 'PIX_PSP_TIMEOUT', 10)) as response:
-            data = json.loads(response.read().decode('utf-8'))
-        logger.info(
-            'Status PIX consultado com sucesso',
-            extra={'event': 'pix.status.checked', 'txid': data.get('txid', txid), 'status_gateway': data.get('status', 'desconhecido')},
-        )
+        query = parse.urlencode({'external_reference': txid})
+        data = _mercado_pago_request('GET', f'/v1/payments/search?{query}')
+        results = data.get('results') or []
+        if not results:
+            return {'txid': txid, 'status': 'desconhecido', 'provider_payload': data}
+        payment = sorted(results, key=lambda item: item.get('date_created') or '', reverse=True)[0]
+        payment_id = str(payment.get('id') or '')
+        if payment_id:
+            return consultar_pagamento_mercado_pago(payment_id)
         return {
-            'txid': data.get('txid', txid),
-            'status': data.get('status', 'desconhecido'),
-            'provider_payload': data,
+            'txid': txid,
+            'status': _mapear_status_mercado_pago(payment.get('status') or ''),
+            'provider_payload': payment,
         }
-    except (error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
-        logger.exception(
-            'Falha ao consultar status PIX no PSP',
-            extra={'event': 'pix.status.gateway_error', 'txid': txid},
-        )
+    except (RuntimeError, error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        logger.exception('Falha ao consultar status PIX no Mercado Pago', extra={'event': 'pix.mercadopago.status_error', 'txid': txid})
         return {'txid': txid, 'status': 'desconhecido'}
 
 
-def validar_assinatura_webhook(body: bytes, assinatura_informada: str) -> bool:
-    secret = getattr(settings, 'PIX_WEBHOOK_SECRET', '').encode('utf-8')
+def validar_assinatura_webhook(body: bytes, assinatura_informada: str, *, request_id: str = '', data_id: str = '') -> bool:
+    secret = getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '').strip()
     if not secret:
+        return True
+    partes = {}
+    for parte in (assinatura_informada or '').split(','):
+        if '=' in parte:
+            chave, valor = parte.split('=', 1)
+            partes[chave.strip()] = valor.strip()
+    ts = partes.get('ts') or ''
+    v1 = partes.get('v1') or ''
+    manifest = ''
+    if data_id:
+        manifest += f'id:{data_id};'
+    if request_id:
+        manifest += f'request-id:{request_id};'
+    if ts:
+        manifest += f'ts:{ts};'
+    if not manifest or not v1:
         return False
-    assinatura = hmac.new(secret, body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(assinatura, (assinatura_informada or '').strip())
+    assinatura = hmac.new(secret.encode('utf-8'), manifest.encode('utf-8'), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(assinatura, v1)
