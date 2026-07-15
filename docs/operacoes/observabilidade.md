@@ -55,9 +55,11 @@ Eventos instrumentados (campo `event`):
 - `pix.charge.configuration_error`
 - `pix.charge.gateway_error`
 - `pix.status.gateway_error`
+- `pix.mercadopago.authorization_error`
 
 Alertas recomendados:
 
 - Taxa de `pix.charge.gateway_error` > 5 em 10 minutos.
 - Taxa de `pix.purchase.validation_error` acima da média histórica.
 - Crescimento de pedidos com `status_gateway=desconhecido` por mais de 15 minutos.
+- Qualquer ocorrência de `pix.mercadopago.authorization_error` ou `status_gateway=erro_autorizacao_fallback_local`: revisar `MERCADOPAGO_ACCESS_TOKEN`, pois o PIX local permite pagamento, mas não confirma automaticamente via webhook Mercado Pago.

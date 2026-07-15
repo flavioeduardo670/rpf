@@ -209,6 +209,30 @@ class FinanceiroTemplateTests(TestCase):
         self.assertIn('br.gov.bcb.pix', cobranca.payload_pix)
         self.assertIn('+5515998509135', cobranca.payload_pix)
 
+    @patch('core.views.financeiro.criar_cobranca_pix_avulsa')
+    def test_exportar_boleto_aluguel_morador_pdf_reutiliza_cobranca_pix_existente(self, criar_cobranca_pix_avulsa):
+        ConfiguracaoFinanceira.objects.create(
+            valor_aluguel=Decimal('1000.00'),
+            conta_recebimentos_pix='15998509135',
+        )
+        CobrancaAluguel.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            valor=Decimal('123.45'),
+            txid='RPFAL0000000000000001',
+            payload_pix='000201br.gov.bcb.pix-existing',
+            qr_code='000201br.gov.bcb.pix-existing',
+            status='aguardando_pagamento',
+            status_gateway='erro_autorizacao_fallback_local',
+            provider_payload={'modo': 'local'},
+        )
+
+        response = self.client.get(reverse('exportar_boleto_aluguel_morador_pdf', args=[self.morador.id]) + '?mes=2026-05')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        criar_cobranca_pix_avulsa.assert_not_called()
+
     def test_anexar_comprovante_pagamento(self):
         arquivo = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
         response = self.client.post(
