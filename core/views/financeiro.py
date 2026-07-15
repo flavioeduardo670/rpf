@@ -1042,10 +1042,29 @@ def financeiro(request):
             morador__in=resumo['moradores_ativos'],
         ).select_related('morador')
     }
+    cobrancas_pagas_ids = set(
+        CobrancaAluguel.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+            status='pago',
+        ).values_list('morador_id', flat=True)
+    )
+    mensalidades_pagas_ids = set(
+        Mensalidade.objects.filter(
+            mes_referencia=mes_referencia,
+            morador__in=resumo['moradores_ativos'],
+            pago=True,
+        ).values_list('morador_id', flat=True)
+    )
     for item in resumo['rateio_moradores']:
-        item['comprovante'] = comprovantes_map.get(item['morador'].id)
+        morador_id = item['morador'].id
+        item['comprovante'] = comprovantes_map.get(morador_id)
         divida_morador = item['valor'] if item['valor'] is not None else Decimal('0.00')
-        item['status_pagamento'] = 'pago' if item['comprovante'] or divida_morador <= Decimal('1.00') else 'pendente'
+        item['status_pagamento'] = (
+            'pago'
+            if item['comprovante'] or morador_id in cobrancas_pagas_ids or morador_id in mensalidades_pagas_ids or divida_morador <= Decimal('1.00')
+            else 'pendente'
+        )
 
     total_recebido = Mensalidade.objects.filter(pago=True).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
     total_a_arrecadar = sum((item['valor'] for item in resumo['rateio_moradores']), Decimal('0.00')).quantize(Decimal('0.01'))

@@ -282,6 +282,15 @@ PIX_PSP_API_TOKEN = os.getenv('PIX_PSP_API_TOKEN', '')
 PIX_PSP_TIMEOUT = int(os.getenv('PIX_PSP_TIMEOUT', '10'))
 PIX_WEBHOOK_SECRET = os.getenv('PIX_WEBHOOK_SECRET', '')
 
+EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.getenv('DJANGO_EMAIL_PORT', '25'))
+EMAIL_HOST_USER = os.getenv('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('DJANGO_EMAIL_USE_TLS', 'False').lower() == 'true'
+EMAIL_USE_SSL = os.getenv('DJANGO_EMAIL_USE_SSL', 'False').lower() == 'true'
+DEFAULT_FROM_EMAIL = os.getenv('DJANGO_DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'webmaster@localhost')
+
 
 LOGGING = {
     'version': 1,

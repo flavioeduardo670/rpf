@@ -123,6 +123,18 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Pago')
 
+    def test_financeiro_marca_status_pago_quando_cobranca_pix_paga(self):
+        CobrancaAluguel.objects.create(
+            morador=self.morador,
+            mes_referencia=self.mes,
+            valor=Decimal('123.45'),
+            txid='RPFAL0000000000000001',
+            status='pago',
+        )
+        response = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pago')
+
     def test_extrato_morador_exibe_botao_pdf(self):
         response = self.client.get(reverse('financeiro_prestacao_contas_morador', args=[self.morador.id]) + '?mes=2026-05')
         self.assertEqual(response.status_code, 200)
