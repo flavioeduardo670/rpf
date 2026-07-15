@@ -17,6 +17,8 @@ import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
+MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
