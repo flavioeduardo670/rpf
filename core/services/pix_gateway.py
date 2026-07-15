@@ -227,6 +227,15 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
     except error.HTTPError as exc:
         if exc.code in {401, 403}:
             logger.error('Mercado Pago recusou a credencial configurada para criar cobranca PIX', extra={'event': 'pix.mercadopago.authorization_error', 'txid': txid, 'http_status': exc.code})
+            if chave_pix:
+                fallback = _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria)
+                fallback['status_gateway'] = 'erro_autorizacao_fallback_local'
+                fallback['provider_payload'].update({
+                    'erro': 'mercadopago_authorization_error',
+                    'http_status': exc.code,
+                    'observacao': 'PIX local gerado porque o Mercado Pago recusou a credencial configurada.',
+                })
+                return fallback
             return {
                 'txid': txid,
                 'payment_id': '',

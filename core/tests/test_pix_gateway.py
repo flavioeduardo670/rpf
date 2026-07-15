@@ -71,7 +71,7 @@ class PixGatewayMercadoPagoTests(SimpleTestCase):
 
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.services.pix_gateway.request.urlopen')
-    def test_criar_cobranca_pix_avulsa_retorna_erro_autorizacao_sem_fallback_local(self, urlopen):
+    def test_criar_cobranca_pix_avulsa_usa_fallback_local_em_erro_autorizacao(self, urlopen):
         urlopen.side_effect = error.HTTPError('https://api.mercadopago.com/v1/payments', 401, 'Unauthorized', None, None)
 
         resultado = criar_cobranca_pix_avulsa(
@@ -82,9 +82,10 @@ class PixGatewayMercadoPagoTests(SimpleTestCase):
             categoria='Aluguel',
         )
 
-        self.assertEqual(resultado['status_gateway'], 'erro_autorizacao')
-        self.assertEqual(resultado['payload_pix'], '')
+        self.assertEqual(resultado['status_gateway'], 'erro_autorizacao_fallback_local')
+        self.assertIn('br.gov.bcb.pix', resultado['payload_pix'])
         self.assertEqual(resultado['provider_payload']['http_status'], 401)
+        self.assertEqual(resultado['provider_payload']['modo'], 'local')
 
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.services.pix_gateway.request.urlopen')
