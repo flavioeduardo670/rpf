@@ -101,7 +101,10 @@ def gerar_qr_code_data_uri(payload_pix: str) -> str:
 
 
 def _mercado_pago_access_token() -> str:
-    return getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '').strip()
+    token = getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '').strip().strip('\"\'')
+    if token.lower().startswith('bearer '):
+        token = token[7:].strip()
+    return token
 
 
 def _mercado_pago_request(method: str, path: str, *, payload: dict[str, Any] | None = None, idempotency_key: str = '') -> dict[str, Any]:
@@ -221,7 +224,35 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
             'qr_code_data_uri': pix['qr_code_data_uri'],
             'provider_payload': data,
         }
-    except (RuntimeError, error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+    except error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            logger.error('Mercado Pago recusou a credencial configurada para criar cobranca PIX', extra={'event': 'pix.mercadopago.authorization_error', 'txid': txid, 'http_status': exc.code})
+            return {
+                'txid': txid,
+                'payment_id': '',
+                'payload_pix': '',
+                'qr_code': '',
+                'qr_code_base64': '',
+                'ticket_url': '',
+                'status_gateway': 'erro_autorizacao',
+                'qr_code_url': '',
+                'qr_code_data_uri': '',
+                'provider_payload': {'erro': 'mercadopago_authorization_error', 'http_status': exc.code},
+            }
+        logger.exception('Falha HTTP ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_http_error', 'txid': txid, 'http_status': exc.code})
+        return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
+            'txid': txid,
+            'payment_id': '',
+            'payload_pix': '',
+            'qr_code': '',
+            'qr_code_base64': '',
+            'ticket_url': '',
+            'status_gateway': 'erro_gateway',
+            'qr_code_url': '',
+            'qr_code_data_uri': '',
+            'provider_payload': {'erro': 'mercadopago_payment_create_error', 'http_status': exc.code},
+        }
+    except (RuntimeError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
         logger.exception('Falha ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_error', 'txid': txid})
         return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
             'txid': txid,
@@ -249,7 +280,13 @@ def criar_cobranca_pix(*, pedido, chave_pix: str) -> dict[str, Any]:
 
 
 def consultar_pagamento_mercado_pago(payment_id: str) -> dict[str, Any]:
-    data = _mercado_pago_request('GET', f'/v1/payments/{payment_id}')
+    try:
+        data = _mercado_pago_request('GET', f'/v1/payments/{payment_id}')
+    except error.HTTPError as exc:
+        if exc.code == 404:
+            logger.warning('Pagamento Mercado Pago inexistente ignorado.', extra={'event': 'pix.mercadopago.payment_not_found', 'payment_id': payment_id})
+            return {'txid': '', 'payment_id': str(payment_id or ''), 'status': 'nao_encontrado', 'status_gateway': 'nao_encontrado', 'provider_payload': {'erro': 'payment_not_found'}}
+        raise
     pix = _extrair_dados_pix_mercado_pago(data)
     return {
         'txid': data.get('external_reference') or '',
@@ -262,6 +299,61 @@ def consultar_pagamento_mercado_pago(payment_id: str) -> dict[str, Any]:
         'ticket_url': pix['ticket_url'],
         'provider_payload': data,
     }
+
+
+def consultar_merchant_order_mercado_pago(order_id: str) -> dict[str, Any]:
+    try:
+        data = _mercado_pago_request('GET', f'/merchant_orders/{order_id}')
+    except error.HTTPError as exc:
+        if exc.code == 404:
+            logger.warning('Merchant order Mercado Pago inexistente ignorada.', extra={'event': 'pix.mercadopago.merchant_order_not_found', 'order_id': order_id})
+            return {'txid': '', 'payment_id': '', 'status': 'nao_encontrado', 'status_gateway': 'nao_encontrado', 'provider_payload': {'erro': 'merchant_order_not_found'}}
+        raise
+
+    payments = data.get('payments') or []
+    approved_payment = next((payment for payment in payments if (payment.get('status') or '').lower() in STATUS_PAGO_MERCADO_PAGO), None)
+    payment = approved_payment or (payments[0] if payments else {})
+    payment_id = str(payment.get('id') or '')
+    status = _mapear_status_mercado_pago(payment.get('status') or data.get('status') or '')
+    return {
+        'txid': data.get('external_reference') or payment.get('external_reference') or '',
+        'payment_id': payment_id,
+        'status': status,
+        'status_gateway': status,
+        'provider_payload': data,
+    }
+
+
+def _extrair_pagamento_order(data: dict[str, Any]) -> dict[str, Any]:
+    payments = ((data.get('transactions') or {}).get('payments') or [])
+    approved_payment = next((payment for payment in payments if (payment.get('status_detail') or payment.get('status') or '').lower() in STATUS_PAGO_MERCADO_PAGO), None)
+    return approved_payment or (payments[0] if payments else {})
+
+
+def consultar_evento_mercado_pago(resource_id: str, event_type: str = '', event_payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    event_type = (event_type or '').strip().lower()
+    if event_type == 'payment':
+        return consultar_pagamento_mercado_pago(resource_id)
+    if event_type == 'merchant_order':
+        return consultar_merchant_order_mercado_pago(resource_id)
+    if event_type == 'order':
+        data = (event_payload or {}).get('data') if isinstance((event_payload or {}).get('data'), dict) else {}
+        txid = str(data.get('external_reference') or '').strip()
+        if not txid:
+            logger.warning('Evento order do Mercado Pago sem referencia externa ignorado.', extra={'event': 'pix.mercadopago.order_ignored', 'order_id': resource_id})
+            return {'txid': '', 'payment_id': '', 'status': 'ignorado', 'status_gateway': 'ignorado', 'provider_payload': {'tipo': 'order', 'id': resource_id}}
+
+        payment = _extrair_pagamento_order(data)
+        status = _mapear_status_mercado_pago(payment.get('status_detail') or data.get('status_detail') or payment.get('status') or data.get('status') or '')
+        return {
+            'txid': txid,
+            'payment_id': str(payment.get('id') or resource_id or ''),
+            'status': status,
+            'status_gateway': status,
+            'provider_payload': event_payload or data,
+        }
+    logger.warning('Tipo de evento Mercado Pago desconhecido; tentativa como payment.', extra={'event': 'pix.mercadopago.event_type_unknown', 'event_type': event_type, 'resource_id': resource_id})
+    return consultar_pagamento_mercado_pago(resource_id)
 
 
 def consultar_status_por_txid(txid: str) -> dict[str, Any]:
