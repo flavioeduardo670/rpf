@@ -221,6 +221,8 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
             }
         )
 
+    total_a_arrecadar = sum((item['valor'] for item in rateio_moradores), Decimal('0.00')).quantize(Decimal('0.01'))
+
     return {
         'parcelas_rateio': parcelas_rateio,
         'total_caixinha_mes': total_caixinha_mes,
@@ -235,6 +237,7 @@ def calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True):
         'pendencia_total_mes': pendencia_total_mes,
         'pendencias_items': pendencias_items,
         'total_rateio': total_rateio,
+        'total_a_arrecadar': total_a_arrecadar,
         'moradores_ativos': moradores_ativos,
         'total_moradores_ativos': total_moradores_ativos,
         'valor_por_morador': valor_por_morador,
@@ -286,4 +289,3 @@ def salvar_registro_financeiro_mensal(mes_referencia, usuario=None):
         for item in resumo['rateio_moradores']
     ])
     return registro
-
