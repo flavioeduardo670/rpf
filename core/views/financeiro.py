@@ -167,8 +167,8 @@ def financeiro_home(request):
         {
             'titulo': 'Fluxo de caixa',
             'descricao': 'Visão de entradas e saídas com saldo acumulado.',
-            'url': '',
-            'status': 'Em breve',
+            'url': redirect('financeiro_fluxo_caixa').url,
+            'status': 'Ativo',
         },
         {
             'titulo': 'Balanço patrimonial',
@@ -942,6 +942,129 @@ def _contexto_extrato_morador(request, morador_id):
         'total_creditos': total_creditos,
         'saldo_extrato': saldo_extrato,
     }
+
+
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def financeiro_fluxo_caixa(request):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    inicio_mes = mes_referencia
+    fim_mes = (mes_referencia + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    mensalidades = Mensalidade.objects.filter(
+        pago=True,
+        data_pagamento__range=(inicio_mes, fim_mes),
+    ).select_related('morador').order_by('data_pagamento', 'morador__nome', 'id')
+    eventos_rock = RockEvento.objects.filter(
+        data__range=(inicio_mes, fim_mes),
+        valor_arrecadado__gt=0,
+    ).order_by('data', 'nome', 'id')
+    contas_casa = ContaCasa.objects.filter(
+        ativo=True,
+        data_vencimento__range=(inicio_mes, fim_mes),
+    ).order_by('data_vencimento', 'nome', 'id')
+    parcelas_pagas = NotaParcela.objects.filter(
+        status='pago',
+        vencimento__range=(inicio_mes, fim_mes),
+    ).select_related('nota').order_by('vencimento', 'nota__descricao', 'id')
+    parcelas_previstas = NotaParcela.objects.filter(
+        status='pendente',
+        vencimento__range=(inicio_mes, fim_mes),
+    ).select_related('nota').order_by('vencimento', 'nota__descricao', 'id')
+
+    lancamentos = []
+
+    def adicionar_lancamento(data, descricao, categoria, entrada=Decimal('0.00'), saida=Decimal('0.00'), status='realizado'):
+        lancamentos.append({
+            'data': data,
+            'descricao': descricao,
+            'categoria': categoria,
+            'entrada': (entrada or Decimal('0.00')).quantize(Decimal('0.01')),
+            'saida': (saida or Decimal('0.00')).quantize(Decimal('0.01')),
+            'status': status,
+        })
+
+    for mensalidade in mensalidades:
+        morador_nome = mensalidade.morador.apelido or mensalidade.morador.nome
+        adicionar_lancamento(
+            mensalidade.data_pagamento,
+            f'Aluguel recebido - {morador_nome}',
+            'Aluguel',
+            entrada=mensalidade.valor,
+        )
+
+    for evento in eventos_rock:
+        adicionar_lancamento(
+            evento.data,
+            f'Receita de rock - {evento.nome}',
+            'Eventos',
+            entrada=evento.valor_arrecadado,
+        )
+
+    for conta in contas_casa:
+        adicionar_lancamento(
+            conta.data_vencimento,
+            conta.nome,
+            conta.forma_pagamento or 'Conta da casa',
+            saida=conta.valor,
+            status='previsto',
+        )
+
+    for parcela in parcelas_pagas:
+        adicionar_lancamento(
+            parcela.vencimento,
+            f'{parcela.nota.descricao} · parcela {parcela.numero}',
+            parcela.nota.get_setor_display(),
+            saida=parcela.valor,
+        )
+
+    for parcela in parcelas_previstas:
+        adicionar_lancamento(
+            parcela.vencimento,
+            f'{parcela.nota.descricao} · parcela {parcela.numero}',
+            parcela.nota.get_setor_display(),
+            saida=parcela.valor,
+            status='previsto',
+        )
+
+    lancamentos.sort(key=lambda item: (item['data'], item['status'], item['descricao']))
+    saldo_acumulado = Decimal('0.00')
+    for lancamento in lancamentos:
+        saldo_acumulado += lancamento['entrada'] - lancamento['saida']
+        lancamento['saldo'] = saldo_acumulado.quantize(Decimal('0.01'))
+
+    total_entradas = sum((item['entrada'] for item in lancamentos), Decimal('0.00')).quantize(Decimal('0.01'))
+    total_saidas = sum((item['saida'] for item in lancamentos), Decimal('0.00')).quantize(Decimal('0.01'))
+    saldo_mes = (total_entradas - total_saidas).quantize(Decimal('0.01'))
+    entradas_realizadas = sum((item['entrada'] for item in lancamentos if item['status'] == 'realizado'), Decimal('0.00')).quantize(Decimal('0.01'))
+    saidas_realizadas = sum((item['saida'] for item in lancamentos if item['status'] == 'realizado'), Decimal('0.00')).quantize(Decimal('0.01'))
+    saidas_previstas = sum((item['saida'] for item in lancamentos if item['status'] == 'previsto'), Decimal('0.00')).quantize(Decimal('0.01'))
+    saldo_realizado = (entradas_realizadas - saidas_realizadas).quantize(Decimal('0.01'))
+
+    categorias = {}
+    for lancamento in lancamentos:
+        categoria = categorias.setdefault(lancamento['categoria'], {'entrada': Decimal('0.00'), 'saida': Decimal('0.00')})
+        categoria['entrada'] += lancamento['entrada']
+        categoria['saida'] += lancamento['saida']
+
+    resumo_categorias = [
+        {'categoria': nome, 'entrada': valores['entrada'], 'saida': valores['saida'], 'saldo': valores['entrada'] - valores['saida']}
+        for nome, valores in sorted(categorias.items())
+    ]
+
+    return render(request, 'core/financeiro_fluxo_caixa.html', {
+        'mes_referencia': mes_referencia,
+        'mes_anterior': (mes_referencia - timedelta(days=1)).replace(day=1),
+        'mes_proximo': (mes_referencia + timedelta(days=32)).replace(day=1),
+        'lancamentos': lancamentos,
+        'resumo_categorias': resumo_categorias,
+        'total_entradas': total_entradas,
+        'total_saidas': total_saidas,
+        'saldo_mes': saldo_mes,
+        'entradas_realizadas': entradas_realizadas,
+        'saidas_realizadas': saidas_realizadas,
+        'saidas_previstas': saidas_previstas,
+        'saldo_realizado': saldo_realizado,
+    })
 
 
 @login_required

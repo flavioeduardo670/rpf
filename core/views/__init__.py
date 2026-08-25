@@ -12,6 +12,7 @@ from .financeiro import (
     exportar_financeiro_csv,
     financeiro,
     financeiro_home,
+    financeiro_fluxo_caixa,
     financeiro_prestacao_contas,
     financeiro_prestacao_contas_morador,
     financeiro_registros_mensais,
