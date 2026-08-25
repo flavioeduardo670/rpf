@@ -1,0 +1,97 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Fluxo de caixa | ERP RPF{% endblock %}
+
+{% block content %}
+<section class="rpf-dashboard-grid" style="gap:16px;">
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Financeiro</p>
+    <h1 class="rpf-kpi__value">Fluxo de caixa · {{ mes_referencia|date:'m/Y' }}</h1>
+    <p>Acompanhe entradas, saídas, previsões e o saldo acumulado do mês.</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+      <a href="{% url 'financeiro' %}" class="rpf-btn rpf-btn--ghost">Voltar ao financeiro</a>
+      <a href="{% url 'financeiro_fluxo_caixa' %}?mes={{ mes_anterior|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês anterior</a>
+      <a href="{% url 'financeiro_fluxo_caixa' %}?mes={{ mes_proximo|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês seguinte</a>
+    </div>
+  </article>
+
+  <article class="rpf-card">
+    <p class="rpf-kpi__label">Entradas totais</p>
+    <h2 class="rpf-kpi__value">R$ {{ total_entradas|floatformat:2 }}</h2>
+    <p>Recebimentos realizados e receitas registradas no mês.</p>
+  </article>
+  <article class="rpf-card">
+    <p class="rpf-kpi__label">Saídas totais</p>
+    <h2 class="rpf-kpi__value">R$ {{ total_saidas|floatformat:2 }}</h2>
+    <p>Pagamentos realizados e compromissos previstos.</p>
+  </article>
+  <article class="rpf-card">
+    <p class="rpf-kpi__label">Saldo do mês</p>
+    <h2 class="rpf-kpi__value">R$ {{ saldo_mes|floatformat:2 }}</h2>
+    <p>Entradas menos saídas do período selecionado.</p>
+  </article>
+  <article class="rpf-card">
+    <p class="rpf-kpi__label">Previsão a pagar</p>
+    <h2 class="rpf-kpi__value">R$ {{ saidas_previstas|floatformat:2 }}</h2>
+    <p>Contas e parcelas ainda tratadas como previstas.</p>
+  </article>
+
+  <article class="rpf-card" style="grid-column:span 2;">
+    <p class="rpf-kpi__label">Realizado</p>
+    <table class="rpf-table" style="width:100%;">
+      <tbody>
+        <tr><th>Entradas realizadas</th><td>R$ {{ entradas_realizadas|floatformat:2 }}</td></tr>
+        <tr><th>Saídas realizadas</th><td>R$ {{ saidas_realizadas|floatformat:2 }}</td></tr>
+        <tr><th>Saldo realizado</th><td><strong>R$ {{ saldo_realizado|floatformat:2 }}</strong></td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="rpf-card" style="grid-column:span 4;">
+    <p class="rpf-kpi__label">Resumo por categoria</p>
+    <div style="overflow:auto;">
+      <table class="rpf-table" style="width:100%; min-width:620px;">
+        <thead><tr><th>Categoria</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead>
+        <tbody>
+          {% for item in resumo_categorias %}
+          <tr>
+            <td>{{ item.categoria }}</td>
+            <td>R$ {{ item.entrada|floatformat:2 }}</td>
+            <td>R$ {{ item.saida|floatformat:2 }}</td>
+            <td><strong>R$ {{ item.saldo|floatformat:2 }}</strong></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">Nenhuma categoria com movimentação no mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="rpf-card" style="grid-column:1/-1;">
+    <p class="rpf-kpi__label">Lançamentos do fluxo</p>
+    <div style="overflow:auto;">
+      <table class="rpf-table" style="width:100%; min-width:900px;">
+        <thead>
+          <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Status</th><th>Entrada</th><th>Saída</th><th>Saldo acumulado</th></tr>
+        </thead>
+        <tbody>
+          {% for lancamento in lancamentos %}
+          <tr>
+            <td>{{ lancamento.data|date:'d/m/Y' }}</td>
+            <td>{{ lancamento.descricao }}</td>
+            <td>{{ lancamento.categoria }}</td>
+            <td>{% if lancamento.status == 'realizado' %}Realizado{% else %}Previsto{% endif %}</td>
+            <td>R$ {{ lancamento.entrada|floatformat:2 }}</td>
+            <td>R$ {{ lancamento.saida|floatformat:2 }}</td>
+            <td><strong>R$ {{ lancamento.saldo|floatformat:2 }}</strong></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7">Nenhum lançamento encontrado para este mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}
