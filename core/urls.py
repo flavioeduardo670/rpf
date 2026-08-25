@@ -17,6 +17,7 @@ urlpatterns = [
     path('financeiro/', views.financeiro_home, name='financeiro'),
     path('financeiro/aluguel/', views.financeiro, name='financeiro_aluguel'),
     path('financeiro/prestacao-contas/', views.financeiro_prestacao_contas, name='financeiro_prestacao_contas'),
+    path('financeiro/prestacao-contas/rateio.pdf', views.exportar_rateio_prestacao_contas_pdf, name='exportar_rateio_prestacao_contas_pdf'),
     path('financeiro/prestacao-contas/morador/<int:morador_id>/', views.financeiro_prestacao_contas_morador, name='financeiro_prestacao_contas_morador'),
     path('financeiro/prestacao-contas/morador/<int:morador_id>/pdf/', views.exportar_extrato_morador_pdf, name='exportar_extrato_morador_pdf'),
     path('financeiro/prestacao-contas/morador/<int:morador_id>/boleto/', views.exportar_boleto_aluguel_morador_pdf, name='exportar_boleto_aluguel_morador_pdf'),

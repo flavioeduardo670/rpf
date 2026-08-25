@@ -1067,6 +1067,106 @@ def financeiro_fluxo_caixa(request):
     })
 
 
+@setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
+def exportar_rateio_prestacao_contas_pdf(request):
+    mes_referencia = resolver_mes_referencia(request.GET.get('mes'))
+    resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+    rateio_moradores = sorted(
+        resumo['rateio_moradores'],
+        key=lambda item: (item['morador'].ordem_hierarquia, item['morador'].nome),
+    )
+
+    largura_pagina = Decimal('842')
+    altura_pagina = Decimal('595')
+    margem = Decimal('28')
+    comandos = [
+        '1 1 1 rg 0 0 842 595 re f',
+        '0.10 0.16 0.28 rg 0 540 842 55 re f',
+        _comando_texto_pdf('RPF - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(f"Rateio por morador - {mes_referencia.strftime('%m/%Y')}", margem, Decimal('552'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_direita_pdf(
+            f"Gerado em {timezone.localtime().strftime('%d/%m/%Y às %H:%M')}",
+            largura_pagina - margem,
+            Decimal('575'),
+            8,
+            'F1',
+            '1 1 1 rg',
+        ),
+    ]
+
+    resumo_cards = [
+        ('Aluguel', resumo['valor_aluguel']),
+        ('Contas fixas', resumo['valor_fixas_total']),
+        ('Compras', resumo['total_parcelas_mes_rateio']),
+        ('Extras', resumo['pendencia_total_mes']),
+        ('Descontos', resumo['desconto_total_mes']),
+        ('Total rateio', resumo['total_rateio']),
+    ]
+    largura_card = (largura_pagina - (margem * 2) - Decimal('25')) / Decimal('6')
+    x = margem
+    for label, valor in resumo_cards:
+        comandos.append(f'0.96 0.98 1 rg {x:.2f} 486  {largura_card:.2f} 38 re f')
+        comandos.append(f'0.82 0.86 0.92 RG {x:.2f} 486 {largura_card:.2f} 38 re S')
+        comandos.append(_comando_texto_pdf(label, x + Decimal('7'), Decimal('510'), 7, 'F2'))
+        comandos.append(_comando_texto_pdf(_formatar_moeda_pt_br(valor), x + Decimal('7'), Decimal('494'), 9, 'F2'))
+        x += largura_card + Decimal('5')
+
+    colunas = [
+        ('Morador', Decimal('28'), Decimal('178')),
+        ('Aluguel', Decimal('206'), Decimal('86')),
+        ('Fixas', Decimal('292'), Decimal('86')),
+        ('Caixinha', Decimal('378'), Decimal('86')),
+        ('Materiais', Decimal('464'), Decimal('92')),
+        ('Extras', Decimal('556'), Decimal('82')),
+        ('Descontos', Decimal('638'), Decimal('86')),
+        ('Total', Decimal('724'), Decimal('90')),
+    ]
+    y = Decimal('462')
+    altura_cabecalho = Decimal('22')
+    comandos.append(f'0.12 0.18 0.30 rg {margem:.2f} {y - altura_cabecalho:.2f} 786 22 re f')
+    for titulo_coluna, x_coluna, _ in colunas:
+        comandos.append(_comando_texto_pdf(titulo_coluna, x_coluna + Decimal('6'), y - Decimal('14'), 8, 'F2', '1 1 1 rg'))
+    y -= altura_cabecalho
+
+    altura_linha_base = Decimal('20')
+    max_linhas = int((y - Decimal('54')) / altura_linha_base)
+    total_moradores = len(rateio_moradores)
+    altura_linha = altura_linha_base
+    tamanho_fonte = 7
+    if total_moradores > max_linhas:
+        altura_linha = max(Decimal('12'), ((y - Decimal('54')) / Decimal(str(total_moradores))).quantize(Decimal('0.01')))
+        tamanho_fonte = 6 if altura_linha < Decimal('16') else 7
+
+    for indice, item in enumerate(rateio_moradores):
+        y_linha = y - (altura_linha * Decimal(str(indice + 1)))
+        cor_fundo = '1 1 1 rg' if indice % 2 == 0 else '0.97 0.98 0.99 rg'
+        comandos.append(f'{cor_fundo} {margem:.2f} {y_linha:.2f} 786 {altura_linha:.2f} re f')
+        comandos.append(f'0.88 0.88 0.88 RG {margem:.2f} {y_linha:.2f} 786 {altura_linha:.2f} re S')
+        for _, x_coluna, _ in colunas[1:]:
+            comandos.append(f'0.90 0.90 0.90 RG {x_coluna:.2f} {y_linha:.2f} m {x_coluna:.2f} {y_linha + altura_linha:.2f} l S')
+
+        texto_y = y_linha + (altura_linha / Decimal('2')) - Decimal('2')
+        morador = item['morador']
+        nome_morador = morador.apelido or morador.nome
+        comandos.append(_comando_texto_pdf(nome_morador[:28], Decimal('34'), texto_y, tamanho_fonte, 'F2'))
+        valores = [item['aluguel'], item['fixas'], item['caixinha'], item['parcelas'], item['extra'], item['desconto'], item['valor']]
+        for valor, (_, x_coluna, largura_coluna) in zip(valores, colunas[1:]):
+            comandos.append(_comando_texto_direita_pdf(_formatar_moeda_pt_br(valor), x_coluna + largura_coluna - Decimal('7'), texto_y, tamanho_fonte))
+
+    y_totais = Decimal('32')
+    comandos.append('0.10 0.16 0.28 rg 510 22 304 28 re f')
+    comandos.append(_comando_texto_pdf(f"Moradores: {total_moradores}", Decimal('522'), y_totais, 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_direita_pdf(_formatar_moeda_pt_br(resumo['total_a_arrecadar']), Decimal('802'), y_totais, 10, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf('Arquivo em página única, orientação paisagem.', margem, Decimal('32'), 7))
+
+    pdf = _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="rateio_prestacao_contas_{mes_referencia.strftime("%Y_%m")}.pdf"'
+    )
+    return response
+
+
 @login_required
 def financeiro_prestacao_contas(request):
     mes_referencia = resolver_mes_referencia(request.GET.get('mes'))

@@ -11,6 +11,7 @@
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
       <a href="{% url 'financeiro_prestacao_contas' %}?mes={{ mes_anterior|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês anterior</a>
       <a href="{% url 'financeiro_prestacao_contas' %}?mes={{ mes_proximo|date:'Y-m' }}" class="rpf-btn rpf-btn--ghost">Mês seguinte</a>
+      <a href="{% url 'exportar_rateio_prestacao_contas_pdf' %}?mes={{ mes_referencia|date:'Y-m' }}" class="rpf-btn rpf-btn--primary">Exportar rateio em PDF</a>
     </div>
   </article>
   <article class="rpf-card" style="grid-column: span 3;">
