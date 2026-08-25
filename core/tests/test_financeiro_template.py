@@ -183,6 +183,16 @@ class FinanceiroTemplateTests(TestCase):
         self.assertIn('R$ 123,45'.encode('cp1252'), response.content)
         self.assertNotIn(b'!', response.content)
 
+    def test_exportar_rateio_prestacao_contas_pdf(self):
+        response = self.client.get(reverse('exportar_rateio_prestacao_contas_pdf') + '?mes=2026-05')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('rateio_prestacao_contas_2026_05.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF-1.4'))
+        self.assertIn(b'Rateio por morador', response.content)
+        self.assertIn('R$ 177,77'.encode('cp1252'), response.content)
+
 
     def test_exportar_boleto_aluguel_morador_pdf_cria_cobranca_pix(self):
         ConfiguracaoFinanceira.objects.create(
