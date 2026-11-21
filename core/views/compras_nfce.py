@@ -9,7 +9,14 @@ from django.urls import reverse
 
 from core.forms import get_choice_options
 from core.models import NotaFiscal
-from core.services.nfce import DadosNFCe, QRCodeNFCeInvalido, consultar_nfce, formatar_cnpj, interpretar_qrcode_nfce
+from core.services.nfce import (
+    DadosNFCe,
+    QRCodeNFCeInvalido,
+    consultar_nfce,
+    formatar_cnpj,
+    interpretar_qrcode_nfce,
+    link_sefaz_seguro,
+)
 
 from .common import setor_required
 from .financeiro import _primeiro_vencimento, criar_parcelas_nota
@@ -109,9 +116,12 @@ def registrar_compra_nfce(dados: DadosNFCe, cd: dict) -> list[NotaFiscal]:
 
 def _contexto_leitura(dados: DadosNFCe, form):
     soma_itens = sum((item.valor_total for item in dados.itens), Decimal('0.00'))
+    if dados.valor_total is None:
+        form.fields['valor_total'].widget.attrs['autofocus'] = 'autofocus'
     return {
         'dados': dados,
         'form': form,
+        'link_sefaz': dados.url_consulta if not dados.consulta_sefaz_ok and link_sefaz_seguro(dados.url_consulta) else '',
         'cnpj_formatado': formatar_cnpj(dados.cnpj_emitente),
         'soma_itens': soma_itens,
         'diferenca_itens': bool(dados.itens and dados.valor_total is not None and soma_itens != dados.valor_total),

@@ -4,10 +4,13 @@ O QR Code traz uma URL do portal da SEFAZ do estado com a chave de acesso de
 44 dígitos. Da chave saem estado, mês/ano, CNPJ do emitente e número da nota;
 nas versões offline/antigas do QR também vêm data e valor total. Os itens e o
 nome da loja só existem na página pública da SEFAZ, que é consultada quando
-possível (sem ela, a compra é registrada com o total).
+possível (sem ela, a compra é registrada com o total). Alguns estados (MG)
+exigem "não sou robô" na página; aí o nome da loja vem do CNPJ (BrasilAPI) e
+o valor é digitado na tela.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import asdict, dataclass, field
@@ -16,6 +19,7 @@ from decimal import Decimal, InvalidOperation
 from urllib import error, parse, request
 
 from bs4 import BeautifulSoup
+from django.utils import timezone
 
 logger = logging.getLogger('core.services.nfce')
 
@@ -62,6 +66,7 @@ class DadosNFCe:
     itens: list[ItemNFCe] = field(default_factory=list)
     consulta_sefaz_ok: bool = False
     aviso_consulta: str = ''
+    sefaz_pede_verificacao: bool = False
 
     def para_sessao(self) -> dict:
         """Versão serializável em JSON (sessão do Django)."""
@@ -186,7 +191,9 @@ def interpretar_qrcode_nfce(conteudo: str) -> DadosNFCe:
 
     if dados.data_emissao is None and 1 <= mes <= 12:
         # A chave só tem mês/ano; o dia exato vem da SEFAZ ou é ajustado na tela.
-        dados.data_emissao = date(ano, mes, 1)
+        # Nota do mês corrente quase sempre é lida no dia da compra.
+        hoje = timezone.localdate()
+        dados.data_emissao = hoje if (hoje.year, hoje.month) == (ano, mes) else date(ano, mes, 1)
     return dados
 
 
@@ -198,6 +205,11 @@ def _host_permitido(url: str) -> bool:
     partes = parse.urlsplit(url)
     host = (partes.hostname or '').lower()
     return partes.scheme in {'http', 'https'} and host.endswith('.gov.br')
+
+
+def link_sefaz_seguro(url: str) -> bool:
+    """Link do QR que pode ser mostrado como botão (só HTTPS de .gov.br)."""
+    return _host_permitido(url) and parse.urlsplit(url).scheme == 'https'
 
 
 class _RedirecionamentoSeguro(request.HTTPRedirectHandler):
@@ -284,22 +296,65 @@ def extrair_dados_pagina_sefaz(html: str) -> dict:
     return resultado
 
 
+def pagina_pede_verificacao(html: str) -> bool:
+    """True quando o portal devolveu só o desafio "não sou robô" (MG usa
+    Cloudflare Turnstile antes de mostrar a nota)."""
+    return bool(re.search(r'cf-turnstile|g-recaptcha|challenges\.cloudflare\.com|h-captcha', html or '', re.IGNORECASE))
+
+
+URL_CONSULTA_CNPJ = 'https://brasilapi.com.br/api/cnpj/v1/{cnpj}'
+TIMEOUT_CNPJ = 6
+
+
+def buscar_nome_empresa(cnpj: str) -> str:
+    """Nome fantasia (ou razão social) do CNPJ na BrasilAPI; '' se não der."""
+    if not re.fullmatch(r'\d{14}', cnpj or ''):
+        return ''
+    req = request.Request(URL_CONSULTA_CNPJ.format(cnpj=cnpj), headers={'User-Agent': 'rpf-compras', 'Accept': 'application/json'})
+    try:
+        with request.urlopen(req, timeout=TIMEOUT_CNPJ) as resposta:
+            corpo = json.loads(resposta.read(256 * 1024).decode('utf-8'))
+    except (error.URLError, TimeoutError, ValueError, OSError) as exc:
+        logger.info('Consulta de CNPJ falhou.', extra={'event': 'nfce.cnpj.erro', 'erro': str(exc)[:200]})
+        return ''
+    if not isinstance(corpo, dict):
+        return ''
+    nome = (corpo.get('nome_fantasia') or '').strip() or (corpo.get('razao_social') or '').strip()
+    return re.sub(r'\s+', ' ', nome)[:100]
+
+
 def consultar_nfce(dados: DadosNFCe) -> DadosNFCe:
     """Completa os dados do QR com a página da SEFAZ. Nunca levanta exceção:
     se a consulta falhar, devolve o que veio do QR com um aviso."""
+    _consultar_sefaz(dados)
+    if not dados.fornecedor:
+        dados.fornecedor = buscar_nome_empresa(dados.cnpj_emitente)
+    return dados
+
+
+def _consultar_sefaz(dados: DadosNFCe) -> None:
     if not dados.url_consulta:
         dados.aviso_consulta = 'Sem o link do QR Code não dá para buscar os itens na SEFAZ; confira o valor.'
-        return dados
+        return
     if not _host_permitido(dados.url_consulta):
         dados.aviso_consulta = 'O link do QR Code não é de um portal da SEFAZ (.gov.br); confira os dados.'
-        return dados
+        return
     try:
         html = _baixar_pagina(dados.url_consulta)
         extraido = extrair_dados_pagina_sefaz(html)
     except (error.URLError, TimeoutError, ValueError, OSError) as exc:
         logger.warning('Consulta da NFC-e na SEFAZ falhou.', extra={'event': 'nfce.consulta.erro', 'uf': dados.uf, 'erro': str(exc)[:200]})
         dados.aviso_consulta = 'A SEFAZ não respondeu agora; a compra será registrada pelo valor total. Confira o valor.'
-        return dados
+        return
+
+    if not extraido['itens'] and extraido['valor_total'] is None and pagina_pede_verificacao(html):
+        dados.sefaz_pede_verificacao = True
+        dados.aviso_consulta = (
+            f'O portal da SEFAZ{" de " + dados.uf if dados.uf else ""} pede a verificação "não sou robô" '
+            'para mostrar a nota, então os itens não vêm automaticamente. '
+            'Digite o valor total impresso na nota (ou abra a nota na SEFAZ para conferir).'
+        )
+        return
 
     if extraido['fornecedor']:
         dados.fornecedor = extraido['fornecedor'][:100]
@@ -318,4 +373,3 @@ def consultar_nfce(dados: DadosNFCe) -> DadosNFCe:
             f'Não consegui ler os itens no portal da SEFAZ{" de " + dados.uf if dados.uf else ""}; '
             'confira o fornecedor e o valor antes de registrar.'
         )
-    return dados
