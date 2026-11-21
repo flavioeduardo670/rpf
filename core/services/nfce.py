@@ -296,6 +296,137 @@ def extrair_dados_pagina_sefaz(html: str) -> dict:
     return resultado
 
 
+# ---------------------------------------------------------------------------
+# Texto copiado da página da SEFAZ (quando o portal exige "não sou robô")
+# ---------------------------------------------------------------------------
+
+TAMANHO_MAXIMO_TEXTO_COLADO = 200 * 1024
+
+_ITEM_TEXTO_MG = re.compile(
+    r'(?P<descricao>[^\n\t]+?)\s*\(\s*C[óo]digo:\s*[^)]*\)\s*'
+    r'Qtde\.?\s*total\s*de\s*[íi]tens:?\s*(?P<quantidade>[\d.,]+)\s*'
+    r'UN:?\s*(?P<unidade>[^\s\d][^\s]*)?\s*'
+    r'Valor\s*total\s*R\$:?\s*(?:R\$)?\s*(?P<valor>[\d.,]+)',
+    re.IGNORECASE,
+)
+
+
+class TextoNFCeInvalido(ValueError):
+    pass
+
+
+def _quantidade(texto: str) -> Decimal | None:
+    """Quantidade da SEFAZ-MG vem com ponto decimal ('56.1000'); a do layout
+    padrão com vírgula ('1,235')."""
+    texto = (texto or '').strip()
+    if ',' in texto:
+        return _decimal_br(texto)
+    try:
+        return Decimal(texto)
+    except InvalidOperation:
+        return None
+
+
+def extrair_dados_texto_copiado(texto: str) -> dict:
+    """Lê o texto que a pessoa copiou da página da nota (Selecionar tudo >
+    Copiar) depois de passar pelo "não sou robô". Cobre o layout de MG
+    ('Qtde total de ítens' / 'UN' / 'Valor total R$') e o padrão
+    ('Qtde.:' / 'UN:' / 'Vl. Unit.:' / 'Vl. Total')."""
+    texto = (texto or '').replace('\r\n', '\n').replace('\r', '\n').replace('\xa0', ' ')
+    if len(texto) > TAMANHO_MAXIMO_TEXTO_COLADO:
+        raise TextoNFCeInvalido('O texto colado é grande demais. Copie só a página da nota.')
+    resultado: dict = {'fornecedor': '', 'cnpj': '', 'itens': [], 'valor_total': None, 'data_emissao': None}
+
+    for achado in _ITEM_TEXTO_MG.finditer(texto):
+        descricao = re.split(r'Filt?r?ar\s*[íi]tens\W*', achado.group('descricao'), flags=re.IGNORECASE)[-1]
+        descricao = re.sub(r'\s+', ' ', descricao).strip(' -:')
+        quantidade = _quantidade(achado.group('quantidade')) or Decimal('1')
+        if quantidade == quantidade.to_integral_value():
+            quantidade = quantidade.to_integral_value()
+        valor_total = _decimal_br(achado.group('valor'))
+        if not descricao or valor_total is None:
+            continue
+        valor_unitario = (valor_total / quantidade).quantize(Decimal('0.01')) if quantidade else valor_total
+        resultado['itens'].append(ItemNFCe(
+            descricao=descricao[:200],
+            quantidade=quantidade,
+            unidade=(achado.group('unidade') or '')[:10],
+            valor_unitario=valor_unitario,
+            valor_total=valor_total,
+        ))
+
+    if not resultado['itens']:
+        # Layout padrão (SP, PR, RS...): "ARROZ (Código: 1) Qtde.:2 UN: UN Vl. Unit.: 24,90 Vl. Total 49,80"
+        padrao = re.compile(
+            r'(?P<descricao>[^\n\t]+?)\s*\(\s*C[óo]digo:\s*[^)]*\)\s*Qtde\.?:\s*(?P<quantidade>[\d.,]+)\s*'
+            r'UN:\s*(?P<unidade>\S+)\s*Vl\.\s*Unit\.:\s*(?P<unitario>[\d.,]+)\s*Vl\.\s*Total\s*(?P<valor>[\d.,]+)',
+            re.IGNORECASE,
+        )
+        for achado in padrao.finditer(texto):
+            quantidade = _decimal_br(achado.group('quantidade')) or Decimal('1')
+            resultado['itens'].append(ItemNFCe(
+                descricao=re.sub(r'\s+', ' ', achado.group('descricao')).strip(' -:')[:200],
+                quantidade=quantidade,
+                unidade=achado.group('unidade')[:10],
+                valor_unitario=_decimal_br(achado.group('unitario')),
+                valor_total=_decimal_br(achado.group('valor')),
+            ))
+
+    for rotulo in (r'Valor\s*a\s*pagar\s*R\$:?', r'Valor\s*pago\s*R\$:?', r'Valor\s*total\s*R\$(?!:)'):
+        achado = re.search(rotulo + r'\s*(?!R\$)([\d.,]+\d)', texto, re.IGNORECASE)
+        if achado:
+            resultado['valor_total'] = _decimal_br(achado.group(1)) if ',' in achado.group(1) else _quantidade(achado.group(1))
+            break
+
+    linhas = [linha.strip() for linha in texto.split('\n')]
+    for indice, linha in enumerate(linhas):
+        cnpj = re.match(r'CNPJ:\s*([\d./-]{14,18})', linha, re.IGNORECASE)
+        if cnpj:
+            resultado['cnpj'] = re.sub(r'\D', '', cnpj.group(1))
+            anterior = next((l for l in reversed(linhas[:indice]) if l), '')
+            if anterior and 'nota fiscal' not in anterior.lower():
+                resultado['fornecedor'] = re.sub(r'\s+', ' ', anterior)[:100]
+            break
+
+    emissao = re.search(r'Emiss[ãa]o:?.{0,120}?(\d{2}/\d{2}/\d{4})', texto, re.IGNORECASE | re.DOTALL)
+    if emissao:
+        try:
+            resultado['data_emissao'] = datetime.strptime(emissao.group(1), '%d/%m/%Y').date()
+        except ValueError:
+            pass
+
+    if not resultado['itens'] and resultado['valor_total'] is None:
+        raise TextoNFCeInvalido(
+            'Não achei itens nem valor no texto colado. Na página da nota, toque e segure, '
+            'escolha "Selecionar tudo", depois "Copiar", e cole aqui.'
+        )
+    return resultado
+
+
+def aplicar_texto_copiado(dados: DadosNFCe, texto: str) -> DadosNFCe:
+    """Completa a leitura com o texto copiado da página da SEFAZ."""
+    extraido = extrair_dados_texto_copiado(texto)
+    if extraido['cnpj'] and dados.cnpj_emitente and extraido['cnpj'] != dados.cnpj_emitente:
+        raise TextoNFCeInvalido(
+            f'O texto colado é de outra loja (CNPJ {formatar_cnpj(extraido["cnpj"])}). '
+            'Copie a página desta nota.'
+        )
+    if extraido['fornecedor']:
+        dados.fornecedor = extraido['fornecedor']
+    if extraido['itens']:
+        dados.itens = extraido['itens']
+    if extraido['valor_total'] is not None:
+        dados.valor_total = extraido['valor_total']
+    elif dados.itens:
+        dados.valor_total = sum((item.valor_total for item in dados.itens), Decimal('0.00'))
+    if extraido['data_emissao']:
+        dados.data_emissao = extraido['data_emissao']
+    dados.consulta_sefaz_ok = True
+    dados.sefaz_pede_verificacao = False
+    dados.aviso_consulta = ''
+    return dados
+
+
 def pagina_pede_verificacao(html: str) -> bool:
     """True quando o portal devolveu só o desafio "não sou robô" (MG usa
     Cloudflare Turnstile antes de mostrar a nota)."""

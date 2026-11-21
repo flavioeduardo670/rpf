@@ -11,7 +11,10 @@ from django.urls import reverse
 from core.models import Morador, NotaFiscal
 from core.services.nfce import (
     QRCodeNFCeInvalido,
+    TextoNFCeInvalido,
+    aplicar_texto_copiado,
     buscar_nome_empresa,
+    extrair_dados_texto_copiado,
     chave_acesso_valida,
     consultar_nfce,
     digito_verificador_chave,
@@ -77,6 +80,91 @@ HTML_MG_CAPTCHA = """
   <a href="#" class="btn btn-primary">Visualizar</a>
 </form></body></html>
 """
+
+
+# Texto como sai de "Selecionar tudo > Copiar" na nota de MG depois do "não sou robô"
+# (layout de uma impressão real do portal, com dados trocados).
+TEXTO_MG_COPIADO = """Nota Fiscal de Consumidor Eletrônica (NFC-e)
+MERCADINHO VILELA LTDA
+CNPJ: 23960651000129 -, Inscrição Estadual: 0012345670099
+RUA DOS ESTUDANTES, 100, CENTRO, 3171303 - VICOSA, MG
+Filtar ítens...
+ARROZ TIPO 1 5KG (Código:
+789)
+Qtde total de ítens:
+2.0000
+UN:
+UN
+Valor total R$: R$
+49,80
+BANANA PRATA (Código:
+123)
+Qtde total de ítens:
+1.2350
+UN:
+KG
+Valor total R$: R$
+8,63
+CERVEJA LATA 350ML (Código: 555)\tQtde total de ítens: 12.0000\tUN: LT\tValor total R$: R$ 1.234,56
+Qtde total de ítens 3
+Valor total R$ 1293.99
+Descontos R$ 1.00
+Valor pago R$ 1292.99
+Forma de Pagamento 04 - Cartão de Débito
+Consumidor
+Chave de acesso
+Informações gerais da Nota
+Emitente
+Nome / Razão Social CNPJ Inscrição Estadual UF
+Modelo Série Número Data Emissão
+65 1 2630192 14/11/2026 18:22:59
+Protocolo
+131230723140907
+"""
+
+
+class TextoCopiadoTests(SimpleTestCase):
+    def test_le_itens_total_loja_e_data_do_texto_de_mg(self):
+        extraido = extrair_dados_texto_copiado(TEXTO_MG_COPIADO)
+        self.assertEqual(extraido['fornecedor'], 'MERCADINHO VILELA LTDA')
+        self.assertEqual(extraido['cnpj'], '23960651000129')
+        self.assertEqual(extraido['data_emissao'], date(2026, 11, 14))
+        self.assertEqual(extraido['valor_total'], Decimal('1292.99'))
+        arroz, banana, cerveja = extraido['itens']
+        self.assertEqual((arroz.descricao, arroz.quantidade, arroz.unidade), ('ARROZ TIPO 1 5KG', Decimal('2'), 'UN'))
+        self.assertEqual((arroz.valor_unitario, arroz.valor_total), (Decimal('24.90'), Decimal('49.80')))
+        self.assertEqual((banana.descricao, banana.quantidade, banana.unidade, banana.valor_total),
+                         ('BANANA PRATA', Decimal('1.2350'), 'KG', Decimal('8.63')))
+        self.assertEqual((cerveja.descricao, cerveja.quantidade, cerveja.valor_total),
+                         ('CERVEJA LATA 350ML', Decimal('12'), Decimal('1234.56')))
+        self.assertEqual(str(cerveja.quantidade), '12')
+
+    def test_le_texto_copiado_do_layout_padrao(self):
+        texto = 'SUPERMERCADO X\nCNPJ: 12.345.678/0001-95\nARROZ (Código: 789 ) Qtde.:2 UN: UN Vl. Unit.: 24,90 Vl. Total 49,80\nValor a pagar R$: 49,80'
+        extraido = extrair_dados_texto_copiado(texto)
+        self.assertEqual(extraido['valor_total'], Decimal('49.80'))
+        self.assertEqual(extraido['itens'][0].descricao, 'ARROZ')
+        self.assertEqual(extraido['fornecedor'], 'SUPERMERCADO X')
+
+    def test_texto_sem_nota_da_erro(self):
+        with self.assertRaises(TextoNFCeInvalido):
+            extrair_dados_texto_copiado('Não sou um robô\nVisualizar')
+
+    def test_texto_de_outra_loja_e_recusado(self):
+        dados = interpretar_qrcode_nfce(URL_ONLINE)  # CNPJ 12.345.678/0001-95
+        with self.assertRaisesMessage(TextoNFCeInvalido, 'outra loja'):
+            aplicar_texto_copiado(dados, TEXTO_MG_COPIADO)
+
+    def test_aplicar_completa_a_leitura(self):
+        dados = interpretar_qrcode_nfce(URL_MG)
+        dados.sefaz_pede_verificacao = True
+        dados.aviso_consulta = 'x'
+        aplicar_texto_copiado(dados, TEXTO_MG_COPIADO)
+        self.assertTrue(dados.consulta_sefaz_ok)
+        self.assertFalse(dados.sefaz_pede_verificacao)
+        self.assertEqual(dados.aviso_consulta, '')
+        self.assertEqual(len(dados.itens), 3)
+        self.assertEqual(dados.valor_total, Decimal('1292.99'))
 
 
 class InterpretarQRCodeTests(SimpleTestCase):
@@ -315,8 +403,36 @@ class ComprasQRCodeViewTests(TestCase):
         self.assertContains(response, 'value="MERCADINHO VILELA"')
         self.assertContains(response, 'Abrir a nota na SEFAZ')
         self.assertContains(response, 'href="https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=')
-        self.assertContains(response, 'autofocus')
+        self.assertContains(response, 'Colar nota copiada')
         self.assertContains(response, '23.960.651/0001-29')
+
+    def _ler_mg(self, baixar):
+        baixar.return_value = HTML_MG_CAPTCHA
+        with patch('core.services.nfce.buscar_nome_empresa', return_value='MERCADINHO VILELA'):
+            self.client.post(reverse('compras_qrcode'), {'acao': 'ler', 'conteudo_qrcode': URL_MG})
+
+    def test_colar_texto_da_nota_preenche_itens_e_registra(self, baixar):
+        self._ler_mg(baixar)
+        response = self.client.post(reverse('compras_qrcode'), {'acao': 'colar', 'texto_nota': TEXTO_MG_COPIADO})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Nota lida: 3 item(ns).')
+        self.assertContains(response, 'CERVEJA LATA 350ML')
+        self.assertContains(response, 'value="1292.99"')
+        self.assertContains(response, 'value="2026-11-14"')
+        self.assertContains(response, 'value="MERCADINHO VILELA LTDA"')
+        self.assertNotContains(response, 'Colar nota copiada')
+        self._confirmar(modo='itens', fornecedor='MERCADINHO VILELA LTDA', data_emissao='2026-11-14', valor_total='1292.99')
+        notas = {n.descricao: n for n in NotaFiscal.objects.all()}
+        self.assertEqual(set(notas), {'ARROZ TIPO 1 5KG', 'BANANA PRATA (1,235 KG)', 'CERVEJA LATA 350ML'})
+        self.assertEqual((notas['CERVEJA LATA 350ML'].quantidade, notas['CERVEJA LATA 350ML'].valor), (12, Decimal('102.88')))
+        self.assertTrue(all(n.chave_acesso == CHAVE_MG for n in notas.values()))
+
+    def test_colar_texto_errado_mantem_os_passos_com_erro(self, baixar):
+        self._ler_mg(baixar)
+        response = self.client.post(reverse('compras_qrcode'), {'acao': 'colar', 'texto_nota': 'Não sou um robô'})
+        self.assertContains(response, 'Não achei itens nem valor')
+        self.assertContains(response, 'Colar nota copiada')
+        self.assertEqual(NotaFiscal.objects.count(), 0)
 
     def test_leitura_completa_nao_mostra_link_da_sefaz(self, _baixar):
         response = self._ler()

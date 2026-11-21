@@ -25,6 +25,12 @@
     .nfce-num { text-align: right; white-space: nowrap; }
     .nfce-modo ul { list-style: none; padding: 0; margin: 0; }
     .nfce-modo li label { display: flex; gap: 8px; align-items: center; }
+    .nfce-passos { border: 1px solid rgba(0,0,0,.12); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+    .nfce-passos h3 { margin-top: 0; }
+    .nfce-passos ol { padding-left: 20px; display: grid; gap: 6px; }
+    .nfce-passos ol li:first-child { list-style: none; margin-left: -20px; }
+    .nfce-passos textarea { width: 100%; font-size: 0.85rem; }
+    .nfce-passos summary { cursor: pointer; margin-top: 4px; }
 </style>
 {% endblock %}
 
@@ -40,9 +46,31 @@
         {% if dados.aviso_consulta %}
         <div class="nfce-aviso">
             <p style="margin:0;">{{ dados.aviso_consulta }}</p>
-            {% if link_sefaz %}
-            <p style="margin:8px 0 0;"><a class="btn light" href="{{ link_sefaz }}" target="_blank" rel="noopener noreferrer">Abrir a nota na SEFAZ</a></p>
-            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if link_sefaz %}
+        <div class="nfce-passos" id="nfce-passos">
+            <h3>Buscar os itens passando pelo "não sou robô"</h3>
+            <ol>
+                <li><a class="btn btn-primary" href="{{ link_sefaz }}" target="_blank" rel="noopener noreferrer">1. Abrir a nota na SEFAZ</a></li>
+                <li>Lá, marque <strong>"Não sou um robô"</strong> e toque em <strong>Visualizar</strong>.</li>
+                <li>Com a nota aberta, toque e segure no texto, escolha <strong>Selecionar tudo</strong> e depois <strong>Copiar</strong>.</li>
+                <li>Volte para esta aba e toque em <strong>Colar nota copiada</strong>. O sistema preenche itens, valor, loja e data.</li>
+            </ol>
+            <form method="post" id="nfce-form-colar">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="colar">
+                <div class="nfce-botoes">
+                    <button type="button" class="btn btn-primary" id="nfce-colar-auto">Colar nota copiada</button>
+                </div>
+                <p class="nfce-status" id="nfce-colar-status" role="status" aria-live="polite"></p>
+                <details id="nfce-colar-manual"{% if texto_nota %} open{% endif %}>
+                    <summary>O botão não colou? Cole aqui</summary>
+                    <textarea name="texto_nota" id="nfce-texto-nota" rows="5" placeholder="Toque e segure aqui e escolha Colar">{{ texto_nota|default:"" }}</textarea>
+                    <div class="actions"><button type="submit" class="btn">Ler texto colado</button></div>
+                </details>
+            </form>
         </div>
         {% endif %}
         <div class="nfce-resumo">
@@ -123,6 +151,62 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if link_sefaz %}
+<script>
+(() => {
+    const form = document.getElementById('nfce-form-colar');
+    const campo = document.getElementById('nfce-texto-nota');
+    const manual = document.getElementById('nfce-colar-manual');
+    const status = document.getElementById('nfce-colar-status');
+    const botao = document.getElementById('nfce-colar-auto');
+    let saiuDaAba = false;
+
+    const avisar = (texto, erro = false) => {
+        status.textContent = texto;
+        status.classList.toggle('erro', erro);
+    };
+    const pareceNota = (texto) => /c[óo]digo/i.test(texto) && /valor\s*total|vl\.\s*total/i.test(texto);
+    const abrirManual = (texto) => {
+        manual.open = true;
+        campo.focus();
+        avisar(texto, true);
+    };
+
+    botao.addEventListener('click', async () => {
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            abrirManual('Este navegador não deixa o botão colar. Toque e segure no campo abaixo e escolha Colar.');
+            return;
+        }
+        let texto = '';
+        try {
+            texto = await navigator.clipboard.readText();
+        } catch (e) {
+            abrirManual('Não tive permissão para colar. Toque e segure no campo abaixo e escolha Colar.');
+            return;
+        }
+        if (!pareceNota(texto)) {
+            avisar('O que está copiado não parece a nota. Na página da SEFAZ, use "Selecionar tudo" e "Copiar" e tente de novo.', true);
+            return;
+        }
+        campo.value = texto;
+        avisar('Lendo a nota…');
+        form.submit();
+    });
+
+    campo.addEventListener('paste', () => setTimeout(() => {
+        if (pareceNota(campo.value)) { avisar('Lendo a nota…'); form.submit(); }
+    }, 50));
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { saiuDaAba = true; return; }
+        if (saiuDaAba) {
+            avisar('Copiou a nota? Toque em "Colar nota copiada".');
+            botao.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+})();
+</script>
+{% endif %}
 {% if not dados %}
 <script src="{% static 'core/vendor/jsQR.js' %}"></script>
 <script>
