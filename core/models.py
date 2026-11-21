@@ -150,6 +150,8 @@ class NotaFiscal(models.Model):
     forma_pagamento = models.CharField(max_length=50, blank=True, null=True)
     observacao = models.TextField(blank=True, null=True)
     rock_evento = models.ForeignKey('RockEvento', on_delete=models.SET_NULL, null=True, blank=True)
+    # Chave de acesso (44 dígitos) quando a compra veio do QR Code da NFC-e.
+    chave_acesso = models.CharField(max_length=44, blank=True, default='', db_index=True)
 
     def __str__(self):
         return f"{self.descricao} - {self.fornecedor}"
@@ -308,6 +310,9 @@ class CobrancaAluguel(models.Model):
     atualizado_em = models.DateTimeField(auto_now=True)
     webhook_recebido_em = models.DateTimeField(blank=True, null=True)
     pago_em = models.DateTimeField(blank=True, null=True)
+    # Preenchido só quando o recibo chega ao servidor de email; enquanto vazio
+    # numa cobrança paga, o envio é tentado de novo.
+    comprovante_enviado_em = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ['-mes_referencia', 'morador__nome']

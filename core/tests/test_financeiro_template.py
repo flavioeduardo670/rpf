@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import Group, User
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import AjusteMorador, CobrancaAluguel, ComprovantePagamentoMorador, ConfiguracaoFinanceira, Morador, PendenciaMensalItem
@@ -139,7 +139,8 @@ class FinanceiroTemplateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Pago')
 
-    @patch('core.views.financeiro.consultar_status_por_txid')
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
+    @patch('core.services.aluguel.consultar_status_por_txid')
     def test_financeiro_sincroniza_cobranca_pix_paga_no_gateway(self, consultar_status):
         self.morador.email = 'morador.teste@example.com'
         self.morador.save(update_fields=['email'])

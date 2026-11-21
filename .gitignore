@@ -37,3 +37,5 @@ gestãorpf.txt
 .idea/
 .DS_Store
 Thumbs.db
+
+.dev-credentials.txt

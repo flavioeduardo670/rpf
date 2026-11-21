@@ -44,6 +44,7 @@ urlpatterns = [
     path('configuracoes/formularios/', views.configurar_formularios, name='configurar_formularios'),
     path('configuracoes/listas/', views.configurar_listas, name='configurar_listas'),
     path('configuracoes/casa/', views.configurar_listas, name='configurar_casa'),
+    path('compras/qrcode/', views.compras_qrcode, name='compras_qrcode'),
     path('compras/editar/<int:nota_id>/', views.editar_nota_compra, name='editar_nota_compra'),
     path('compras/exportar/', views.exportar_compras_csv, name='exportar_compras_csv'),
     path('rock/', views.rock, name='rock'),

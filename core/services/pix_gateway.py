@@ -7,6 +7,7 @@ import base64
 import logging
 import re
 import uuid
+from datetime import datetime
 from io import BytesIO
 from decimal import Decimal
 from typing import Any
@@ -14,6 +15,7 @@ from urllib import error, parse, request
 
 import segno
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger('core.services.pix_gateway')
 MERCADO_PAGO_API_BASE_URL = 'https://api.mercadopago.com'
@@ -180,7 +182,40 @@ def _fallback_pix_local(*, txid: str, valor: Decimal, chave_pix: str, categoria:
     }
 
 
-def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome_pagador: str = '', categoria: str = '') -> dict[str, Any]:
+def mercado_pago_configurado() -> bool:
+    return bool(_mercado_pago_access_token())
+
+
+def formatar_expiracao_mercado_pago(momento: datetime) -> str:
+    """Formato aceito pelo Mercado Pago: 2026-12-10T23:59:59.000-03:00."""
+    if timezone.is_naive(momento):
+        momento = timezone.make_aware(momento)
+    momento = timezone.localtime(momento)
+    texto = momento.strftime('%Y-%m-%dT%H:%M:%S.000%z')
+    return f'{texto[:-2]}:{texto[-2:]}'
+
+
+def expiracao_do_pagamento(provider_payload: dict[str, Any] | None) -> datetime | None:
+    bruto = (provider_payload or {}).get('date_of_expiration') or ''
+    if not bruto:
+        return None
+    try:
+        momento = datetime.fromisoformat(str(bruto).replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    return timezone.make_aware(momento) if timezone.is_naive(momento) else momento
+
+
+def criar_cobranca_pix_avulsa(
+    *,
+    txid: str,
+    valor: Decimal,
+    chave_pix: str,
+    nome_pagador: str = '',
+    categoria: str = '',
+    payer_email: str = '',
+    data_expiracao: datetime | None = None,
+) -> dict[str, Any]:
     if not _mercado_pago_access_token():
         logger.error('Mercado Pago nao configurado para criar cobranca PIX', extra={'event': 'pix.mercadopago.configuration_error', 'txid': txid})
         return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
@@ -196,7 +231,7 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
             'provider_payload': {'erro': 'mercadopago_access_token_nao_configurado'},
         }
 
-    payer_email = getattr(settings, 'MERCADOPAGO_PAYER_EMAIL_FALLBACK', 'pagador@example.com')
+    payer_email = (payer_email or '').strip() or getattr(settings, 'MERCADOPAGO_PAYER_EMAIL_FALLBACK', 'pagador@example.com')
     payload = {
         'transaction_amount': float(Decimal(valor).quantize(Decimal('0.01'))),
         'description': f'{categoria or "Cobranca"} - {nome_pagador or txid}',
@@ -204,6 +239,10 @@ def criar_cobranca_pix_avulsa(*, txid: str, valor: Decimal, chave_pix: str, nome
         'external_reference': txid,
         'payer': {'email': payer_email},
     }
+    if data_expiracao is not None:
+        # Sem isso o Mercado Pago expira o PIX em 24h e o morador que paga
+        # depois encontra um QR Code vencido.
+        payload['date_of_expiration'] = formatar_expiracao_mercado_pago(data_expiracao)
     notification_url = getattr(settings, 'MERCADOPAGO_NOTIFICATION_URL', '').strip()
     if notification_url:
         payload['notification_url'] = notification_url
@@ -376,7 +415,13 @@ def consultar_status_por_txid(txid: str) -> dict[str, Any]:
         results = data.get('results') or []
         if not results:
             return {'txid': txid, 'status': 'desconhecido', 'provider_payload': data}
-        payment = sorted(results, key=lambda item: item.get('date_created') or '', reverse=True)[0]
+        # Um mesmo TXID pode ter vários pagamentos (o boleto é regerado quando o
+        # valor muda ou o QR expira). Um aprovado vale mais que o mais recente.
+        ordenados = sorted(results, key=lambda item: item.get('date_created') or '', reverse=True)
+        payment = next(
+            (item for item in ordenados if (item.get('status') or '').lower() in STATUS_PAGO_MERCADO_PAGO),
+            ordenados[0],
+        )
         payment_id = str(payment.get('id') or '')
         if payment_id:
             return consultar_pagamento_mercado_pago(payment_id)
@@ -388,6 +433,18 @@ def consultar_status_por_txid(txid: str) -> dict[str, Any]:
     except (RuntimeError, error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
         logger.exception('Falha ao consultar status PIX no Mercado Pago', extra={'event': 'pix.mercadopago.status_error', 'txid': txid})
         return {'txid': txid, 'status': 'desconhecido'}
+
+
+def cancelar_pagamento_mercado_pago(payment_id: str) -> bool:
+    """Cancela um PIX pendente para que o QR antigo não possa mais ser pago."""
+    if not payment_id or not _mercado_pago_access_token():
+        return False
+    try:
+        _mercado_pago_request('PUT', f'/v1/payments/{payment_id}', payload={'status': 'cancelled'})
+        return True
+    except (RuntimeError, error.HTTPError, error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        logger.warning('Nao foi possivel cancelar PIX antigo no Mercado Pago.', extra={'event': 'pix.mercadopago.cancel_error', 'payment_id': payment_id})
+        return False
 
 
 def validar_assinatura_webhook(body: bytes, assinatura_informada: str, *, request_id: str = '', data_id: str = '') -> bool:

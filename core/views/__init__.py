@@ -23,6 +23,7 @@ from .financeiro import (
     ver_comprovante_pagamento,
 )
 
+from .compras_nfce import compras_qrcode
 from .estoque import (
     almoxarifado,
     consumo_historico,

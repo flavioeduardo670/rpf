@@ -1,0 +1,238 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Ler nota fiscal{% endblock %}
+{% block page_title %}Ler nota fiscal{% endblock %}
+{% block page_subtitle %}Aponte a câmera para o QR Code da nota e a compra é registrada.{% endblock %}
+
+{% block extra_head %}
+<style>
+    .nfce-leitor { display: grid; gap: 12px; }
+    .nfce-video-wrap { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 480px; width: 100%; }
+    .nfce-video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .nfce-video-wrap::after { content: ''; position: absolute; inset: 18%; border: 3px solid var(--rpf-dourado, #DEAB2C); border-radius: 8px; pointer-events: none; }
+    .nfce-video-wrap[hidden] { display: none; }
+    .nfce-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .nfce-botoes [hidden] { display: none !important; }
+    .nfce-status { min-height: 1.4em; font-weight: 600; }
+    .nfce-status.erro { color: #b42318; }
+    .nfce-colar textarea { width: 100%; min-height: 72px; font-family: monospace; font-size: 0.85rem; }
+    .nfce-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .nfce-resumo div { border: 1px solid rgba(0,0,0,.12); border-radius: 8px; padding: 10px 12px; }
+    .nfce-resumo small { display: block; text-transform: uppercase; font-size: 0.7rem; letter-spacing: .04em; opacity: .7; }
+    .nfce-resumo strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+    .nfce-aviso { border-left: 4px solid var(--rpf-dourado, #DEAB2C); padding: 8px 12px; background: rgba(222,171,44,.12); margin-bottom: 16px; }
+    .nfce-num { text-align: right; white-space: nowrap; }
+    .nfce-modo ul { list-style: none; padding: 0; margin: 0; }
+    .nfce-modo li label { display: flex; gap: 8px; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+    <div class="top">
+        <a class="btn light" href="{% url 'compras' %}">Voltar para Compras</a>
+    </div>
+
+    {% if dados %}
+    <section class="card">
+        <h2>Confira e registre</h2>
+        {% if dados.aviso_consulta %}
+        <p class="nfce-aviso">{{ dados.aviso_consulta }}</p>
+        {% endif %}
+        <div class="nfce-resumo">
+            <div><small>Loja</small><strong>{{ dados.fornecedor|default:"-" }}</strong></div>
+            <div><small>CNPJ</small><strong>{{ cnpj_formatado }}</strong></div>
+            <div><small>Nota</small><strong>nº {{ dados.numero }} · série {{ dados.serie }}{% if dados.uf %} · {{ dados.uf }}{% endif %}</strong></div>
+            <div><small>Valor da nota</small><strong>{% if dados.valor_total is not None %}R$ {{ dados.valor_total|floatformat:2 }}{% else %}não informado{% endif %}</strong></div>
+        </div>
+
+        {% if dados.itens %}
+        <h3>Itens ({{ dados.itens|length }})</h3>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Item</th><th class="nfce-num">Qtd.</th><th class="nfce-num">Unitário</th><th class="nfce-num">Total</th></tr></thead>
+                <tbody>
+                {% for item in dados.itens %}
+                <tr>
+                    <td>{{ item.descricao }}</td>
+                    <td class="nfce-num">{{ item.quantidade|floatformat:"-3" }} {{ item.unidade }}</td>
+                    <td class="nfce-num">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+                    <td class="nfce-num">R$ {{ item.valor_total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if diferenca_itens %}
+        <p class="muted">A soma dos itens (R$ {{ soma_itens|floatformat:2 }}) é diferente do valor pago, provavelmente por desconto. No registro por item valem os valores de cada item.</p>
+        {% endif %}
+        {% endif %}
+
+        <form method="post" style="margin-top:16px;">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="confirmar">
+            {{ form.non_field_errors }}
+            <div class="nfce-modo">{{ form.modo.label_tag }} {{ form.modo }} {{ form.modo.errors }}</div>
+            {% for campo in form %}{% if campo.name != 'modo' %}
+            <p>{{ campo.label_tag }} {{ campo }} {{ campo.errors }}</p>
+            {% endif %}{% endfor %}
+            <div class="actions">
+                <a class="btn light" href="{% url 'compras_qrcode' %}">Ler outra nota</a>
+                <button type="submit" class="btn btn-primary">Registrar compra</button>
+            </div>
+        </form>
+    </section>
+    {% else %}
+    <section class="card">
+        <h2>1. Ler o QR Code</h2>
+        <div class="nfce-leitor">
+            <div class="nfce-botoes">
+                <button type="button" class="btn btn-primary" id="nfce-abrir-camera">Abrir câmera</button>
+                <label class="btn" for="nfce-foto">Tirar / enviar foto</label>
+                <input type="file" id="nfce-foto" accept="image/*" capture="environment" hidden>
+                <button type="button" class="btn light" id="nfce-fechar-camera" hidden>Fechar câmera</button>
+            </div>
+            <div class="nfce-video-wrap" id="nfce-video-wrap" hidden>
+                <video id="nfce-video" playsinline muted></video>
+            </div>
+            <p class="nfce-status" id="nfce-status" role="status" aria-live="polite"></p>
+            <canvas id="nfce-canvas" hidden></canvas>
+        </div>
+    </section>
+
+    <section class="card nfce-colar">
+        <h2>Ou cole o link do QR Code</h2>
+        <p class="muted">Se a câmera não abrir, leia o QR com o app de câmera do celular, copie o link e cole aqui.</p>
+        <form method="post" id="nfce-form-leitura">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="ler">
+            <textarea name="conteudo_qrcode" id="nfce-conteudo" placeholder="https://www.nfce.fazenda.sp.gov.br/...?p=3526..." required>{{ conteudo_qrcode|default:"" }}</textarea>
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Buscar nota</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if not dados %}
+<script src="{% static 'core/vendor/jsQR.js' %}"></script>
+<script>
+(() => {
+    const form = document.getElementById('nfce-form-leitura');
+    const campo = document.getElementById('nfce-conteudo');
+    const status = document.getElementById('nfce-status');
+    const video = document.getElementById('nfce-video');
+    const videoWrap = document.getElementById('nfce-video-wrap');
+    const canvas = document.getElementById('nfce-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const btnAbrir = document.getElementById('nfce-abrir-camera');
+    const btnFechar = document.getElementById('nfce-fechar-camera');
+    const inputFoto = document.getElementById('nfce-foto');
+    let stream = null;
+    let lendo = false;
+    let enviado = false;
+
+    let detector = null;
+    try {
+        if ('BarcodeDetector' in window) detector = new BarcodeDetector({ formats: ['qr_code'] });
+    } catch (e) { detector = null; }
+
+    const avisar = (texto, erro = false) => {
+        status.textContent = texto;
+        status.classList.toggle('erro', erro);
+    };
+
+    const pararCamera = () => {
+        lendo = false;
+        if (stream) stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+        videoWrap.hidden = true;
+        btnFechar.hidden = true;
+        btnAbrir.hidden = false;
+    };
+
+    const enviar = (texto) => {
+        if (enviado) return;
+        enviado = true;
+        pararCamera();
+        campo.value = texto;
+        avisar('QR Code lido! Buscando a nota na SEFAZ…');
+        form.submit();
+    };
+
+    const decodificar = async (fonte, largura, altura, tentarInvertido) => {
+        if (detector) {
+            try {
+                const achados = await detector.detect(fonte);
+                if (achados.length) return achados[0].rawValue;
+            } catch (e) { /* cai para o jsQR */ }
+        }
+        if (typeof jsQR !== 'function') return null;
+        canvas.width = largura;
+        canvas.height = altura;
+        ctx.drawImage(fonte, 0, 0, largura, altura);
+        const imagem = ctx.getImageData(0, 0, largura, altura);
+        const codigo = jsQR(imagem.data, largura, altura, { inversionAttempts: tentarInvertido ? 'attemptBoth' : 'dontInvert' });
+        return codigo ? codigo.data : null;
+    };
+
+    const lerQuadro = async () => {
+        if (!lendo) return;
+        if (video.readyState >= 2 && video.videoWidth) {
+            const escala = Math.min(1, 800 / video.videoWidth);
+            const texto = await decodificar(video, Math.round(video.videoWidth * escala), Math.round(video.videoHeight * escala), false);
+            if (texto) return enviar(texto);
+        }
+        setTimeout(lerQuadro, 200);
+    };
+
+    btnAbrir.addEventListener('click', async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            avisar('Este navegador não libera a câmera aqui (é preciso HTTPS). Use "Tirar / enviar foto".', true);
+            return;
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        } catch (e) {
+            avisar('Não foi possível abrir a câmera. Permita o acesso ou use "Tirar / enviar foto".', true);
+            return;
+        }
+        video.srcObject = stream;
+        await video.play().catch(() => {});
+        videoWrap.hidden = false;
+        btnFechar.hidden = false;
+        btnAbrir.hidden = true;
+        lendo = true;
+        avisar('Enquadre o QR Code da nota no quadrado.');
+        lerQuadro();
+    });
+
+    btnFechar.addEventListener('click', () => { pararCamera(); avisar(''); });
+
+    inputFoto.addEventListener('change', async () => {
+        const arquivo = inputFoto.files && inputFoto.files[0];
+        if (!arquivo) return;
+        avisar('Lendo a foto…');
+        const url = URL.createObjectURL(arquivo);
+        const imagem = new Image();
+        imagem.onload = async () => {
+            const escala = Math.min(1, 1600 / Math.max(imagem.naturalWidth, imagem.naturalHeight));
+            const texto = await decodificar(imagem, Math.round(imagem.naturalWidth * escala), Math.round(imagem.naturalHeight * escala), true);
+            URL.revokeObjectURL(url);
+            inputFoto.value = '';
+            if (texto) enviar(texto);
+            else avisar('Não achei um QR Code na foto. Tente mais perto, com boa luz e a nota bem esticada.', true);
+        };
+        imagem.onerror = () => { URL.revokeObjectURL(url); avisar('Não consegui abrir essa imagem.', true); };
+        imagem.src = url;
+    });
+
+    window.addEventListener('pagehide', pararCamera);
+})();
+</script>
+{% endif %}
+{% endblock %}
