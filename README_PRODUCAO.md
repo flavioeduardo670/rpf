@@ -16,6 +16,26 @@
 - `SECURE_HSTS_PRELOAD=True` somente quando domínio/subdomínios estiverem prontos para preload
 - `MERCADOPAGO_WEBHOOK_SECRET`: **obrigatória se o PIX estiver em uso** — sem ela o webhook de pagamento é recusado (HTTP 400) para impedir confirmações falsas.
 
+## Pagamento do aluguel (boleto PIX) e recibo por email
+
+Para o sistema reconhecer sozinho o pagamento do boleto e mandar o recibo:
+
+1. `MERCADOPAGO_ACCESS_TOKEN` — sem ele o boleto sai com um PIX "local" (chave da
+   casa), que **não** é reconhecido automaticamente.
+2. `MERCADOPAGO_NOTIFICATION_URL=https://<seu-dominio>/financeiro/pix/webhook/` e
+   `MERCADOPAGO_WEBHOOK_SECRET` (mesma URL/segredo cadastrados no painel do Mercado Pago).
+3. SMTP: `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`,
+   `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS=True`, `DJANGO_DEFAULT_FROM_EMAIL`.
+4. Email de cada morador preenchido no cadastro.
+5. Garantia para webhook perdido / email que falhou — rodar a cada 15–30 min (Cron Job do Render):
+
+   ```bash
+   python manage.py verificar_pagamentos_aluguel
+   ```
+
+O QR do boleto vale até o dia 10 do mês (ou 3 dias a partir da emissão, se já passou);
+ao regerar o boleto, um QR vencido é trocado e o anterior é cancelado no Mercado Pago.
+
 ## Deploy (ordem dos comandos)
 
 ```bash

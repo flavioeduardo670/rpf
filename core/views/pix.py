@@ -6,8 +6,9 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from core.models import CobrancaAluguel, Mensalidade, PedidoIngressoRock
-from core.services.pix_gateway import consultar_evento_mercado_pago, validar_assinatura_webhook
+from core.models import CobrancaAluguel, PedidoIngressoRock
+from core.services.aluguel import confirmar_pagamento_aluguel
+from core.services.pix_gateway import consultar_evento_mercado_pago, mercado_pago_configurado, validar_assinatura_webhook
 from core.services.rock import confirmar_pagamento_pedido
 
 
@@ -26,7 +27,8 @@ def _extrair_identificadores_webhook(request, payload):
         or ''
     ).strip()
     txid = str(payload.get('txid') or payload.get('external_reference') or '').strip()
-    event_type = str(payload.get('type') or request.GET.get('type') or '').strip().lower()
+    # Notificações IPN antigas chegam como ?topic=payment&id=123.
+    event_type = str(payload.get('type') or payload.get('topic') or request.GET.get('type') or request.GET.get('topic') or '').strip().lower()
     return payment_id, txid, event_type
 
 
@@ -50,7 +52,7 @@ def webhook_pix(request):
 
     status = (payload.get('status') or '').strip().lower()
     provider_payload = payload
-    if payment_id:
+    if payment_id and (mercado_pago_configurado() or event_type == 'order'):
         resultado = consultar_evento_mercado_pago(payment_id, event_type, payload)
         txid = resultado.get('txid') or txid
         status = resultado.get('status') or status
@@ -81,29 +83,20 @@ def webhook_pix(request):
     if not cobranca:
         return JsonResponse({'ok': True, 'detail': 'pagamento_nao_encontrado'})
 
-    cobranca.status_gateway = status or cobranca.status_gateway
     cobranca.webhook_recebido_em = timezone.now()
-    cobranca.provider_payload = provider_payload
-    if payment_id:
-        cobranca.payment_id = payment_id
-    update_fields = ['status_gateway', 'webhook_recebido_em', 'provider_payload', 'payment_id', 'atualizado_em']
-    enviar_comprovante = False
-    if status in STATUS_PAGO and cobranca.status != 'pago':
-        cobranca.status = 'pago'
-        cobranca.pago_em = timezone.now()
-        update_fields.extend(['status', 'pago_em'])
-        Mensalidade.objects.update_or_create(
-            morador=cobranca.morador,
-            mes_referencia=cobranca.mes_referencia,
-            defaults={'valor': cobranca.valor, 'pago': True, 'data_pagamento': timezone.localdate(cobranca.pago_em)},
+    cobranca.save(update_fields=['webhook_recebido_em', 'atualizado_em'])
+    if status in STATUS_PAGO:
+        # Idempotente: confirma uma vez e, se o recibo ainda não saiu (falha
+        # anterior de email), tenta enviá-lo de novo.
+        confirmar_pagamento_aluguel(
+            cobranca,
+            status_gateway=status,
+            provider_payload=provider_payload,
+            payment_id=payment_id,
         )
-        enviar_comprovante = True
-    cobranca.save(update_fields=update_fields)
-    if enviar_comprovante:
-        from core.views.financeiro import enviar_comprovante_aluguel_por_email
-        try:
-            enviar_comprovante_aluguel_por_email(cobranca)
-        except Exception:
-            logger.exception('Falha ao enviar comprovante de aluguel por email.', extra={'cobranca_id': cobranca.id})
+    elif cobranca.status != 'pago':
+        cobranca.status_gateway = status or cobranca.status_gateway
+        cobranca.provider_payload = provider_payload
+        cobranca.save(update_fields=['status_gateway', 'provider_payload', 'atualizado_em'])
 
     return JsonResponse({'ok': True, 'tipo': 'aluguel'})

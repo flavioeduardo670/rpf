@@ -312,7 +312,14 @@ MERCADOPAGO_WEBHOOK_SECRET = os.getenv('MERCADOPAGO_WEBHOOK_SECRET', '')
 MERCADOPAGO_NOTIFICATION_URL = os.getenv('MERCADOPAGO_NOTIFICATION_URL', '')
 MERCADOPAGO_PAYER_EMAIL_FALLBACK = os.getenv('MERCADOPAGO_PAYER_EMAIL_FALLBACK', 'pagador@example.com')
 
-EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+# Em desenvolvimento sem SMTP configurado, os emails (ex.: recibo do aluguel)
+# aparecem no terminal do runserver em vez de falhar contra localhost:25.
+_EMAIL_BACKEND_PADRAO = (
+    'django.core.mail.backends.console.EmailBackend'
+    if DEBUG and not os.getenv('DJANGO_EMAIL_HOST')
+    else 'django.core.mail.backends.smtp.EmailBackend'
+)
+EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', _EMAIL_BACKEND_PADRAO)
 EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'localhost')
 EMAIL_PORT = int(os.getenv('DJANGO_EMAIL_PORT', '25'))
 EMAIL_HOST_USER = os.getenv('DJANGO_EMAIL_HOST_USER', '')

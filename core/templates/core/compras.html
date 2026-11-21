@@ -9,6 +9,9 @@
 <div class="wrap">
     <div class="top">
         <div>
+            {% if can_edit_compras %}
+            <a class="btn btn-primary" href="{% url 'compras_qrcode' %}">Ler QR Code da nota</a>
+            {% endif %}
             <a class="btn" href="{% url 'exportar_compras_csv' %}">Gerar planilha</a>
         </div>
     </div>
@@ -29,6 +32,9 @@
         <section class="card">
             <h2>Ajuda rápida</h2>
             <p class="muted">Preencha os dados da nota fiscal. Use a categoria “rock” para habilitar o vínculo com um rock cadastrado.</p>
+            {% if can_edit_compras %}
+            <p class="muted">Tem a nota do mercado em mãos? Use <a href="{% url 'compras_qrcode' %}">Ler QR Code da nota</a>: o sistema lê a loja, a data, os itens e o valor e registra a compra.</p>
+            {% endif %}
         </section>
     </div>
 

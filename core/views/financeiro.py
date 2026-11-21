@@ -49,7 +49,14 @@ from core.models import (
 )
 from core.services.estoque import garantir_setores_e_locais_base
 from core.services.pdf import montar_pdf_por_comandos as _montar_pdf_por_comandos
-from core.services.pix_gateway import criar_cobranca_pix_avulsa, consultar_status_por_txid, normalizar_chave_pix
+from core.services.aluguel import verificar_cobranca_no_gateway, verificar_pagamentos_pendentes
+from core.services.pix_gateway import (
+    cancelar_pagamento_mercado_pago,
+    criar_cobranca_pix_avulsa,
+    expiracao_do_pagamento,
+    mercado_pago_configurado,
+    normalizar_chave_pix,
+)
 from core.services.financeiro import (
     calcular_rateio_financeiro,
     resolver_mes_referencia,
@@ -642,6 +649,36 @@ def _resolver_chave_pix_aluguel():
     return normalizar_chave_pix(config.conta_recebimentos_pix or config.conta_principal_pix or config.conta_pagamentos_pix or '')
 
 
+STATUS_GATEWAY_SEM_QR_VALIDO = {'cancelado', 'rejeitado', 'nao_encontrado', 'cancelled', 'rejected', 'expired'}
+# Dias que o QR do boleto fica pagável, contados da emissão, quando o
+# vencimento do mês já passou.
+DIAS_MINIMOS_VALIDADE_PIX = 3
+
+
+def _validade_pix_aluguel(mes_referencia):
+    """O PIX vale até o fim do dia de vencimento (dia 10) ou, se ele já passou,
+    por mais alguns dias a partir de hoje."""
+    vencimento = timezone.make_aware(datetime.combine(mes_referencia.replace(day=10), datetime.max.time().replace(microsecond=0)))
+    minimo = timezone.localtime() + timedelta(days=DIAS_MINIMOS_VALIDADE_PIX)
+    return max(vencimento, minimo)
+
+
+def _cobranca_precisa_novo_pix(cobranca, valor):
+    if cobranca.status == 'pago':
+        return False
+    if cobranca.valor != valor or not (cobranca.payload_pix or cobranca.qr_code):
+        return True
+    if cobranca.status_gateway in STATUS_GATEWAY_SEM_QR_VALIDO:
+        return True
+    # Boleto emitido com PIX local (Mercado Pago fora do ar ou sem token) não é
+    # reconhecido automaticamente; assim que o gateway estiver disponível, troca.
+    # Sem gateway, regerar daria o mesmo PIX local, então reaproveita.
+    if mercado_pago_configurado() and (not cobranca.payment_id or (cobranca.status_gateway or '').startswith('erro')):
+        return True
+    expira_em = expiracao_do_pagamento(cobranca.provider_payload)
+    return bool(expira_em and expira_em <= timezone.now() + timedelta(hours=1))
+
+
 def _gerar_ou_atualizar_cobranca_aluguel(contexto):
     morador = contexto['item']['morador']
     mes_referencia = contexto['mes_referencia']
@@ -651,10 +688,17 @@ def _gerar_ou_atualizar_cobranca_aluguel(contexto):
         mes_referencia=mes_referencia,
         defaults={'valor': valor},
     )
-    valor_alterado = cobranca.valor != valor
-    precisa_payload = not (cobranca.payload_pix or cobranca.qr_code)
-    deve_recriar = criada or (cobranca.status != 'pago' and (valor_alterado or precisa_payload))
+    if not criada and cobranca.status == 'aguardando_pagamento' and cobranca.payment_id:
+        # O morador pode ter pago e o webhook não ter chegado: confere antes de
+        # emitir outro QR (evita cobrar duas vezes).
+        try:
+            verificar_cobranca_no_gateway(cobranca)
+        except Exception:
+            logger.exception('Falha ao conferir cobranca de aluguel antes de regerar o boleto.', extra={'cobranca_id': cobranca.id})
+        cobranca.refresh_from_db()
+    deve_recriar = criada or _cobranca_precisa_novo_pix(cobranca, valor)
     if deve_recriar:
+        pagamento_anterior = cobranca.payment_id if not criada else ''
         cobranca.valor = valor
         if not cobranca.txid or len(cobranca.txid) > 25:
             cobranca.save()
@@ -665,7 +709,14 @@ def _gerar_ou_atualizar_cobranca_aluguel(contexto):
             chave_pix=_resolver_chave_pix_aluguel(),
             nome_pagador=contexto['morador_label'],
             categoria='Aluguel',
+            payer_email=morador.email or '',
+            data_expiracao=_validade_pix_aluguel(mes_referencia),
         )
+        novo_pagamento = resultado.get('payment_id') or ''
+        if pagamento_anterior and novo_pagamento and novo_pagamento != pagamento_anterior:
+            cancelar_pagamento_mercado_pago(pagamento_anterior)
+        # Sem novo pagamento no gateway, o payment_id antigo não vale mais.
+        cobranca.payment_id = ''
         cobranca.txid = resultado.get('txid') or cobranca.txid
         cobranca.payment_id = resultado.get('payment_id') or cobranca.payment_id
         cobranca.payload_pix = resultado.get('payload_pix') or cobranca.payload_pix
@@ -742,59 +793,16 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
 
 
 
-def _status_pix_pago(status):
-    return (status or '').strip().lower() in {'pago', 'paid', 'concluido', 'approved'}
-
-
-def _marcar_cobranca_aluguel_como_paga(cobranca, *, provider_payload=None, status_gateway=''):
-    if cobranca.status == 'pago':
-        return False
-    agora = timezone.now()
-    cobranca.status = 'pago'
-    cobranca.pago_em = agora
-    if status_gateway:
-        cobranca.status_gateway = status_gateway
-    if provider_payload is not None:
-        cobranca.provider_payload = provider_payload
-    cobranca.save(update_fields=['status', 'pago_em', 'status_gateway', 'provider_payload', 'atualizado_em'])
-    Mensalidade.objects.update_or_create(
-        morador=cobranca.morador,
-        mes_referencia=cobranca.mes_referencia,
-        defaults={'valor': cobranca.valor, 'pago': True, 'data_pagamento': timezone.localdate(agora)},
-    )
-    enviar_comprovante_aluguel_por_email(cobranca)
-    return True
-
-
 def _sincronizar_cobrancas_pix_aluguel(mes_referencia, moradores):
     moradores_ids = [morador.id for morador in moradores]
     if not moradores_ids:
         return 0
-    sincronizadas = 0
-    cobrancas = CobrancaAluguel.objects.select_related('morador').filter(
+    cobrancas = CobrancaAluguel.objects.filter(
         mes_referencia=mes_referencia,
         morador_id__in=moradores_ids,
         status='aguardando_pagamento',
-    ).exclude(txid='')
-    for cobranca in cobrancas:
-        resultado = consultar_status_por_txid(cobranca.txid)
-        status_gateway = resultado.get('status') or ''
-        provider_payload = resultado.get('provider_payload') or resultado
-        if _status_pix_pago(status_gateway):
-            try:
-                if _marcar_cobranca_aluguel_como_paga(
-                    cobranca,
-                    provider_payload=provider_payload,
-                    status_gateway=status_gateway,
-                ):
-                    sincronizadas += 1
-            except Exception:
-                logger.exception('Falha ao sincronizar cobranca PIX de aluguel paga.', extra={'cobranca_id': cobranca.id})
-        elif status_gateway and status_gateway != cobranca.status_gateway:
-            cobranca.status_gateway = status_gateway
-            cobranca.provider_payload = provider_payload
-            cobranca.save(update_fields=['status_gateway', 'provider_payload', 'atualizado_em'])
-    return sincronizadas
+    )
+    return verificar_pagamentos_pendentes(cobrancas)['confirmadas']
 
 def _gerar_pdf_comprovante_aluguel(cobranca):
     largura_pagina = Decimal('595')
@@ -1194,11 +1202,17 @@ def exportar_boleto_aluguel_morador_pdf(request, morador_id):
     contexto = _contexto_extrato_morador(request, morador_id)
     cobranca = _gerar_ou_atualizar_cobranca_aluguel(contexto)
     mes_referencia = contexto['mes_referencia']
-    pdf = _gerar_pdf_boleto_aluguel(contexto, cobranca)
     nome_morador = slugify(contexto['morador_label']) or f"morador-{morador_id}"
+    if cobranca.status == 'pago':
+        # Já pago: entrega o recibo em vez de um QR que não deve ser pago de novo.
+        pdf = _gerar_pdf_comprovante_aluguel(cobranca)
+        prefixo = 'comprovante_aluguel'
+    else:
+        pdf = _gerar_pdf_boleto_aluguel(contexto, cobranca)
+        prefixo = 'boleto_aluguel'
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = (
-        f'attachment; filename="boleto_aluguel_{nome_morador}_{mes_referencia.strftime("%Y_%m")}.pdf"'
+        f'attachment; filename="{prefixo}_{nome_morador}_{mes_referencia.strftime("%Y_%m")}.pdf"'
     )
     return response
 
