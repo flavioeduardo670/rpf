@@ -1,6 +1,7 @@
+import json
 from datetime import date
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib import error
 
 from django.contrib.auth.models import Group, User
@@ -10,6 +11,7 @@ from django.urls import reverse
 from core.models import Morador, NotaFiscal
 from core.services.nfce import (
     QRCodeNFCeInvalido,
+    buscar_nome_empresa,
     chave_acesso_valida,
     consultar_nfce,
     digito_verificador_chave,
@@ -60,7 +62,30 @@ HTML_SEFAZ = """
 """
 
 
+# MG (31), nov/2026, CNPJ 23.960.651/0001-29, modelo 65, série 1, nº 2630192
+CHAVE_MG_43 = '31' + '2611' + '23960651000129' + '65' + '001' + '002630192' + '1' + '12345678'
+CHAVE_MG = CHAVE_MG_43 + str(digito_verificador_chave(CHAVE_MG_43))
+URL_MG = f'https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p={CHAVE_MG}|2|1|1|ABCDEF0123456789'
+
+# Resumo do que o portal de MG devolve hoje para um acesso sem navegador.
+HTML_MG_CAPTCHA = """
+<html><body><form id="formPrincipal">
+  <h4>Nota Fiscal de Consumidor Eletrônica - Visualização dados qrcode NFC-e</h4>
+  <div class="panel-body"><b>2. </b>reCAPTCHA é um serviço que protege este site contra spam e abuso.</div>
+  <div class="g-recaptcha"><script>jQuery.getScript("https://challenges.cloudflare.com/turnstile/v0/api.js")</script>
+  <div class="cf-turnstile" data-sitekey="x"></div></div>
+  <a href="#" class="btn btn-primary">Visualizar</a>
+</form></body></html>
+"""
+
+
 class InterpretarQRCodeTests(SimpleTestCase):
+    def test_nota_do_mes_corrente_sugere_a_data_de_hoje(self):
+        with patch('core.services.nfce.timezone.localdate', return_value=date(2026, 11, 21)):
+            self.assertEqual(interpretar_qrcode_nfce(URL_MG).data_emissao, date(2026, 11, 21))
+        with patch('core.services.nfce.timezone.localdate', return_value=date(2026, 12, 2)):
+            self.assertEqual(interpretar_qrcode_nfce(URL_MG).data_emissao, date(2026, 11, 1))
+
     def test_chave_com_digito_errado_e_invalida(self):
         self.assertTrue(chave_acesso_valida(CHAVE))
         errada = CHAVE[:43] + str((int(CHAVE[43]) + 1) % 10)
@@ -123,18 +148,66 @@ class ConsultaSefazTests(SimpleTestCase):
         self.assertEqual(dados.data_emissao, date(2026, 4, 14))
         self.assertEqual(dados.aviso_consulta, '')
 
+    @patch('core.services.nfce.buscar_nome_empresa', return_value='MERCADO DO CNPJ')
     @patch('core.services.nfce._baixar_pagina', side_effect=error.URLError('timeout'))
-    def test_falha_na_sefaz_mantem_dados_do_qrcode_com_aviso(self, _baixar):
+    def test_falha_na_sefaz_mantem_dados_do_qrcode_com_aviso(self, _baixar, buscar_nome):
         dados = consultar_nfce(interpretar_qrcode_nfce(URL_ONLINE))
         self.assertFalse(dados.consulta_sefaz_ok)
         self.assertEqual(dados.chave_acesso, CHAVE)
         self.assertIn('SEFAZ não respondeu', dados.aviso_consulta)
+        buscar_nome.assert_called_once_with('12345678000195')
+        self.assertEqual(dados.fornecedor, 'MERCADO DO CNPJ')
 
+    @patch('core.services.nfce.buscar_nome_empresa', return_value='')
     @patch('core.services.nfce._baixar_pagina')
-    def test_nao_acessa_links_fora_de_gov_br(self, baixar):
+    def test_nao_acessa_links_fora_de_gov_br(self, baixar, _buscar_nome):
         dados = consultar_nfce(interpretar_qrcode_nfce(f'https://golpe.example.com/?p={CHAVE}|2|1|1|X'))
         baixar.assert_not_called()
         self.assertIn('.gov.br', dados.aviso_consulta)
+
+    @patch('core.services.nfce.buscar_nome_empresa', return_value='MERCADINHO VILELA')
+    @patch('core.services.nfce._baixar_pagina', return_value=HTML_MG_CAPTCHA)
+    def test_portal_com_nao_sou_robo_usa_nome_do_cnpj_e_avisa(self, _baixar, _buscar_nome):
+        dados = consultar_nfce(interpretar_qrcode_nfce(URL_MG))
+        self.assertFalse(dados.consulta_sefaz_ok)
+        self.assertTrue(dados.sefaz_pede_verificacao)
+        self.assertIn('não sou robô', dados.aviso_consulta)
+        self.assertIn('de MG', dados.aviso_consulta)
+        self.assertEqual(dados.fornecedor, 'MERCADINHO VILELA')
+        self.assertIsNone(dados.valor_total)
+
+    @patch('core.services.nfce.buscar_nome_empresa')
+    @patch('core.services.nfce._baixar_pagina', return_value=HTML_SEFAZ)
+    def test_nao_consulta_cnpj_quando_a_sefaz_traz_a_loja(self, _baixar, buscar_nome):
+        consultar_nfce(interpretar_qrcode_nfce(URL_ONLINE))
+        buscar_nome.assert_not_called()
+
+
+class BuscarNomeEmpresaTests(SimpleTestCase):
+    def _resposta(self, corpo):
+        resposta = MagicMock()
+        resposta.__enter__.return_value.read.return_value = json.dumps(corpo).encode('utf-8')
+        return resposta
+
+    def test_prefere_nome_fantasia(self):
+        with patch('core.services.nfce.request.urlopen', return_value=self._resposta(
+            {'razao_social': 'MERCADINHO VILELA LTDA', 'nome_fantasia': 'MERCADINHO VILELA'}
+        )) as urlopen:
+            self.assertEqual(buscar_nome_empresa('23960651000129'), 'MERCADINHO VILELA')
+        self.assertIn('/cnpj/v1/23960651000129', urlopen.call_args[0][0].full_url)
+
+    def test_sem_fantasia_usa_razao_social(self):
+        with patch('core.services.nfce.request.urlopen', return_value=self._resposta(
+            {'razao_social': 'MERCADINHO VILELA LTDA', 'nome_fantasia': ''}
+        )):
+            self.assertEqual(buscar_nome_empresa('23960651000129'), 'MERCADINHO VILELA LTDA')
+
+    def test_falha_ou_cnpj_invalido_devolve_vazio(self):
+        with patch('core.services.nfce.request.urlopen', side_effect=error.URLError('fora')):
+            self.assertEqual(buscar_nome_empresa('23960651000129'), '')
+        with patch('core.services.nfce.request.urlopen') as urlopen:
+            self.assertEqual(buscar_nome_empresa('123'), '')
+            urlopen.assert_not_called()
 
     def test_sessao_ida_e_volta_preserva_os_dados(self):
         with patch('core.services.nfce._baixar_pagina', return_value=HTML_SEFAZ):
@@ -232,6 +305,22 @@ class ComprasQRCodeViewTests(TestCase):
         response = self._confirmar()
         self.assertRedirects(response, reverse('compras_qrcode'), fetch_redirect_response=False)
         self.assertEqual(NotaFiscal.objects.count(), 0)
+
+    def test_nota_de_mg_com_nao_sou_robo_mostra_link_e_pede_valor(self, baixar):
+        baixar.return_value = HTML_MG_CAPTCHA
+        with patch('core.services.nfce.buscar_nome_empresa', return_value='MERCADINHO VILELA'):
+            response = self.client.post(reverse('compras_qrcode'), {'acao': 'ler', 'conteudo_qrcode': URL_MG})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'não sou robô')
+        self.assertContains(response, 'value="MERCADINHO VILELA"')
+        self.assertContains(response, 'Abrir a nota na SEFAZ')
+        self.assertContains(response, 'href="https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=')
+        self.assertContains(response, 'autofocus')
+        self.assertContains(response, '23.960.651/0001-29')
+
+    def test_leitura_completa_nao_mostra_link_da_sefaz(self, _baixar):
+        response = self._ler()
+        self.assertNotContains(response, 'Abrir a nota na SEFAZ')
 
     def test_quem_so_visualiza_compras_nao_registra(self, _baixar):
         leitor = User.objects.create_user(username='so_ve', password='123456')

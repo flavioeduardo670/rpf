@@ -38,7 +38,12 @@
     <section class="card">
         <h2>Confira e registre</h2>
         {% if dados.aviso_consulta %}
-        <p class="nfce-aviso">{{ dados.aviso_consulta }}</p>
+        <div class="nfce-aviso">
+            <p style="margin:0;">{{ dados.aviso_consulta }}</p>
+            {% if link_sefaz %}
+            <p style="margin:8px 0 0;"><a class="btn light" href="{{ link_sefaz }}" target="_blank" rel="noopener noreferrer">Abrir a nota na SEFAZ</a></p>
+            {% endif %}
+        </div>
         {% endif %}
         <div class="nfce-resumo">
             <div><small>Loja</small><strong>{{ dados.fornecedor|default:"-" }}</strong></div>
