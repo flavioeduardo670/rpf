@@ -1,81 +1,59 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
-{% block title %}Início | ERP RPF{% endblock %}
+{% block title %}Início{% endblock %}
+
+{% block cabecalho %}
+<section class="rpf-roleta" data-roleta aria-roledescription="carrossel" aria-label="Fotos da república" tabindex="0">
+    <div class="rpf-roleta__trilho">
+        {% for slide in slides %}
+        <figure class="rpf-roleta__slide" aria-roledescription="slide" aria-label="{{ forloop.counter }} de {{ slides|length }}" data-legenda="{{ slide.legenda }}"{% if not forloop.first %} aria-hidden="true"{% endif %}>
+            <img src="{{ slide.url }}" alt="{{ slide.titulo }}"{% if not forloop.first %} loading="lazy"{% endif %}>
+        </figure>
+        {% endfor %}
+    </div>
+
+    <div class="rpf-roleta__texto">
+        <h1 class="rpf-roleta__titulo"><span class="rpf-bloco">República<br>Portão dos Fundos</span></h1>
+        <p class="rpf-roleta__legenda" aria-live="polite"><span class="rpf-subtitulo">{{ slides.0.legenda }}</span></p>
+    </div>
+
+    <div class="rpf-roleta__controles">
+        <div class="rpf-roleta__pontos">
+            {% for slide in slides %}
+            <button type="button" class="rpf-roleta__ponto" aria-label="Mostrar imagem {{ forloop.counter }}"{% if forloop.first %} aria-current="true"{% endif %}></button>
+            {% endfor %}
+        </div>
+        <button type="button" class="rpf-roleta__botao" data-roleta-anterior aria-label="Imagem anterior">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13 3L6 10l7 7" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+        </button>
+        <button type="button" class="rpf-roleta__botao" data-roleta-pausa aria-label="Pausar a roleta">
+            <svg data-icone="pausa" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12M14 4v12" stroke="currentColor" stroke-width="3.5"/></svg>
+            <svg data-icone="play" viewBox="0 0 20 20" aria-hidden="true" hidden><path d="M6 3l11 7-11 7z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="rpf-roleta__botao" data-roleta-proximo aria-label="Próxima imagem">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+        </button>
+    </div>
+</section>
+{% endblock %}
 
 {% block content %}
-<section class="rpf-dashboard-grid">
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Minha conta</p>
-        <h2 class="rpf-kpi__value">Perfil</h2>
-        <p>Consulte seus dados de usuário e vínculo com morador.</p>
-        <a href="{% url 'perfil' %}" class="rpf-btn rpf-btn--primary">Acessar perfil</a>
-    </article>
+<p class="rpf-boas-vindas">Olá, {{ user.first_name|default:user.username }}. Por onde a gente começa hoje?</p>
 
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Cadastro</p>
-        <h2 class="rpf-kpi__value">Moradores</h2>
-        <p>Gerencie moradores, quartos e status de atividade.</p>
-        <a href="{% url 'moradores' %}" class="rpf-btn rpf-btn--primary">Acessar módulo</a>
-    </article>
+<nav class="rpf-atalhos" aria-label="Seções do sistema">
+    {% for atalho in atalhos %}
+    <a class="rpf-atalho" href="{{ atalho.url }}">
+        <span class="rpf-atalho__icone">{% include 'core/partials/boneco.html' with tipo='icone' tom='branco' variante=atalho.variante classe='bn' %}</span>
+        <span>
+            <span class="rpf-atalho__nome">{{ atalho.titulo }}</span>
+            <span class="rpf-atalho__descricao">{{ atalho.descricao }}</span>
+        </span>
+    </a>
+    {% endfor %}
+</nav>
+{% endblock %}
 
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Financeiro</p>
-        <h2 class="rpf-kpi__value">Financeiro</h2>
-        <p>Acompanhe recebimentos, despesas, rateio e exportação.</p>
-        <a href="{% url 'financeiro' %}" class="rpf-btn rpf-btn--primary">Acessar módulo</a>
-    </article>
-
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Estoque</p>
-        <h2 class="rpf-kpi__value">Almoxarifado</h2>
-        <p>Controle produtos e movimentações de entrada e saída.</p>
-        <a href="{% url 'almoxarifado' %}" class="rpf-btn rpf-btn--primary">Acessar módulo</a>
-    </article>
-
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Operações</p>
-        <h2 class="rpf-kpi__value">OS</h2>
-        <p>Registre e acompanhe ordens de serviço por setor.</p>
-        <a href="{% url 'manutencao' %}" class="rpf-btn rpf-btn--primary">Acessar módulo</a>
-    </article>
-
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Agenda</p>
-        <h2 class="rpf-kpi__value">Calendário</h2>
-        <p>Visualize e gerencie eventos da casa em um só lugar.</p>
-        <a href="{% url 'calendario' %}" class="rpf-btn rpf-btn--primary">Acessar módulo</a>
-    </article>
-
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Compras</p>
-        <h2 class="rpf-kpi__value">Compras</h2>
-        <p>Cadastre notas fiscais e acompanhe histórico de compras.</p>
-        <a href="{% url 'compras' %}" class="rpf-btn rpf-btn--primary">Acessar módulo</a>
-    </article>
-
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Eventos</p>
-        <h2 class="rpf-kpi__value">Rocks</h2>
-        <p>Gerencie eventos e ingressos em um fluxo único.</p>
-        <a href="{% if usuario_sem_vinculo %}{% url 'comprar_rocks' %}{% else %}{% url 'rock' %}{% endif %}" class="rpf-btn rpf-btn--primary">
-            {% if usuario_sem_vinculo %}Comprar ingressos{% else %}Acessar rocks{% endif %}
-        </a>
-    </article>
-
-    {% if user.is_superuser %}
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Configurações</p>
-        <h2 class="rpf-kpi__value">Casa</h2>
-        <p>Edite cômodos, locais, setores e funções da casa.</p>
-        <a href="{% url 'configurar_casa' %}" class="rpf-btn rpf-btn--secondary">Acessar configurações</a>
-    </article>
-
-    <article class="rpf-card">
-        <p class="rpf-kpi__label">Permissões</p>
-        <h2 class="rpf-kpi__value">Acessos</h2>
-        <p>Defina os acessos de moradores e usuários sem vínculo.</p>
-        <a href="{% url 'gerenciar_acessos' %}" class="rpf-btn rpf-btn--secondary">Gerenciar</a>
-    </article>
-    {% endif %}
-</section>
+{% block extra_js %}
+<script defer src="{% static 'core/ui/rpf.roleta.js' %}"></script>
 {% endblock %}

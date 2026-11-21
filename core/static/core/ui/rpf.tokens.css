@@ -1,27 +1,84 @@
+/* Identidade visual RPF — Manual de Redes Sociais e apresentação de rebranding.
+   Base preto (#000000) e branco (#FFFFFF), destaque dourado #DEAB2C (o chopp),
+   Montserrat como fonte oficial. O itálico serifado faz o papel da fonte
+   "Elegant" dos stories (subtítulos). */
+
+@layer base, componentes, shell, boneco, paginas;
+
+@font-face {
+    font-family: "Montserrat";
+    src: url("../fonts/montserrat-var.woff") format("woff");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Crimson Text";
+    src: url("../fonts/crimson-text-italic.woff") format("woff");
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Crimson Text";
+    src: url("../fonts/crimson-text-semibold-italic.woff") format("woff");
+    font-weight: 600;
+    font-style: italic;
+    font-display: swap;
+}
+
 :root {
-    --rpf-black: #0b0b0b;
-    --rpf-white: #ffffff;
-    --rpf-gray-100: #f5f5f5;
-    --rpf-gray-200: #e7e7e7;
-    --rpf-gray-300: #dadada;
-    --rpf-gray-600: #6b6b6b;
-    --rpf-yellow-500: #ffc700;
-    --rpf-yellow-600: #e0b000;
+    /* Cores do manual */
+    --preto: #000000;
+    --branco: #ffffff;
+    --amarelo: #deab2c;          /* dourado do chopp (apresentação de rebranding) */
+    --amarelo-claro: #f8edd0;    /* realce de linhas/itens */
 
-    --rpf-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    --rpf-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    /* Neutros de apoio (texto secundário com contraste AA no branco) */
+    --cinza-texto: #545454;
+    --cinza-borda: #8f8f8f;      /* bordas de campos: 3:1 sobre branco */
+    --cinza-linha: #e1e1e1;
+    --cinza-fundo: #f3f3f3;
 
-    --rpf-space-1: 4px;
-    --rpf-space-2: 8px;
-    --rpf-space-3: 12px;
-    --rpf-space-4: 16px;
-    --rpf-space-5: 24px;
-    --rpf-space-6: 32px;
+    /* Estados (só onde a informação depende disso) */
+    --verde: #0e7a4c;
+    --verde-fundo: #e3f4ec;
+    --vermelho: #c0261f;
+    --vermelho-fundo: #fbe6e4;
 
-    --rpf-radius-2: 12px;
-    --rpf-radius-3: 18px;
-    --rpf-shadow-1: 0 10px 20px rgba(0, 0, 0, .06);
+    --fonte: "Montserrat", "Segoe UI", system-ui, sans-serif;
+    --fonte-elegante: "Crimson Text", Georgia, "Times New Roman", serif;
 
-    --rpf-focus-ring: 0 0 0 4px rgba(255, 199, 0, .55);
-    --rpf-focus-outline: 0 0 0 2px rgba(11, 11, 11, .9);
+    --raio: 4px;
+    --raio-painel: 6px;
+    --borda-forte: 2px solid var(--preto);
+    --anel-foco: 0 0 0 3px var(--amarelo), 0 0 0 5px var(--preto);
+
+    --espaco-1: 4px;
+    --espaco-2: 8px;
+    --espaco-3: 12px;
+    --espaco-4: 16px;
+    --espaco-5: 24px;
+    --espaco-6: 32px;
+    --espaco-7: 48px;
+
+    /* Compatibilidade com nomes antigos usados em alguns templates */
+    --rpf-black: var(--preto);
+    --rpf-white: var(--branco);
+    --rpf-yellow-500: var(--amarelo);
+    --rpf-gray-100: var(--cinza-fundo);
+    --rpf-gray-200: var(--cinza-linha);
+    --rpf-gray-300: var(--cinza-linha);
+    --rpf-gray-600: var(--cinza-texto);
+    --rpf-space-1: var(--espaco-1);
+    --rpf-space-2: var(--espaco-2);
+    --rpf-space-3: var(--espaco-3);
+    --rpf-space-4: var(--espaco-4);
+    --rpf-space-5: var(--espaco-5);
+    --rpf-space-6: var(--espaco-6);
+    --rpf-font-sans: var(--fonte);
+    --rpf-focus-ring: 0 0 0 3px var(--amarelo);
+    --rpf-focus-outline: 0 0 0 5px var(--preto);
 }

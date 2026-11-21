@@ -41,7 +41,10 @@ def webhook_pix(request):
     payment_id, txid, event_type = _extrair_identificadores_webhook(request, payload)
     assinatura = request.headers.get('X-Signature') or request.headers.get('X-Webhook-Signature', '')
     request_id = request.headers.get('X-Request-Id', '')
-    data_id = request.GET.get('data.id') or payment_id
+    # Pelo padrão do Mercado Pago, o manifesto assinado usa o data.id da query
+    # string (em minúsculas). Se ele não vier na URL, o campo é omitido do
+    # manifesto; usar o id do corpo como fallback invalidava assinaturas legítimas.
+    data_id = (request.GET.get('data.id') or '').strip().lower()
     if not validar_assinatura_webhook(request.body, assinatura, request_id=request_id, data_id=data_id):
         return HttpResponseBadRequest('Assinatura invalida.')
 

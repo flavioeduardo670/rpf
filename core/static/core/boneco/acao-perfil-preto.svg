@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 96 610 516" role="img"><style>.q{opacity:0}@keyframes q0{0%,24.99%{opacity:1}25.00%,100%{opacity:0}}.q0{animation:q0 0.62s linear 3}@keyframes q1{0%,24.99%{opacity:0}25.00%,49.99%{opacity:1}50.00%,100%{opacity:0}}.q1{animation:q1 0.62s linear 3}@keyframes q2{0%,49.99%{opacity:0}50.00%,74.99%{opacity:1}75.00%,100%{opacity:0}}.q2{animation:q2 0.62s linear 3}@keyframes q3{0%,74.99%{opacity:0}75.00%,99.99%{opacity:1}100.00%,100%{opacity:0}}.q3{animation:q3 0.62s linear 3}.fim{opacity:0;animation:fim 1.86s linear forwards}@keyframes fim{0%,99.9%{opacity:0}100%{opacity:1}}@media (prefers-reduced-motion: reduce){.q{display:none}.fim{opacity:1;animation:none}}</style>
+<g class="q q0"><polyline points="540,441.1 555.4,513.5 558.5,603.5" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="578.6,284.3 569.6,194.7 635.9,179.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="538.5,455 557.4,276" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="540,441.1 527.2,514 527.2,604" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="531.7,309.5 449.4,273.2 453.9,205.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="575.9" cy="229.4" r="42" fill="#000"/>
+<g transform="translate(575.9 229.4) rotate(-4)" fill="#000"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#000" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g stroke="#000" stroke-width="14" stroke-linecap="butt"><path d="M635.9 179.4 l-6 -36 M635.9 179.4 l16 -32"/></g><g transform="translate(445.9 189.4) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#000"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q1"><polyline points="540,441.1 555.4,513.5 558.5,603.5" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="578.6,284.3 569.6,194.7 635.9,179.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="538.5,455 557.4,276" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="540,441.1 527.2,514 527.2,604" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="531.7,309.5 449.4,273.2 453.9,205.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="575.9" cy="229.4" r="42" fill="#000"/>
+<g transform="translate(575.9 229.4) rotate(-4)" fill="#000"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#000" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g stroke="#000" stroke-width="14" stroke-linecap="butt"><path d="M635.9 179.4 l-6 -36 M635.9 179.4 l16 -32"/></g><g transform="translate(445.9 189.4) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#000"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q2"><polyline points="540,441.1 555.4,513.5 558.5,603.5" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="578.6,284.3 569.6,194.7 635.9,179.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="538.5,455 557.4,276" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="540,441.1 527.2,514 527.2,604" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="531.7,309.5 449.4,273.2 453.9,205.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="575.9" cy="229.4" r="42" fill="#000"/>
+<g transform="translate(575.9 229.4) rotate(-4)" fill="#000"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#000" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g stroke="#000" stroke-width="14" stroke-linecap="butt"><path d="M635.9 179.4 l-6 -36 M635.9 179.4 l16 -32"/></g><g transform="translate(445.9 189.4) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#000"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g><g transform="translate(445.9 149.4)" stroke="#DEAB2C" stroke-width="7" stroke-linecap="round"><path d="M0 -26V-44M-22 -14L-36 -24M22 -14L36 -24"/></g></g><g class="q q3"><polyline points="540,441.1 555.4,513.5 558.5,603.5" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="578.6,284.3 569.6,194.7 635.9,179.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="538.5,455 557.4,276" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="540,441.1 527.2,514 527.2,604" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="531.7,309.5 449.4,273.2 453.9,205.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="575.9" cy="229.4" r="42" fill="#000"/>
+<g transform="translate(575.9 229.4) rotate(-4)" fill="#000"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#000" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g stroke="#000" stroke-width="14" stroke-linecap="butt"><path d="M635.9 179.4 l-6 -36 M635.9 179.4 l16 -32"/></g><g transform="translate(445.9 189.4) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#000"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="fim"><polyline points="540,441.1 555.4,513.5 558.5,603.5" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="578.6,284.3 569.6,194.7 635.9,179.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="538.5,455 557.4,276" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="540,441.1 527.2,514 527.2,604" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="531.7,309.5 449.4,273.2 453.9,205.4" fill="none" stroke="#000" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="575.9" cy="229.4" r="42" fill="#000"/>
+<g transform="translate(575.9 229.4) rotate(-4)" fill="#000"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#000" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g stroke="#000" stroke-width="14" stroke-linecap="butt"><path d="M635.9 179.4 l-6 -36 M635.9 179.4 l16 -32"/></g><g transform="translate(445.9 189.4) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#000"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g><g transform="translate(445.9 149.4)" stroke="#DEAB2C" stroke-width="7" stroke-linecap="round"><path d="M0 -26V-44M-22 -14L-36 -24M22 -14L36 -24"/></g></g>
+</svg>

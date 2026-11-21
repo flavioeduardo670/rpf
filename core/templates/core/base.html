@@ -1,23 +1,50 @@
-{% load static %}
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="{% static 'core/brand/rpf_logo_icon.svg' %}" type="image/svg+xml">
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
+    <meta name="theme-color" content="#000000">
+    <title>{% block title %}{{ secao_atual.rotulo }}{% endblock %} | República Portão dos Fundos</title>
+    <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
+    <link rel="preload" href="{% static 'core/boneco/porta-abrindo.svg' %}" as="image">
+    <link rel="preload" href="{% static 'core/fonts/montserrat-var.woff' %}" as="font" type="font/woff" crossorigin>
     <link rel="stylesheet" href="{% static 'core/ui/rpf.tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.components.css' %}">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.shell.css' %}">
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.boneco.css' %}">
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.paginas.css' %}">
+    <script>
+        /* Se a página anterior disparou a animação da porta, começa com ela fechada. */
+        try {
+            if (sessionStorage.getItem('rpf-transicao')) {
+                sessionStorage.removeItem('rpf-transicao');
+                if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    document.documentElement.classList.add('rpf-chegando');
+                }
+            }
+        } catch (e) {}
+    </script>
     <script defer src="{% static 'core/table_tools.js' %}"></script>
-    <title>{% block title %}ERP RPF{% endblock %}</title>
+    <script defer src="{% static 'core/ui/rpf.shell.js' %}"></script>
+    {% block extra_head %}{% endblock %}
 </head>
-<body class="rpf-body">
+<body>
     <div class="rpf-shell">
         {% include 'core/partials/sidebar.html' %}
-        <div class="rpf-shell__main">
-            {% include 'core/partials/topbar.html' %}
-            <main class="rpf-content">
+        <main class="rpf-principal" id="conteudo">
+            {% block cabecalho %}
+            <header class="rpf-cabecalho">
+                <div>
+                    <h1 class="rpf-cabecalho__titulo"><span class="rpf-bloco">{% block page_title %}{{ secao_atual.rotulo }}{% endblock %}</span></h1>
+                    {% block page_subtitle_wrap %}<p class="rpf-cabecalho__subtitulo"><span class="rpf-subtitulo">{% block page_subtitle %}{% endblock %}</span></p>{% endblock %}
+                </div>
+                {% include 'core/partials/boneco.html' with tipo='acao' tom='preto' variante=secao_atual.variante classe='bn rpf-cabecalho__boneco' %}
+            </header>
+            <div class="rpf-acoes-pagina">{% block header_actions %}{% endblock %}</div>
+            {% endblock %}
+
+            <div class="rpf-conteudo">
                 {% if messages %}
                 <ul class="messages">
                     {% for message in messages %}
@@ -26,8 +53,12 @@
                 </ul>
                 {% endif %}
                 {% block content %}{% endblock %}
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
+
+    {% include 'core/partials/transicao.html' %}
+    {{ mapa_secoes|json_script:"rpf-mapa-secoes" }}
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,130 @@
+/* Ajustes específicos de páginas. */
+@layer paginas {
+    .rpf-subtitulo:empty, .rpf-cabecalho__subtitulo:has(.rpf-subtitulo:empty) { display: none; }
+
+    .rpf-dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    @media (max-width: 900px) {
+        .rpf-dashboard-grid > * { grid-column: 1 / -1 !important; }
+    }
+    .rpf-form-linha { display: flex; flex-wrap: wrap; gap: var(--espaco-2); align-items: center; margin: 0; }
+    .rpf-form-linha input { width: auto; }
+
+    /* ---------- Login ---------- */
+    .rpf-entrada {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 1fr);
+    }
+    .rpf-entrada__arte {
+        background: var(--preto);
+        color: var(--branco);
+        display: grid;
+        place-content: center;
+        justify-items: start;
+        gap: var(--espaco-4);
+        padding: var(--espaco-7);
+    }
+    .rpf-entrada__logo { width: min(460px, 100%); height: auto; }
+    .rpf-entrada__marca {
+        margin: 0;
+        font-size: clamp(1.8rem, 1rem + 2.4vw, 3.2rem);
+        font-weight: 800;
+        line-height: 1.02;
+        text-transform: uppercase;
+        letter-spacing: -0.02em;
+    }
+    .rpf-entrada__marca span { display: block; font-weight: 300; letter-spacing: 0.02em; }
+    .rpf-entrada__form {
+        align-self: center;
+        width: min(420px, 100%);
+        justify-self: center;
+        padding: var(--espaco-7) var(--espaco-5);
+    }
+    .rpf-entrada__titulo { font-size: clamp(2rem, 1.4rem + 2vw, 2.75rem); line-height: 1.3; margin-bottom: var(--espaco-3); }
+    .rpf-entrada__subtitulo { margin: 0 0 var(--espaco-6); }
+    .rpf-entrada__botao { width: 100%; min-height: 46px; font-size: 1rem; margin-top: var(--espaco-2); }
+    .rpf-entrada__ajuda { margin-top: var(--espaco-4); font-size: 0.8125rem; color: var(--cinza-texto); }
+    @media (max-width: 800px) {
+        .rpf-entrada { grid-template-columns: 1fr; }
+        .rpf-entrada__arte { padding: var(--espaco-5); justify-items: center; text-align: center; }
+        .rpf-entrada__logo { width: 200px; }
+        .rpf-entrada__marca { font-size: 1.5rem; }
+        .rpf-entrada__form { padding-top: var(--espaco-5); }
+    }
+
+    /* ---------- Calendário ---------- */
+    .cal-mes { display: flex; align-items: center; gap: var(--espaco-2); }
+    .cal-mes .btn { min-width: 40px; padding: 6px 10px; font-size: 1.1rem; }
+    .cal-mes__nome { font-weight: 800; font-size: 1.0625rem; min-width: 11ch; text-align: center; }
+
+    .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: var(--espaco-5);
+        align-items: start;
+    }
+    .calendar { padding: var(--espaco-4); margin: 0; }
+    .weekday-row, .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+    .weekday-row { margin-bottom: 6px; }
+    .weekday { text-align: center; font-size: 0.8125rem; font-weight: 700; padding: 4px 0; }
+    .weeks { display: grid; gap: 6px; }
+    .day {
+        min-height: 112px;
+        border: 1px solid var(--cinza-linha);
+        border-radius: var(--raio);
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+    }
+    .day.outside { background: var(--cinza-fundo); color: var(--cinza-texto); }
+    .day.today { border: var(--borda-forte); }
+    .day.today .day-number { background: var(--amarelo); }
+    .day-header { display: flex; justify-content: space-between; }
+    .day-number { font-weight: 800; font-size: 0.875rem; padding: 0 5px; border-radius: 2px; }
+    .events { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.75rem; }
+    .events li {
+        padding: 4px 6px;
+        border-radius: 2px;
+        background: var(--cinza-fundo);
+        border-left: 3px solid var(--preto);
+        font-weight: 600;
+        line-height: 1.25;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+    .events li.rock { background: var(--amarelo); }
+    .events li.os { background: var(--branco); border: 1px solid var(--preto); border-left-width: 3px; }
+    .events li.reuniao { background: var(--preto); color: var(--branco); border-left-color: var(--amarelo); }
+    .event-label { display: block; font-size: 0.6875rem; font-weight: 800; opacity: .8; }
+    .side { margin: 0; }
+    .side .form { display: grid; gap: 2px; }
+    .side > h3 + .manual-list, .side > .note + h3 { margin-top: var(--espaco-5); }
+    .manual-list { display: grid; gap: var(--espaco-2); }
+    @media (max-width: 1100px) {
+        .layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .calendar { overflow-x: auto; }
+        .weekday-row, .weeks { min-width: 560px; }
+        .day { min-height: 84px; }
+    }
+
+    /* ---------- Perfil ---------- */
+    .perfil-header { display: flex; gap: var(--espaco-4); align-items: center; margin-bottom: var(--espaco-4); }
+    .avatar, .avatar-fallback {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        border: var(--borda-forte);
+        object-fit: cover;
+        background: var(--amarelo);
+    }
+    .avatar-fallback { display: grid; place-items: center; font-weight: 700; font-size: 0.8125rem; }
+
+    /* ---------- Moradores: tabela editável ---------- */
+    .active { background: var(--branco); }
+    .inactive td { background: var(--cinza-fundo); color: var(--cinza-texto); }
+
+}

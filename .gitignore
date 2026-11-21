@@ -5,21 +5,35 @@ __pycache__/
 *.pyd
 .Python
 
-# Virtual environments
+# Ambientes virtuais
 venv/
 .venv/
 env/
 
-# Django local artifacts
+# Artefatos locais do Django
 db.sqlite3
+*.sqlite3
 media/
 staticfiles/
+logs/
+*.log
 
-# Environment and secrets
+# Testes / cobertura
+.coverage
+.coverage.*
+htmlcov/
+
+# Variáveis de ambiente e segredos
 .env
 .env.*
 !.env.example
 
-# Sensitive notes
+# Anotações pessoais (não versionar)
 anotações.txt
 gestãorpf.txt
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -21,6 +21,9 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.12"
+  # Valores apenas para CI (o settings exige SECRET_KEY/ALLOWED_HOSTS fora do DEBUG).
+  DJANGO_SECRET_KEY: ci-somente-para-testes
+  DJANGO_ALLOWED_HOSTS: localhost,testserver
 
 jobs:
   lint:
@@ -34,6 +37,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
       - name: Instalar dependencias
         run: |
@@ -45,6 +50,9 @@ jobs:
 
       - name: Django system check
         run: python manage.py check
+
+      - name: Migracoes sincronizadas com os models
+        run: python manage.py makemigrations --check --dry-run
 
   testes:
     name: Testes automatizados
@@ -58,11 +66,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Executar testes
         run: |
@@ -94,7 +104,10 @@ jobs:
             git pull --ff-only origin "${{ github.ref_name }}"
             source "${{ secrets.STAGING_VENV_ACTIVATE }}"
             pip install -r requirements.txt
-            sudo systemctl restart "${{ secrets.STAGING_APP_SERVICE }}"
+            export DJANGO_SETTINGS_MODULE="${{ secrets.STAGING_DJANGO_SETTINGS_MODULE }}"
+            export DJANGO_SECRET_KEY="${{ secrets.STAGING_DJANGO_SECRET_KEY }}"
+            export DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
+            python manage.py collectstatic --noinput
 
   migracoes_staging:
     name: Migracoes em staging
@@ -118,6 +131,8 @@ jobs:
             export DJANGO_SECRET_KEY="${{ secrets.STAGING_DJANGO_SECRET_KEY }}"
             export DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
             python manage.py migrate --noinput
+            # Reinicia só depois das migrações, para o código novo não rodar com schema antigo.
+            sudo systemctl restart "${{ secrets.STAGING_APP_SERVICE }}"
 
   smoke_tests:
     name: Smoke tests em staging
@@ -131,6 +146,7 @@ jobs:
         run: |
           set -e
           test -n "$STAGING_BASE_URL"
+          curl -fsS "$STAGING_BASE_URL/healthz"
           curl -fsS "$STAGING_BASE_URL/"
           curl -fsS "$STAGING_BASE_URL/login/"
           curl -fsS "$STAGING_BASE_URL/financeiro/"

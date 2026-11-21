@@ -1,31 +1,45 @@
-{% load static %}
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="{% static 'core/brand/rpf_logo_icon.svg' %}" type="image/svg+xml">
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#000000">
+    <title>Entrar | República Portão dos Fundos</title>
+    <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'core/base.css' %}">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.components.css' %}">
-    <title>Login | ERP RPF</title>
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.boneco.css' %}">
+    <link rel="stylesheet" href="{% static 'core/ui/rpf.paginas.css' %}">
 </head>
-<body class="rpf-body">
-    <main class="rpf-auth">
-        <div class="rpf-card rpf-auth__card">
-            <img class="rpf-auth__logo" src="{% static 'core/brand/rpf_logo_icon.svg' %}" alt="República Portão dos Fundos">
-            <h1 class="rpf-auth__title">Entrar</h1>
-            <p class="rpf-auth__subtitle">Faça login para acessar o sistema.</p>
-            <form method="post">
+<body>
+    <main class="rpf-entrada">
+        <section class="rpf-entrada__arte" aria-hidden="true">
+            <img class="rpf-entrada__logo" src="{% static 'core/boneco/marca-branco.svg' %}" alt="" width="590" height="452">
+            <p class="rpf-entrada__marca"><span>República</span>Portão dos Fundos</p>
+        </section>
+        <section class="rpf-entrada__form">
+            <h1 class="rpf-entrada__titulo"><span class="rpf-bloco">Entrar</span></h1>
+            <p class="rpf-entrada__subtitulo"><span class="rpf-subtitulo">Pela porta da frente, desta vez.</span></p>
+
+            <form method="post" novalidate>
                 {% csrf_token %}
-                {{ form.non_field_errors }}
-                {{ form.as_p }}
-                <button class="rpf-btn rpf-btn--primary" type="submit">Entrar</button>
+                <input type="hidden" name="next" value="{{ next }}">
+                {% if form.non_field_errors %}
+                <div class="form-error-box" role="alert">Usuário ou senha incorretos. Confira e tente de novo.</div>
+                {% endif %}
+                <p>
+                    <label for="{{ form.username.id_for_label }}">Usuário</label>
+                    {{ form.username }}
+                </p>
+                <p>
+                    <label for="{{ form.password.id_for_label }}">Senha</label>
+                    {{ form.password }}
+                </p>
+                <button class="btn btn-primary rpf-entrada__botao" type="submit">Entrar</button>
             </form>
-            <p class="rpf-auth__footer">
-                <a href="{% url 'gerenciar_acessos' %}">Gerenciar acessos</a>
-            </p>
-        </div>
+            <p class="rpf-entrada__ajuda">Esqueceu a senha? Fale com quem cuida dos acessos da casa.</p>
+        </section>
     </main>
 </body>
 </html>

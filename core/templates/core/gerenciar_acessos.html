@@ -1,43 +1,14 @@
-﻿<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    {% load static %}
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Acessos</title>
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
-    <script defer src="{% static 'core/table_tools.js' %}"></script>
-    <style>
-        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
-        * { box-sizing:border-box; }
-        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
-        .wrap { max-width:1240px; margin:0 auto; }
-        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
-        h1 { margin:0; }
-        .btn { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
-        .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); }
-        .table-wrap { overflow:auto; }
-        table { width:100%; min-width:880px; border-collapse:collapse; }
-        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; }
-        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
-        .muted { color:var(--muted); font-size:.85rem; }
-        .center { text-align:center; }
-        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn{width:100%; text-align:center;} }
-    </style>
-</head>
-<body class="app-body">
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Gerenciar Acessos{% endblock %}
+{% block page_title %}Acessos{% endblock %}
+{% block page_subtitle %}Quem pode ver e editar cada parte do sistema.{% endblock %}
+
+{% block content %}
 <div class="wrap app-wrap">
     <div class="top app-topbar">
-        <h1>Gerenciar acessos</h1>
-        <a class="btn app-btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
-    {% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-        <li class="message {{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 
     <section class="card app-card">
         <p class="muted">Somente superusuario pode editar estes acessos.</p>
@@ -141,10 +112,9 @@
                 </table>
             </div>
             <div style="margin-top:12px;">
-                <button class="btn app-btn" type="submit">Salvar acessos</button>
+                <button class="btn app-btn btn-primary" type="submit">Salvar acessos</button>
             </div>
         </form>
     </section>
 </div>
-</body>
-</html>
+{% endblock %}

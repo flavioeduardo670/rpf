@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 96 610 516" role="img"><style>.q{opacity:0}@keyframes q0{0%,24.99%{opacity:1}25.00%,100%{opacity:0}}.q0{animation:q0 0.62s linear 3}@keyframes q1{0%,24.99%{opacity:0}25.00%,49.99%{opacity:1}50.00%,100%{opacity:0}}.q1{animation:q1 0.62s linear 3}@keyframes q2{0%,49.99%{opacity:0}50.00%,74.99%{opacity:1}75.00%,100%{opacity:0}}.q2{animation:q2 0.62s linear 3}@keyframes q3{0%,74.99%{opacity:0}75.00%,99.99%{opacity:1}100.00%,100%{opacity:0}}.q3{animation:q3 0.62s linear 3}.fim{opacity:0;animation:fim 1.86s linear forwards}@keyframes fim{0%,99.9%{opacity:0}100%{opacity:1}}@media (prefers-reduced-motion: reduce){.q{display:none}.fim{opacity:1;animation:none}}</style>
+<g class="q q0"><path d="M274.9 604 V520 H354.9" fill="none" stroke="#fff" stroke-width="24"/><rect x="338.9" y="500" width="26" height="40" fill="#DEAB2C" stroke="#fff" stroke-width="5"/><polyline points="560,511.4 565.2,585.2 655.2,585.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="526,353.5 463.5,418.3 424.3,473.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="564.8,524.6 503.2,355.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,511.4 486,514 486,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="494.9,396.8 408.7,422.8 424.9,356.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="474" cy="314.6" r="42" fill="#fff"/><g transform="translate(474 314.6) rotate(-10)">
+  <path d="M-46 -4 C-46 -40 -24 -60 0 -60 C24 -60 46 -40 46 -4 Z" fill="#DEAB2C" stroke="#fff" stroke-width="6"/>
+  <path d="M-62 -4 H58" stroke="#DEAB2C" stroke-width="14" stroke-linecap="round"/>
+  <path d="M-8 -60 V-14" stroke="#fff" stroke-width="7" opacity=".6"/>
+</g><g transform="translate(424.9 356.8) rotate(150)">
+  <rect x="-9" y="-14" width="18" height="118" rx="6" fill="#DEAB2C" stroke="#fff" stroke-width="5"/>
+  <path d="M-30 104 a30 30 0 0 0 60 0 l-8 -12 v26 h-44 v-26z" fill="#DEAB2C" stroke="#fff" stroke-width="5" stroke-linejoin="round" transform="rotate(180 0 116)"/>
+</g></g><g class="q q1"><path d="M274.9 604 V520 H354.9" fill="none" stroke="#fff" stroke-width="24"/><rect x="338.9" y="500" width="26" height="40" fill="#DEAB2C" stroke="#fff" stroke-width="5"/><polyline points="560,511.4 565.2,585.2 655.2,585.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="526,353.5 463.5,418.3 424.3,473.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="564.8,524.6 503.2,355.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,511.4 486,514 486,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="494.9,396.8 435.3,464.2 398.9,406.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="474" cy="314.6" r="42" fill="#fff"/><g transform="translate(474 314.6) rotate(-10)">
+  <path d="M-46 -4 C-46 -40 -24 -60 0 -60 C24 -60 46 -40 46 -4 Z" fill="#DEAB2C" stroke="#fff" stroke-width="6"/>
+  <path d="M-62 -4 H58" stroke="#DEAB2C" stroke-width="14" stroke-linecap="round"/>
+  <path d="M-8 -60 V-14" stroke="#fff" stroke-width="7" opacity=".6"/>
+</g><g transform="translate(398.9 406.8) rotate(205)">
+  <rect x="-9" y="-14" width="18" height="118" rx="6" fill="#DEAB2C" stroke="#fff" stroke-width="5"/>
+  <path d="M-30 104 a30 30 0 0 0 60 0 l-8 -12 v26 h-44 v-26z" fill="#DEAB2C" stroke="#fff" stroke-width="5" stroke-linejoin="round" transform="rotate(180 0 116)"/>
+</g></g><g class="q q2"><path d="M274.9 604 V520 H354.9" fill="none" stroke="#fff" stroke-width="24"/><rect x="338.9" y="500" width="26" height="40" fill="#DEAB2C" stroke="#fff" stroke-width="5"/><polyline points="560,511.4 565.2,585.2 655.2,585.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="526,353.5 463.5,418.3 424.3,473.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="564.8,524.6 503.2,355.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,511.4 486,514 486,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="494.9,396.8 466.7,482.3 402.9,458.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="474" cy="314.6" r="42" fill="#fff"/><g transform="translate(474 314.6) rotate(-10)">
+  <path d="M-46 -4 C-46 -40 -24 -60 0 -60 C24 -60 46 -40 46 -4 Z" fill="#DEAB2C" stroke="#fff" stroke-width="6"/>
+  <path d="M-62 -4 H58" stroke="#DEAB2C" stroke-width="14" stroke-linecap="round"/>
+  <path d="M-8 -60 V-14" stroke="#fff" stroke-width="7" opacity=".6"/>
+</g><g transform="translate(402.9 458.8) rotate(250)">
+  <rect x="-9" y="-14" width="18" height="118" rx="6" fill="#DEAB2C" stroke="#fff" stroke-width="5"/>
+  <path d="M-30 104 a30 30 0 0 0 60 0 l-8 -12 v26 h-44 v-26z" fill="#DEAB2C" stroke="#fff" stroke-width="5" stroke-linejoin="round" transform="rotate(180 0 116)"/>
+</g><g stroke="#DEAB2C" stroke-width="7" stroke-linecap="round"><path d="M348.9 486l-10 -22M372.9 490l10 -20M326.9 496l-22 -10"/></g></g><g class="q q3"><path d="M274.9 604 V520 H354.9" fill="none" stroke="#fff" stroke-width="24"/><rect x="338.9" y="500" width="26" height="40" fill="#DEAB2C" stroke="#fff" stroke-width="5"/><polyline points="560,511.4 565.2,585.2 655.2,585.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="526,353.5 463.5,418.3 424.3,473.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="564.8,524.6 503.2,355.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,511.4 486,514 486,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="494.9,396.8 435.3,464.2 398.9,406.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="474" cy="314.6" r="42" fill="#fff"/><g transform="translate(474 314.6) rotate(-10)">
+  <path d="M-46 -4 C-46 -40 -24 -60 0 -60 C24 -60 46 -40 46 -4 Z" fill="#DEAB2C" stroke="#fff" stroke-width="6"/>
+  <path d="M-62 -4 H58" stroke="#DEAB2C" stroke-width="14" stroke-linecap="round"/>
+  <path d="M-8 -60 V-14" stroke="#fff" stroke-width="7" opacity=".6"/>
+</g><g transform="translate(398.9 406.8) rotate(205)">
+  <rect x="-9" y="-14" width="18" height="118" rx="6" fill="#DEAB2C" stroke="#fff" stroke-width="5"/>
+  <path d="M-30 104 a30 30 0 0 0 60 0 l-8 -12 v26 h-44 v-26z" fill="#DEAB2C" stroke="#fff" stroke-width="5" stroke-linejoin="round" transform="rotate(180 0 116)"/>
+</g></g><g class="fim"><path d="M274.9 604 V520 H354.9" fill="none" stroke="#fff" stroke-width="24"/><rect x="338.9" y="500" width="26" height="40" fill="#DEAB2C" stroke="#fff" stroke-width="5"/><polyline points="560,511.4 565.2,585.2 655.2,585.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="526,353.5 463.5,418.3 424.3,473.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="564.8,524.6 503.2,355.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,511.4 486,514 486,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="494.9,396.8 466.7,482.3 402.9,458.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="474" cy="314.6" r="42" fill="#fff"/><g transform="translate(474 314.6) rotate(-10)">
+  <path d="M-46 -4 C-46 -40 -24 -60 0 -60 C24 -60 46 -40 46 -4 Z" fill="#DEAB2C" stroke="#fff" stroke-width="6"/>
+  <path d="M-62 -4 H58" stroke="#DEAB2C" stroke-width="14" stroke-linecap="round"/>
+  <path d="M-8 -60 V-14" stroke="#fff" stroke-width="7" opacity=".6"/>
+</g><g transform="translate(402.9 458.8) rotate(250)">
+  <rect x="-9" y="-14" width="18" height="118" rx="6" fill="#DEAB2C" stroke="#fff" stroke-width="5"/>
+  <path d="M-30 104 a30 30 0 0 0 60 0 l-8 -12 v26 h-44 v-26z" fill="#DEAB2C" stroke="#fff" stroke-width="5" stroke-linejoin="round" transform="rotate(180 0 116)"/>
+</g><g stroke="#DEAB2C" stroke-width="7" stroke-linecap="round"><path d="M348.9 486l-10 -22M372.9 490l10 -20M326.9 496l-22 -10"/></g></g>
+</svg>

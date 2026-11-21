@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -13,8 +13,8 @@ class AtaReuniaoRegistroTests(TestCase):
         self.reuniao = Reuniao.objects.create(
             tipo='setorial',
             setor='infraestrutura',
-            data='2026-04-10',
-            horario_marcado='20:00',
+            data=date(2026, 4, 10),
+            horario_marcado=time(20, 0),
             local='Sala principal',
             status='realizada',
         )

@@ -1,0 +1,8 @@
+{% load static %}{% comment %}
+Troca de página: o boneco da página de destino corre e entra pela porta.
+As cenas são SVGs animados em core/static/core/boneco/corrida-*.svg;
+ui/rpf.shell.js escolhe a cena e dispara a animação.
+{% endcomment %}<div class="rpf-transicao" aria-hidden="true">
+    <img class="rpf-transicao__cena" alt="" width="1000" height="500">
+    <p class="rpf-transicao__destino"><span class="rpf-subtitulo"></span></p>
+</div>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="200 92 500 534" role="img">
+<polyline points="520,458.5 567.6,515.2 657.5,518.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="513.9,297.1 430.4,263.5 422.2,331" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="522.4,472.3 491.2,295.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,458.5 476.5,518.4 448.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.8,334.3 396.5,291.7 406.2,359" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="457.7" cy="256.8" r="42" fill="#fff"/>
+<g transform="translate(457.7 256.8) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(396.2 339)">
+  <rect x="-78" y="-62" width="150" height="122" fill="#DEAB2C" stroke="#fff" stroke-width="8"/>
+  <path d="M-78 -26 H72 M-6 -62 V-26" stroke="#fff" stroke-width="8"/>
+  <rect x="24" y="12" width="34" height="26" fill="#fff"/>
+</g>
+</svg>

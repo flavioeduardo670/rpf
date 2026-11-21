@@ -22,7 +22,8 @@ from django.conf.urls.static import static
 from core.views.health import healthz
 
 urlpatterns = [
-    path('favicon.ico', RedirectView.as_view(url=f"{settings.MEDIA_URL.rstrip('/')}/perfil_fotos/logo.jpg", permanent=True)),
+    # Antes apontava para um upload em media/ (que não existe no deploy nem no S3).
+    path('favicon.ico', RedirectView.as_view(url=f"{settings.STATIC_URL}core/brand/favicon.svg", permanent=True)),
     path('healthz', healthz, name='healthz'),
     path('admin/', admin.site.urls),
     path('', include('core.urls')),

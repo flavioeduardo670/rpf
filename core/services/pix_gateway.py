@@ -393,7 +393,16 @@ def consultar_status_por_txid(txid: str) -> dict[str, Any]:
 def validar_assinatura_webhook(body: bytes, assinatura_informada: str, *, request_id: str = '', data_id: str = '') -> bool:
     secret = getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '').strip()
     if not secret:
-        return True
+        # Sem segredo não há como autenticar a notificação: qualquer pessoa
+        # poderia marcar um aluguel ou ingresso como pago. Só aceitamos isso
+        # em desenvolvimento local (DEBUG=True).
+        if settings.DEBUG:
+            return True
+        logger.error(
+            'Webhook PIX recusado: MERCADOPAGO_WEBHOOK_SECRET nao configurado.',
+            extra={'event': 'pix.webhook.secret_missing'},
+        )
+        return False
     partes = {}
     for parte in (assinatura_informada or '').split(','):
         if '=' in parte:

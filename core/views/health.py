@@ -25,7 +25,7 @@ def healthz(request):
         logger.exception('Healthcheck com falha de banco', extra={'event': 'healthcheck.database_error'})
 
     if status_code == 200:
-        logger.info('Healthcheck OK', extra={'event': 'healthcheck.ok'})
+        logger.debug('Healthcheck OK', extra={'event': 'healthcheck.ok'})
 
     return JsonResponse(
         {

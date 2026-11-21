@@ -13,39 +13,13 @@ from django.forms import inlineformset_factory
 from core.models import ConfiguracaoFinanceira, ConsumoEstoque, IngressoRock, LoteIngressoRock, NotaFiscal, PedidoIngressoRock, RockEvento, RockItem
 from core.services.estoque import obter_morador_casa, remover_consumo_e_devolver_estoque, sincronizar_consumo_item
 from core.services.pix_gateway import criar_cobranca_pix
+from core.services.pdf import gerar_pdf_texto
 from core.services.rock import criar_ingresso_rock, remover_ingresso_rock
 
 from .common import can_edit, get_user_morador, setor_required
 
 logger = logging.getLogger('core.views.rock')
 RockItemFormSet = inlineformset_factory(RockEvento, RockItem, form=RockItemForm, extra=1, can_delete=True)
-
-
-def _texto_pdf(valor):
-    return str(valor).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
-
-
-def _gerar_pdf_simples(titulo, linhas):
-    conteudo = [f"BT /F1 12 Tf 40 800 Td ({_texto_pdf(titulo)}) Tj"]
-    y = 780
-    for linha in linhas:
-        conteudo.append(f"1 0 0 1 40 {y} Tm ({_texto_pdf(linha)}) Tj")
-        y -= 16
-        if y < 40:
-            break
-    conteudo.append('ET')
-    stream = '\n'.join(conteudo).encode('latin-1', errors='replace')
-    objetos = [b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n", b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n", b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n", b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n", f"5 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1') + stream + b"\nendstream endobj\n"]
-    pdf = b'%PDF-1.4\n'
-    offsets = [0]
-    for obj in objetos:
-        offsets.append(len(pdf)); pdf += obj
-    xref_start = len(pdf)
-    pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1') + b"0000000000 65535 f \n"
-    for offset in offsets[1:]:
-        pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
-    pdf += (f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF").encode('latin-1')
-    return pdf
 
 
 def _sync_consumo_rock(item, data_consumo):
@@ -136,7 +110,7 @@ def exportar_ingressos_rock_pdf(request, evento_id):
     evento = get_object_or_404(RockEvento, id=evento_id)
     ingressos = IngressoRock.objects.filter(rock_evento=evento).order_by('nome')
     linhas = [f"Evento: {evento.nome} | Data: {evento.data} | Pessoas: {ingressos.count()}"] + [f"{idx}. {i.nome} | Qtd: {i.quantidade_ingressos} | Total: R$ {i.valor_total} | {i.get_status_pagamento_display()}" for idx, i in enumerate(ingressos, start=1)]
-    response = HttpResponse(_gerar_pdf_simples(f'Lista de ingressos - {evento.nome}', linhas), content_type='application/pdf')
+    response = HttpResponse(gerar_pdf_texto(f'Lista de ingressos - {evento.nome}', linhas), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="ingressos_rock_{evento.id}.pdf"'
     return response
 

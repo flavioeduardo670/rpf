@@ -1,38 +1,15 @@
+{% extends 'core/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ ata.identificador_formatado }} | Ata</title>
-    <style>
-        body { margin:0; padding:24px; background:#f4f4f4; font-family:"Trebuchet MS","Segoe UI",sans-serif; }
-        .wrap { max-width:1200px; margin:0 auto; }
-        .panel { background:#fff; border:1px solid #ddd; border-radius:12px; padding:16px; margin-bottom:14px; }
-        .grid { display:grid; gap:12px; grid-template-columns:repeat(2, minmax(0,1fr)); }
-        .grid-1 { display:grid; gap:12px; }
-        table { width:100%; border-collapse:collapse; }
-        th, td { border:1px solid #ddd; padding:8px; vertical-align:top; }
-        th { background:#f7f7f7; font-size:.85rem; }
-        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:7px; }
-        .top { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:center; }
-        .muted { color:#666; }
-        .btn { border:1px solid #121212; background:#121212; color:#fff; border-radius:999px; padding:10px 14px; text-decoration:none; font-weight:700; cursor:pointer; }
-        .btn.light { background:#fff; color:#121212; }
-        .actions { display:flex; gap:10px; flex-wrap:wrap; }
-        .messages { list-style:none; padding:0; display:grid; gap:8px; }
-        .messages li { background:#fff; border:1px solid #ddd; border-radius:8px; padding:8px 10px; }
-        .readonly-mask { opacity:.75; pointer-events:none; }
-        @media (max-width: 960px) { .grid { grid-template-columns:1fr; } }
-    </style>
-</head>
-<body class="app-body">
+
+{% block title %}{{ ata.identificador_formatado }} | Ata{% endblock %}
+{% block page_title %}{{ ata.identificador_formatado }}{% endblock %}
+{% block page_subtitle %}Presença, assuntos da reunião e plano de ação.{% endblock %}
+
+{% block content %}
 <div class="wrap">
     <div class="top panel">
         <div>
             <a href="{% url 'reunioes' %}" class="btn light">← Voltar para reuniões</a>
-            <h1 style="margin:.6rem 0 .3rem;">{{ ata.identificador_formatado }}</h1>
             <p class="muted" style="margin:0;">Reunião {{ reuniao.get_tipo_display }}{% if reuniao.setor %} - {{ reuniao.get_setor_display }}{% endif %} | {{ reuniao.data|date:"d/m/Y" }} | {{ reuniao.local }}</p>
         </div>
         <div class="actions">
@@ -42,14 +19,6 @@
             <span class="btn light">Status: {{ ata.get_status_display }}</span>
         </div>
     </div>
-
-    {% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-        <li>{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 
     <form method="post" class="{% if not can_edit_reunioes or not ata.pode_editar %}readonly-mask{% endif %}">
         {% csrf_token %}
@@ -162,5 +131,4 @@
         {% endif %}
     </form>
 </div>
-</body>
-</html>
+{% endblock %}

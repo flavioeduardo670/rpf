@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -97,6 +97,11 @@ def editar_ata_reuniao(request, reuniao_id):
     if request.method == 'POST' and not can_edit_reunioes:
         messages.error(request, 'Você não tem permissão de edição para registrar ata.')
         return redirect('editar_ata_reuniao', reuniao_id=reuniao.id)
+    if request.method == 'POST' and not ata.pode_editar:
+        # Os modelos da ata recusam alterações após o registro; sem este
+        # retorno o POST terminava em erro 500.
+        messages.error(request, 'Esta ata já foi registrada e não pode mais ser alterada.')
+        return redirect('editar_ata_reuniao', reuniao_id=reuniao.id)
 
     form = AtaReuniaoForm(request.POST or None, instance=ata)
     participantes_formset = AtaParticipanteFormSet(request.POST or None, instance=ata, prefix='participantes')
@@ -114,8 +119,9 @@ def editar_ata_reuniao(request, reuniao_id):
             if acao == 'registrar':
                 try:
                     total_os = ata.registrar(registrado_por=request.user)
-                except Exception as exc:
-                    messages.error(request, f'Não foi possível registrar a ata: {exc}')
+                except ValidationError as exc:
+                    detalhes = '; '.join(exc.messages)
+                    messages.error(request, f'Não foi possível registrar a ata: {detalhes}')
                 else:
                     messages.success(request, f'Ata registrada com sucesso. {total_os} OS(s) gerada(s).')
                 return redirect('editar_ata_reuniao', reuniao_id=reuniao.id)
@@ -145,4 +151,9 @@ def baixar_ata_pdf(request, reuniao_id):
     if not ata or not ata.pdf_final:
         messages.error(request, 'A ata ainda não foi registrada em PDF.')
         return redirect('editar_ata_reuniao', reuniao_id=reuniao.id)
-    return FileResponse(ata.pdf_final.open('rb'), content_type='application/pdf', as_attachment=True, filename=ata.pdf_final.name.split('/')[-1])
+    try:
+        arquivo = ata.pdf_final.open('rb')
+    except (FileNotFoundError, OSError):
+        messages.error(request, 'O arquivo PDF desta ata não foi encontrado no armazenamento.')
+        return redirect('editar_ata_reuniao', reuniao_id=reuniao.id)
+    return FileResponse(arquivo, content_type='application/pdf', as_attachment=True, filename=ata.pdf_final.name.split('/')[-1])

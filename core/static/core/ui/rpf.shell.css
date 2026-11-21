@@ -1,106 +1,178 @@
-.rpf-shell {
-    min-height: 100vh;
-    display: grid;
-    grid-template-columns: 250px minmax(0, 1fr);
-}
-
-.rpf-shell__sidebar {
-    background: var(--rpf-black);
-    color: var(--rpf-white);
-    padding: var(--rpf-space-5);
-    display: flex;
-    flex-direction: column;
-    gap: var(--rpf-space-5);
-}
-
-.rpf-brand {
-    display: block;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, .25);
-    background: rgba(255, 255, 255, .04);
-    padding: 10px;
-}
-
-.rpf-brand img {
-    width: 100%;
-    display: block;
-    height: auto;
-}
-
-.rpf-nav {
-    display: grid;
-    gap: var(--rpf-space-2);
-}
-
-.rpf-nav__link {
-    color: var(--rpf-white);
-    text-decoration: none;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    font-weight: 700;
-}
-
-.rpf-nav__link:hover,
-.rpf-nav__link:focus-visible {
-    border-color: var(--rpf-yellow-500);
-    outline: none;
-}
-
-.rpf-shell__main {
-    display: grid;
-    grid-template-rows: auto 1fr;
-    min-width: 0;
-}
-
-.rpf-topbar {
-    background: var(--rpf-white);
-    border-bottom: 1px solid var(--rpf-gray-300);
-    padding: var(--rpf-space-4) var(--rpf-space-5);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.rpf-topbar__title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.rpf-topbar__logo {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-.rpf-topbar h1 {
-    margin: 0;
-    font-size: 1.1rem;
-}
-
-.rpf-content {
-    padding: var(--rpf-space-5);
-}
-
-.rpf-dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--rpf-space-4);
-}
-
-@media (max-width: 900px) {
+/* Estrutura da página: menu lateral (o "portão", preto) e cabeçalho estilo story. */
+@layer shell {
     .rpf-shell {
-        grid-template-columns: 1fr;
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 248px minmax(0, 1fr);
+        /* a coluna do menu fica preta até o fim, mesmo em páginas longas */
+        background: linear-gradient(90deg, var(--preto) 248px, var(--branco) 248px);
     }
 
-    .rpf-shell__sidebar {
-        padding: var(--rpf-space-4);
+    /* ---------- Menu lateral ---------- */
+    .rpf-lateral {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        background: var(--preto);
+        color: var(--branco);
+        display: flex;
+        flex-direction: column;
+        gap: var(--espaco-5);
+        padding: var(--espaco-5) var(--espaco-4);
     }
 
-    .rpf-brand {
-        max-width: 220px;
+    .rpf-marca {
+        display: grid;
+        gap: var(--espaco-2);
+        color: var(--branco);
+        text-decoration: none;
+        padding: 0 var(--espaco-2);
+    }
+    .rpf-marca__logo { width: 150px; height: auto; display: block; }
+    /* Assinatura da apresentação: "República" leve, "Portão dos Fundos" em negrito */
+    .rpf-marca__nome {
+        font-weight: 800;
+        font-size: 1.05rem;
+        line-height: 1.05;
+        text-transform: uppercase;
+        letter-spacing: -0.01em;
+    }
+    .rpf-marca__republica { display: block; font-weight: 300; letter-spacing: 0.02em; }
+    .rpf-marca:hover { text-decoration: none; }
+    .rpf-marca:hover .rpf-marca__nome { color: var(--amarelo); }
+
+    .rpf-menu { display: grid; gap: 2px; }
+    .rpf-menu__link {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        align-items: center;
+        gap: var(--espaco-2);
+        padding: 6px var(--espaco-2);
+        border-radius: var(--raio);
+        color: var(--branco);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9375rem;
+    }
+    .rpf-menu__link .bn { width: 32px; }
+    .rpf-menu__link:hover { background: #1e1e1e; text-decoration: none; }
+    .rpf-menu__link[aria-current="page"] {
+        background: var(--amarelo);
+        color: var(--preto);
+        font-weight: 800;
+    }
+
+    .rpf-conta {
+        margin-top: auto;
+        border-top: 1px solid #333;
+        padding: var(--espaco-4) var(--espaco-2) 0;
+        display: grid;
+        gap: var(--espaco-2);
+        font-size: 0.875rem;
+    }
+    .rpf-conta__nome { font-family: var(--fonte-elegante); font-style: italic; font-size: 1.15rem; }
+    .rpf-conta a, .rpf-conta button {
+        color: var(--branco);
+        background: none;
+        border: 0;
+        padding: 0;
+        font: inherit;
+        font-weight: 600;
+        text-align: left;
+        text-decoration: underline;
+        text-decoration-color: #555;
+        text-underline-offset: 3px;
+        cursor: pointer;
+    }
+    .rpf-conta a:hover, .rpf-conta button:hover { text-decoration-color: var(--amarelo); }
+    .rpf-conta form { margin: 0; }
+    .rpf-conta__links { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espaco-2) var(--espaco-4); }
+    .rpf-conta__links button { line-height: inherit; }
+
+    .rpf-menu-toggle { display: none; }
+
+    /* ---------- Área principal ---------- */
+    .rpf-principal {
+        min-width: 0;
+        padding: var(--espaco-6) clamp(var(--espaco-4), 3vw, var(--espaco-7)) var(--espaco-7);
+    }
+    .rpf-conteudo { max-width: 1320px; }
+
+    /* Cabeçalho da página: título em blocos pretos + subtítulo em itálico + boneco */
+    .rpf-cabecalho {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: var(--espaco-5);
+        padding-bottom: var(--espaco-4);
+        margin-bottom: var(--espaco-5);
+        border-bottom: var(--borda-forte);
+        max-width: 1320px;
+    }
+    .rpf-cabecalho__titulo {
+        margin: 0 0 var(--espaco-3);
+        font-size: clamp(1.75rem, 1.2rem + 2vw, 2.6rem);
+        font-weight: 800;
+        line-height: 1.32;
+        letter-spacing: -0.015em;
+    }
+    .rpf-cabecalho__subtitulo { margin: 0; max-width: 62ch; }
+    .rpf-cabecalho__boneco { width: clamp(130px, 16vw, 210px); cursor: pointer; }
+    .rpf-acoes-pagina {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--espaco-2);
+        margin: calc(var(--espaco-2) * -1) 0 var(--espaco-5);
+    }
+    .rpf-acoes-pagina:empty { display: none; }
+
+    /* Restos de layout antigos que agora vivem dentro do shell */
+    .wrap, .app-wrap { max-width: none; margin: 0; padding: 0; }
+
+    /* ---------- Celular e tablet ---------- */
+    @media (max-width: 900px) {
+        .rpf-shell { grid-template-columns: 1fr; background: var(--branco); }
+        .rpf-lateral {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            height: auto;
+            max-height: 100vh;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--espaco-2);
+            padding: var(--espaco-2) var(--espaco-4);
+        }
+        .rpf-marca { grid-template-columns: auto 1fr; align-items: center; padding: 0; }
+        .rpf-marca__logo { width: 64px; }
+        .rpf-marca__nome { font-size: 0.875rem; }
+        .rpf-menu-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--branco);
+            color: var(--preto);
+            border: 0;
+            border-radius: var(--raio);
+            padding: 8px 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .rpf-menu, .rpf-conta { display: none; width: 100%; }
+        .rpf-lateral.aberto .rpf-menu { display: grid; padding-bottom: var(--espaco-2); }
+        .rpf-lateral.aberto .rpf-conta { display: grid; padding-bottom: var(--espaco-4); }
+
+        .rpf-principal { padding-top: var(--espaco-5); }
+        .rpf-cabecalho { grid-template-columns: minmax(0, 1fr) 104px; gap: var(--espaco-3); }
+        .rpf-cabecalho__boneco { width: 104px; }
+        .rpf-subtitulo { font-size: 1.15rem; }
+    }
+
+    @media print {
+        .rpf-lateral, .rpf-cabecalho__boneco, .rpf-transicao { display: none !important; }
+        .rpf-shell { display: block; }
     }
 }

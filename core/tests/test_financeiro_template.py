@@ -119,6 +119,9 @@ class FinanceiroTemplateTests(TestCase):
         self.assertContains(response, 'Status')
 
     def test_financeiro_marca_status_pago_quando_aluguel_zero(self):
+        # Sem extras/ajustes, a dívida do mês fica abaixo da tolerância de R$ 1,00.
+        self.ajuste.delete()
+        self.pendencia.delete()
         ConfiguracaoFinanceira.objects.create(valor_aluguel=Decimal('0.50'))
         response = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
         self.assertEqual(response.status_code, 200)
@@ -213,7 +216,8 @@ class FinanceiroTemplateTests(TestCase):
         self.assertNotIn(b'Vencimento sugerido', response.content)
         self.assertNotIn(b'Status no ERP', response.content)
         cobranca = CobrancaAluguel.objects.get(morador=self.morador, mes_referencia=self.mes)
-        self.assertEqual(cobranca.valor, Decimal('123.45'))
+        # aluguel (1000,00) + ajuste individual (123,45) + pendência do mês (54,32)
+        self.assertEqual(cobranca.valor, Decimal('1177.77'))
         self.assertTrue(cobranca.txid.startswith('RPFAL'))
         self.assertLessEqual(len(cobranca.txid), 25)
         self.assertIn('br.gov.bcb.pix', cobranca.payload_pix)
@@ -228,7 +232,8 @@ class FinanceiroTemplateTests(TestCase):
         CobrancaAluguel.objects.create(
             morador=self.morador,
             mes_referencia=self.mes,
-            valor=Decimal('123.45'),
+            # Mesmo valor do extrato do mês: a cobrança deve ser reaproveitada.
+            valor=Decimal('1177.77'),
             txid='RPFAL0000000000000001',
             payload_pix='000201br.gov.bcb.pix-existing',
             qr_code='000201br.gov.bcb.pix-existing',
