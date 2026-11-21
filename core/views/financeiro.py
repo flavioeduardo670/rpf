@@ -48,10 +48,10 @@ from core.models import (
     Setor,
 )
 from core.services.estoque import garantir_setores_e_locais_base
+from core.services.pdf import montar_pdf_por_comandos as _montar_pdf_por_comandos
 from core.services.pix_gateway import criar_cobranca_pix_avulsa, consultar_status_por_txid, normalizar_chave_pix
 from core.services.financeiro import (
     calcular_rateio_financeiro,
-    garantir_contas_fixas_mensais,
     resolver_mes_referencia,
     salvar_registro_financeiro_mensal,
 )
@@ -611,44 +611,6 @@ def _gerar_pdf_extrato_morador(contexto):
     pdf += (f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF").encode('latin-1')
     return pdf
 
-
-
-def _montar_pdf_por_comandos(comandos_paginas, largura_pagina, altura_pagina):
-    objetos = [b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"]
-    kids = []
-    fonte_regular_obj = 3 + (len(comandos_paginas) * 2)
-    fonte_bold_obj = fonte_regular_obj + 1
-    for indice, comandos_pagina in enumerate(comandos_paginas):
-        pagina_obj = 3 + (indice * 2)
-        conteudo_obj = pagina_obj + 1
-        kids.append(f"{pagina_obj} 0 R")
-        stream = '\n'.join(comandos_pagina).encode('cp1252', errors='replace')
-        objetos.append(
-            f"{pagina_obj} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 {largura_pagina} {altura_pagina}] /Resources << /Font << /F1 {fonte_regular_obj} 0 R /F2 {fonte_bold_obj} 0 R >> >> /Contents {conteudo_obj} 0 R >> endobj\n".encode('latin-1')
-        )
-        objetos.append(
-            f"{conteudo_obj} 0 obj << /Length {len(stream)} >> stream\n".encode('latin-1')
-            + stream
-            + b"\nendstream endobj\n"
-        )
-    objetos.insert(
-        1,
-        f"2 0 obj << /Type /Pages /Kids [{' '.join(kids)}] /Count {len(comandos_paginas)} >> endobj\n".encode('latin-1'),
-    )
-    objetos.append(f"{fonte_regular_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> endobj\n".encode('latin-1'))
-    objetos.append(f"{fonte_bold_obj} 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> endobj\n".encode('latin-1'))
-
-    pdf = b'%PDF-1.4\n'
-    offsets = [0]
-    for obj in objetos:
-        offsets.append(len(pdf))
-        pdf += obj
-    xref_start = len(pdf)
-    pdf += f"xref\n0 {len(offsets)}\n".encode('latin-1') + b"0000000000 65535 f \n"
-    for offset in offsets[1:]:
-        pdf += f"{offset:010d} 00000 n \n".encode('latin-1')
-    pdf += (f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF").encode('latin-1')
-    return pdf
 
 
 def _comandos_qrcode_pdf(payload_pix, x, y_topo, tamanho=Decimal('142')):
@@ -1254,6 +1216,20 @@ def exportar_extrato_morador_pdf(request, morador_id):
     return response
 
 
+def _mes_referencia_post(request):
+    """Lê ``mes_referencia`` do POST (AAAA-MM-DD ou AAAA-MM).
+
+    Antes, um valor ausente ou inválido derrubava a página com erro 500.
+    """
+    valor = (request.POST.get('mes_referencia') or '').strip()
+    for formato in ('%Y-%m-%d', '%Y-%m'):
+        try:
+            return datetime.strptime(valor, formato).date().replace(day=1)
+        except ValueError:
+            continue
+    return resolver_mes_referencia(None)
+
+
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro(request):
     can_edit_financeiro = can_edit(request, 'acesso_financeiro_editar')
@@ -1261,11 +1237,11 @@ def financeiro(request):
     configuracao_form = None
     if request.method == 'POST':
         if 'delete_ajuste_id' in request.POST:
-            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            mes = _mes_referencia_post(request)
             AjusteMorador.objects.filter(id=request.POST.get('delete_ajuste_id'), mes_referencia=mes).delete()
             return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         if 'desconto_submit' in request.POST:
-            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            mes = _mes_referencia_post(request)
             form = DescontoMensalForm(request.POST)
             if form.is_valid():
                 from core.models import DescontoMensal
@@ -1274,11 +1250,11 @@ def financeiro(request):
         elif 'ajuste_submit' in request.POST:
             fs = AjusteMoradorFormSet(
                 request.POST,
-                queryset=AjusteMorador.objects.filter(mes_referencia=datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)),
+                queryset=AjusteMorador.objects.filter(mes_referencia=_mes_referencia_post(request)),
                 prefix='ajuste',
             )
             if fs.is_valid():
-                mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+                mes = _mes_referencia_post(request)
                 for ajuste in fs.save(commit=False):
                     ajuste.mes_referencia = mes
                     ajuste.save()
@@ -1286,7 +1262,7 @@ def financeiro(request):
                     obj.delete()
                 return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'pendencia_submit' in request.POST:
-            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            mes = _mes_referencia_post(request)
             fs = PendenciaMensalItemFormSet(
                 request.POST,
                 queryset=PendenciaMensalItem.objects.filter(mes_referencia=mes),
@@ -1301,7 +1277,7 @@ def financeiro(request):
                     obj.delete()
                 return redirect(f"{redirect('financeiro_aluguel').url}?mes={mes.strftime('%Y-%m')}")
         elif 'contas_casa_submit' in request.POST:
-            mes = datetime.strptime(request.POST.get('mes_referencia'), '%Y-%m-%d').date().replace(day=1)
+            mes = _mes_referencia_post(request)
             fs = ContaCasaFormSet(
                 request.POST,
                 queryset=ContaCasa.objects.all().order_by('data_vencimento', 'nome', 'id'),

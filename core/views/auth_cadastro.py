@@ -13,10 +13,76 @@ from core.models import EventoCalendario, OrdemServico, Reuniao, RockEvento
 from .common import can_edit, get_user_morador, setor_required
 
 
+# Slides usados enquanto ninguém cadastrar fotos da casa no admin.
+SLIDES_PADRAO = [
+    {'arquivo': 'core/roleta/casa.svg', 'titulo': 'Ilustração da casa à noite, com o boneco saindo pela porta dos fundos'},
+    {'arquivo': 'core/roleta/rock.svg', 'titulo': 'Ilustração de duas canecas de chopp brindando'},
+    {'arquivo': 'core/roleta/agenda.svg', 'titulo': 'Ilustração do calendário da casa com o boneco segurando a ata'},
+]
+
+# Atalhos da página inicial: (variante do boneco, rota, título, descrição, módulo de permissão)
+ATALHOS = [
+    ('financeiro', 'financeiro', 'Financeiro', 'Aluguel, rateio e prestação de contas.', 'financeiro'),
+    ('compras', 'compras', 'Compras', 'Notas fiscais e parcelas da casa.', 'compras'),
+    ('almoxarifado', 'almoxarifado', 'Almoxarifado', 'Estoque e consumo de produtos.', 'estoque'),
+    ('manutencao', 'manutencao', 'Ordens de serviço', 'O que precisa de conserto.', 'manutencao'),
+    ('rock', 'rock', 'Rocks', 'Festas, lotes e ingressos.', 'rock'),
+    ('reunioes', 'reunioes', 'Reuniões', 'Pautas e atas registradas.', 'reunioes'),
+    ('calendario', 'calendario', 'Calendário', 'Tudo que vai acontecer no mês.', 'reunioes'),
+    ('moradores', 'moradores', 'Moradores', 'Quartos, cursos e funções.', None),
+    ('perfil', 'perfil', 'Meu perfil', 'Seus dados e comprovantes.', None),
+]
+
+
+def _legendas_padrao():
+    hoje = timezone.localdate()
+    legendas = ['Tudo da casa num lugar só: contas, compras, rocks e reuniões.']
+    rock = RockEvento.objects.filter(data__gte=hoje).order_by('data').first()
+    legendas.append(
+        f'Próximo rock: {rock.nome}, {rock.data:%d/%m}.' if rock else 'Nenhum rock marcado ainda. Bora marcar?'
+    )
+    reuniao = Reuniao.objects.filter(data__gte=hoje, status='marcada').order_by('data', 'horario_marcado').first()
+    legendas.append(
+        f'Próxima reunião: {reuniao.data:%d/%m}, às {reuniao.horario_marcado:%H:%M}, em {reuniao.local}.'
+        if reuniao else 'Nenhuma reunião marcada.'
+    )
+    return legendas
+
+
 @login_required
 def home(request):
+    from django.templatetags.static import static
+    from django.urls import reverse
+
+    from core.context_processors import pode_ver_modulo
+    from core.models import SlideInicio
+
     morador = get_user_morador(request.user)
-    return render(request, 'core/home.html', {'usuario_sem_vinculo': morador is None})
+    slides = [
+        {'url': s.imagem.url, 'titulo': s.titulo, 'legenda': s.legenda}
+        for s in SlideInicio.objects.filter(ativo=True).exclude(imagem='')
+    ]
+    if not slides:
+        slides = [
+            {'url': static(item['arquivo']), 'titulo': item['titulo'], 'legenda': legenda}
+            for item, legenda in zip(SLIDES_PADRAO, _legendas_padrao())
+        ]
+
+    atalhos = []
+    for variante, rota, titulo, descricao, modulo in ATALHOS:
+        if variante == 'rock' and morador is None and not request.user.is_superuser:
+            # Quem não mora na casa só compra ingressos.
+            atalhos.append({'variante': 'rock', 'url': reverse('comprar_rocks'), 'titulo': 'Ingressos',
+                            'descricao': 'Compre ingressos para os rocks.'})
+            continue
+        if pode_ver_modulo(request.user, modulo):
+            atalhos.append({'variante': variante, 'url': reverse(rota), 'titulo': titulo, 'descricao': descricao})
+
+    return render(request, 'core/home.html', {
+        'usuario_sem_vinculo': morador is None,
+        'slides': slides,
+        'atalhos': atalhos,
+    })
 
 
 @setor_required(

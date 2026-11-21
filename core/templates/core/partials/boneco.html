@@ -1,0 +1,5 @@
+{% load static %}{% comment %}
+Boneco da seção (desenhos gerados por scripts/boneco/gerar_boneco.py).
+  tipo: 'acao' (cena animada do cabeçalho) ou 'icone' (correndo com o objeto)
+  tom: 'preto' (para fundo claro) ou 'branco' (para fundo escuro)
+{% endcomment %}{% with 'core/boneco/'|add:tipo|add:'-'|add:variante|add:'-'|add:tom|add:'.svg' as arquivo %}<img class="{{ classe|default:'bn' }}" src="{% static arquivo %}" alt="{{ alt|default:'' }}" width="{% if tipo == 'acao' %}610{% else %}500{% endif %}" height="{% if tipo == 'acao' %}516{% else %}534{% endif %}" decoding="async">{% endwith %}

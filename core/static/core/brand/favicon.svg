@@ -1,8 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RPF favicon oficial">
-  <rect width="64" height="64" rx="10" fill="#000"/>
-  <g fill="#fff">
-    <rect x="8" y="14" width="16" height="36" fill="none" stroke="#fff" stroke-width="2"/>
-    <polygon points="9,16 20,21 20,49 9,49" fill="#000"/>
-    <path d="M31 37h7v-8l6-5h10l4 4-3 3-3-4h-5l5 5v5l-5 5v9h-6v-6l4-4v-3l-4 3h-10v-8z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 90 640 640" role="img"><title>RPF</title>
+<rect x="80" y="90" width="640" height="640" rx="110" fill="#000"/><g transform="translate(36 72)"><rect x="120" y="197" width="188" height="406" rx="9" fill="#fff"/><polygon points="130,212 213,250 213,550 130,588" fill="#000" stroke="#000" stroke-width="6" stroke-linejoin="round"/><polyline points="528,452 584.7,499.6 674.7,499.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="488.5,295.4 578.5,295.4 624,345.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="533.2,465 465.8,298.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="528,452 484.5,511.9 484.5,601.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="458.9,339.7 458.9,429.7 390.9,429.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.8" cy="266.9" r="42" fill="#fff"/>
+<g transform="translate(425.8 266.9) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(354.9 421.7) rotate(0) scale(1.2)">
+  <path d="M22 -22h12a14 14 0 0 1 14 14v16a14 14 0 0 1-14 14h-12" fill="none" stroke="#BFD3DE" stroke-width="7"/>
+  <rect x="-24" y="-30" width="48" height="62" rx="5" fill="#DEAB2C" stroke="#BFD3DE" stroke-width="4"/>
+  <path d="M-12 -18v40M0 -18v40M12 -18v40" stroke="#F1CF73" stroke-width="5" stroke-linecap="round"/>
+  <path d="M-30 -28a11 11 0 0 1 8-15a13 13 0 0 1 22-5a12 12 0 0 1 22 3a10 10 0 0 1 8 13c0 6-4 8-8 8h-46c-5 0-7-2-6-4z" fill="#fff" stroke="#3a3a3a" stroke-width="2.5"/>
+</g></g>
 </svg>

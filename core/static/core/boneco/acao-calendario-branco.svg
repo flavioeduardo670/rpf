@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 96 610 516" role="img"><style>.q{opacity:0}@keyframes q0{0%,24.99%{opacity:1}25.00%,100%{opacity:0}}.q0{animation:q0 0.62s linear 3}@keyframes q1{0%,24.99%{opacity:0}25.00%,49.99%{opacity:1}50.00%,100%{opacity:0}}.q1{animation:q1 0.62s linear 3}@keyframes q2{0%,49.99%{opacity:0}50.00%,74.99%{opacity:1}75.00%,100%{opacity:0}}.q2{animation:q2 0.62s linear 3}@keyframes q3{0%,74.99%{opacity:0}75.00%,99.99%{opacity:1}100.00%,100%{opacity:0}}.q3{animation:q3 0.62s linear 3}.fim{opacity:0;animation:fim 1.86s linear forwards}@keyframes fim{0%,99.9%{opacity:0}100%{opacity:1}}@media (prefers-reduced-motion: reduce){.q{display:none}.fim{opacity:1;animation:none}}</style>
+<g class="q q0"><g transform="translate(320 291.6) scale(1.0)">
+  <rect x="-88" y="-62" width="166" height="160" rx="8" fill="#000" stroke="#fff" stroke-width="9"/>
+  <rect x="-88" y="-62" width="166" height="40" rx="8" fill="#DEAB2C" stroke="#fff" stroke-width="9"/>
+  <path d="M-50 -80 V-46 M40 -80 V-46" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <rect x="-66" y="-10" width="22" height="20" fill="#fff"/><rect x="-30" y="-10" width="22" height="20" fill="#fff"/><rect x="6" y="-10" width="22" height="20" fill="#fff"/><rect x="42" y="-10" width="22" height="20" fill="#fff"/><rect x="-66" y="22" width="22" height="20" fill="#fff"/><rect x="-30" y="22" width="22" height="20" fill="#fff"/><rect x="6" y="22" width="22" height="20" fill="#DEAB2C"/><rect x="42" y="22" width="22" height="20" fill="#fff"/><rect x="-66" y="54" width="22" height="20" fill="#fff"/><rect x="-30" y="54" width="22" height="20" fill="#fff"/><rect x="6" y="54" width="22" height="20" fill="#fff"/><rect x="42" y="54" width="22" height="20" fill="#fff"/>
+</g><polyline points="560,441.6 575.4,514 578.5,603.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="593.1,283.5 618.1,370 582,427.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="559,455.6 571.6,276" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,441.6 544.6,514 544.6,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="547.1,310.4 463.7,344.2 404,311.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="586.6" cy="228.2" r="42" fill="#fff"/>
+<g transform="translate(586.6 228.2) rotate(-8)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="q q1"><g transform="translate(320 291.6) scale(1.0)">
+  <rect x="-88" y="-62" width="166" height="160" rx="8" fill="#000" stroke="#fff" stroke-width="9"/>
+  <rect x="-88" y="-62" width="166" height="40" rx="8" fill="#DEAB2C" stroke="#fff" stroke-width="9"/>
+  <path d="M-50 -80 V-46 M40 -80 V-46" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <rect x="-66" y="-10" width="22" height="20" fill="#fff"/><rect x="-30" y="-10" width="22" height="20" fill="#fff"/><rect x="6" y="-10" width="22" height="20" fill="#fff"/><rect x="42" y="-10" width="22" height="20" fill="#fff"/><rect x="-66" y="22" width="22" height="20" fill="#fff"/><rect x="-30" y="22" width="22" height="20" fill="#fff"/><rect x="6" y="22" width="22" height="20" fill="#DEAB2C"/><rect x="42" y="22" width="22" height="20" fill="#fff"/><rect x="-66" y="54" width="22" height="20" fill="#fff"/><rect x="-30" y="54" width="22" height="20" fill="#fff"/><rect x="6" y="54" width="22" height="20" fill="#fff"/><rect x="42" y="54" width="22" height="20" fill="#fff"/>
+</g><polyline points="560,441.6 575.4,514 578.5,603.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="593.1,283.5 618.1,370 582,427.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="559,455.6 571.6,276" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,441.6 544.6,514 544.6,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="547.1,310.4 457.6,319.3 390,311.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="586.6" cy="228.2" r="42" fill="#fff"/>
+<g transform="translate(586.6 228.2) rotate(-8)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="q q2"><g transform="translate(320 291.6) scale(1.0)">
+  <rect x="-88" y="-62" width="166" height="160" rx="8" fill="#000" stroke="#fff" stroke-width="9"/>
+  <rect x="-88" y="-62" width="166" height="40" rx="8" fill="#DEAB2C" stroke="#fff" stroke-width="9"/>
+  <path d="M-50 -80 V-46 M40 -80 V-46" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <rect x="-66" y="-10" width="22" height="20" fill="#fff"/><rect x="-30" y="-10" width="22" height="20" fill="#fff"/><rect x="6" y="-10" width="22" height="20" fill="#fff"/><rect x="42" y="-10" width="22" height="20" fill="#fff"/><rect x="-66" y="22" width="22" height="20" fill="#fff"/><rect x="-30" y="22" width="22" height="20" fill="#fff"/><rect x="6" y="22" width="22" height="20" fill="#DEAB2C"/><rect x="42" y="22" width="22" height="20" fill="#fff"/><rect x="-66" y="54" width="22" height="20" fill="#fff"/><rect x="-30" y="54" width="22" height="20" fill="#fff"/><rect x="6" y="54" width="22" height="20" fill="#fff"/><rect x="42" y="54" width="22" height="20" fill="#fff"/>
+</g><polyline points="560,441.6 575.4,514 578.5,603.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="593.1,283.5 618.1,370 582,427.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="559,455.6 571.6,276" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,441.6 544.6,514 544.6,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="547.1,310.4 463.7,344.2 404,311.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="586.6" cy="228.2" r="42" fill="#fff"/>
+<g transform="translate(586.6 228.2) rotate(-8)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="q q3"><g transform="translate(320 291.6) scale(1.0)">
+  <rect x="-88" y="-62" width="166" height="160" rx="8" fill="#000" stroke="#fff" stroke-width="9"/>
+  <rect x="-88" y="-62" width="166" height="40" rx="8" fill="#DEAB2C" stroke="#fff" stroke-width="9"/>
+  <path d="M-50 -80 V-46 M40 -80 V-46" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <rect x="-66" y="-10" width="22" height="20" fill="#fff"/><rect x="-30" y="-10" width="22" height="20" fill="#fff"/><rect x="6" y="-10" width="22" height="20" fill="#fff"/><rect x="42" y="-10" width="22" height="20" fill="#fff"/><rect x="-66" y="22" width="22" height="20" fill="#fff"/><rect x="-30" y="22" width="22" height="20" fill="#fff"/><rect x="6" y="22" width="22" height="20" fill="#DEAB2C"/><rect x="42" y="22" width="22" height="20" fill="#fff"/><rect x="-66" y="54" width="22" height="20" fill="#fff"/><rect x="-30" y="54" width="22" height="20" fill="#fff"/><rect x="6" y="54" width="22" height="20" fill="#fff"/><rect x="42" y="54" width="22" height="20" fill="#fff"/>
+</g><polyline points="560,441.6 575.4,514 578.5,603.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="593.1,283.5 618.1,370 582,427.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="559,455.6 571.6,276" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,441.6 544.6,514 544.6,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="547.1,310.4 457.6,319.3 390,311.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="586.6" cy="228.2" r="42" fill="#fff"/>
+<g transform="translate(586.6 228.2) rotate(-8)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="fim"><g transform="translate(320 291.6) scale(1.0)">
+  <rect x="-88" y="-62" width="166" height="160" rx="8" fill="#000" stroke="#fff" stroke-width="9"/>
+  <rect x="-88" y="-62" width="166" height="40" rx="8" fill="#DEAB2C" stroke="#fff" stroke-width="9"/>
+  <path d="M-50 -80 V-46 M40 -80 V-46" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <rect x="-66" y="-10" width="22" height="20" fill="#fff"/><rect x="-30" y="-10" width="22" height="20" fill="#fff"/><rect x="6" y="-10" width="22" height="20" fill="#fff"/><rect x="42" y="-10" width="22" height="20" fill="#fff"/><rect x="-66" y="22" width="22" height="20" fill="#fff"/><rect x="-30" y="22" width="22" height="20" fill="#fff"/><rect x="6" y="22" width="22" height="20" fill="#DEAB2C"/><rect x="42" y="22" width="22" height="20" fill="#fff"/><rect x="-66" y="54" width="22" height="20" fill="#fff"/><rect x="-30" y="54" width="22" height="20" fill="#fff"/><rect x="6" y="54" width="22" height="20" fill="#fff"/><rect x="42" y="54" width="22" height="20" fill="#fff"/>
+</g><polyline points="560,441.6 575.4,514 578.5,603.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="593.1,283.5 618.1,370 582,427.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="559,455.6 571.6,276" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,441.6 544.6,514 544.6,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="547.1,310.4 463.7,344.2 404,311.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="586.6" cy="228.2" r="42" fill="#fff"/>
+<g transform="translate(586.6 228.2) rotate(-8)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g>
+</svg>

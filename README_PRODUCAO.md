@@ -14,6 +14,16 @@
   - início: `86400`
   - após validação completa HTTPS + subdomínios: `31536000`
 - `SECURE_HSTS_PRELOAD=True` somente quando domínio/subdomínios estiverem prontos para preload
+- `MERCADOPAGO_WEBHOOK_SECRET`: **obrigatória se o PIX estiver em uso** — sem ela o webhook de pagamento é recusado (HTTP 400) para impedir confirmações falsas.
+
+## Deploy (ordem dos comandos)
+
+```bash
+pip install -r requirements.txt
+python manage.py collectstatic --noinput
+python manage.py migrate --noinput
+# só então reiniciar/publicar a aplicação (ex.: gunicorn rpf.wsgi)
+```
 
 ## Comportamento de segurança com `DJANGO_DEBUG=False`
 

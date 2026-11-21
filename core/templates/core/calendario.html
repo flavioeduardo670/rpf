@@ -1,352 +1,18 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
-    <script defer src="{% static 'core/table_tools.js' %}"></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendario - Sistema RPF</title>
-    <style>
-        :root {
-            --bg: #f1f1f1;
-            --panel: #ffffff;
-            --ink: #101010;
-            --muted: #5f5f5f;
-            --line: #d2d2d2;
-            --line-strong: #b0b0b0;
-            --accent: #101010;
-            --accent-soft: #f4f4f4;
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-        }
+{% extends 'core/base.html' %}
 
-        * { box-sizing: border-box; }
+{% block title %}Calendário{% endblock %}
+{% block page_title %}Calendário{% endblock %}
+{% block page_subtitle %}Rocks, OS e reuniões entram sozinhos. O resto você anota aqui.{% endblock %}
+{% block header_actions %}
+<nav class="cal-mes" aria-label="Mês">
+    <a class="btn btn-light" href="?mes={{ mes_anterior|date:'Y-m' }}" aria-label="Mês anterior">‹</a>
+    <span class="cal-mes__nome">{{ current|date:"F \d\e Y" }}</span>
+    <a class="btn btn-light" href="?mes={{ mes_proximo|date:'Y-m' }}" aria-label="Mês seguinte">›</a>
+</nav>
+{% endblock %}
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background:
-                radial-gradient(circle at 15% 0, #ffffff 0%, transparent 35%),
-                radial-gradient(circle at 90% 10%, #e9e9e9 0%, transparent 30%),
-                linear-gradient(160deg, #f7f7f7, #efefef);
-            color: var(--ink);
-            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-        }
-
-        .wrap {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 28px;
-        }
-
-        .header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
-            margin-bottom: 18px;
-        }
-
-        .header h1 {
-            margin: 8px 0 4px;
-            font-size: clamp(1.6rem, 2.6vw, 2.2rem);
-        }
-
-        .header p {
-            margin: 0;
-            color: var(--muted);
-        }
-
-        .back {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            font-size: 0.9rem;
-            color: var(--ink);
-            border: 1px solid var(--line);
-            padding: 6px 12px;
-            border-radius: 999px;
-            background: var(--panel);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
-        }
-
-        .month-nav {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            padding: 6px 12px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
-        }
-
-        .month-nav a {
-            text-decoration: none;
-            color: var(--ink);
-            font-weight: 700;
-            padding: 4px 8px;
-            border-radius: 999px;
-            background: var(--accent-soft);
-        }
-
-        .month-label {
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            font-size: 0.85rem;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: minmax(0, 3fr) minmax(0, 1.3fr);
-            gap: 18px;
-        }
-
-        .calendar {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-lg);
-            padding: 16px;
-            box-shadow: var(--shadow);
-        }
-
-        .weekday-row {
-            display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-
-        .weekday {
-            text-align: center;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            color: var(--muted);
-            padding: 6px 0;
-        }
-
-        .weeks {
-            display: grid;
-            gap: 8px;
-        }
-
-        .week {
-            display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .day {
-            min-height: 120px;
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #fbfbfb;
-        }
-
-        .day.outside {
-            opacity: 0.55;
-            background: #f0f0f0;
-        }
-
-        .day.today {
-            border: 2px solid var(--accent);
-            background: #fdfdfd;
-        }
-
-        .day-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .day-number {
-            font-weight: 700;
-            font-size: 0.95rem;
-        }
-
-        .events {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 6px;
-            font-size: 0.85rem;
-            color: var(--muted);
-            overflow: hidden;
-        }
-
-        .events li {
-            padding: 6px 8px;
-            border-radius: 8px;
-            background: #ededed;
-            color: #1d1d1d;
-            font-weight: 600;
-            line-height: 1.2;
-        }
-
-        .events li.manual { background: #ececec; }
-        .events li.os { background: #dceeff; }
-        .events li.rock { background: #f8dfef; }
-        .events li.reuniao { background: #e2f4e2; }
-
-        .event-label {
-            display: inline-block;
-            font-size: 0.68rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 700;
-            margin-right: 6px;
-            opacity: 0.75;
-        }
-
-        .side {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-lg);
-            padding: 16px;
-            box-shadow: var(--shadow);
-            display: grid;
-            gap: 12px;
-            align-content: start;
-        }
-
-        .side h3 {
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            font-size: 0.9rem;
-        }
-
-        .form {
-            display: grid;
-            gap: 12px;
-        }
-
-        .field {
-            display: grid;
-            gap: 6px;
-        }
-
-        .field label {
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-
-        .field input {
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--line);
-            font-size: 0.95rem;
-        }
-        .field input[type="checkbox"] {
-            width: auto;
-            padding: 0;
-        }
-        .field-inline {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        .errorlist {
-            margin: 0;
-            padding-left: 16px;
-            color: #a20000;
-            font-size: 0.8rem;
-        }
-
-        .btn {
-            border: 1px solid var(--accent);
-            background: var(--accent);
-            color: #f7f7f7;
-            font-weight: 700;
-            padding: 10px 14px;
-            border-radius: 999px;
-            cursor: pointer;
-        }
-
-        .btn-light {
-            border: 1px solid var(--line-strong);
-            background: #fff;
-            color: #111;
-        }
-
-        .manual-list {
-            margin-top: 10px;
-            display: grid;
-            gap: 8px;
-        }
-
-        .manual-item {
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 8px;
-            background: #fafafa;
-        }
-
-        .manual-item p {
-            margin: 0 0 6px;
-            font-size: 0.86rem;
-        }
-
-        .manual-actions {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .inline-form {
-            display: inline;
-        }
-
-        .note {
-            font-size: 0.85rem;
-            color: var(--muted);
-        }
-
-        @media (max-width: 980px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 720px) {
-            .wrap { padding: 16px; }
-            .weekday-row, .week {
-                gap: 6px;
-            }
-            .day {
-                min-height: 96px;
-                padding: 8px;
-            }
-        }
-    </style>
-</head>
-<body class="app-body">
-    <main class="wrap">
-        <header class="header">
-            <div>
-                <a href="{% url 'home' %}" class="back">Voltar ao inicio</a>
-                <h1>Calendario</h1>
-                <p>Rocks, OSs e reuniões aparecem automaticamente. Eventos manuais podem ser adicionados abaixo.</p>
-            </div>
-            <div class="month-nav">
-                <a href="?mes={{ mes_anterior|date:'Y-m' }}">&lt;</a>
-                <div class="month-label">{{ current|date:"F Y" }}</div>
-                <a href="?mes={{ mes_proximo|date:'Y-m' }}">&gt;</a>
-            </div>
-        </header>
-
-        <section class="layout">
+{% block content %}
+<section class="layout">
             <div class="calendar">
                 <div class="weekday-row">
                     {% for dia in dias_semana %}
@@ -418,7 +84,7 @@
                         <label for="{{ form.recorrente.id_for_label }}">Recorrente</label>
                         {{ form.recorrente.errors }}
                     </div>
-                    <button type="submit" class="btn">{% if evento_em_edicao %}Salvar edição{% else %}Salvar evento{% endif %}</button>
+                    <button type="submit" class="btn btn-primary">{% if evento_em_edicao %}Salvar edição{% else %}Salvar evento{% endif %}</button>
                     {% if evento_em_edicao %}
                     <a class="btn btn-light" href="?mes={{ current|date:'Y-m' }}">Cancelar edição</a>
                     {% endif %}
@@ -445,7 +111,7 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="acao" value="excluir_manual">
                                 <input type="hidden" name="evento_id" value="{{ evento.id }}">
-                                <button type="submit" class="btn btn-light">Excluir</button>
+                                <button type="submit" class="btn btn-danger">Excluir</button>
                             </form>
                         </div>
                     </article>
@@ -458,7 +124,9 @@
                 {% endif %}
             </aside>
         </section>
-    </main>
+{% endblock %}
+
+{% block extra_js %}
 <script>
 const diaTodoInput = document.getElementById('id_dia_todo');
 const horarioInput = document.getElementById('id_horario');
@@ -474,5 +142,4 @@ if (diaTodoInput && horarioInput) {
     toggleHorario();
 }
 </script>
-</body>
-</html>
+{% endblock %}

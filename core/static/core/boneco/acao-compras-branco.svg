@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 96 610 516" role="img"><style>.q{opacity:0}@keyframes q0{0%,12.49%{opacity:1}12.50%,100%{opacity:0}}.q0{animation:q0 0.64s linear 3}@keyframes q1{0%,12.49%{opacity:0}12.50%,24.99%{opacity:1}25.00%,100%{opacity:0}}.q1{animation:q1 0.64s linear 3}@keyframes q2{0%,24.99%{opacity:0}25.00%,37.49%{opacity:1}37.50%,100%{opacity:0}}.q2{animation:q2 0.64s linear 3}@keyframes q3{0%,37.49%{opacity:0}37.50%,49.99%{opacity:1}50.00%,100%{opacity:0}}.q3{animation:q3 0.64s linear 3}@keyframes q4{0%,49.99%{opacity:0}50.00%,62.49%{opacity:1}62.50%,100%{opacity:0}}.q4{animation:q4 0.64s linear 3}@keyframes q5{0%,62.49%{opacity:0}62.50%,74.99%{opacity:1}75.00%,100%{opacity:0}}.q5{animation:q5 0.64s linear 3}@keyframes q6{0%,74.99%{opacity:0}75.00%,87.49%{opacity:1}87.50%,100%{opacity:0}}.q6{animation:q6 0.64s linear 3}@keyframes q7{0%,87.49%{opacity:0}87.50%,99.99%{opacity:1}100.00%,100%{opacity:0}}.q7{animation:q7 0.64s linear 3}.fim{opacity:0;animation:fim 1.92s linear forwards}@keyframes fim{0%,99.9%{opacity:0}100%{opacity:1}}@media (prefers-reduced-motion: reduce){.q{display:none}.fim{opacity:1;animation:none}}</style>
+<g class="q q0"><polyline points="560,458.5 607.6,515.2 697.5,518.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,309 508.9,398.4 442,410.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,470.7 477,314.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,458.5 516.5,518.4 488.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,357 492.6,445.4 432,414.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="277.1" r="42" fill="#fff"/>
+<g transform="translate(444 277.1) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 414.5 L404 422.5" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 422.5 L208 422.5 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 462.5 H394 M228 502.5 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q1"><polyline points="560,443.8 582.9,514.2 659.2,466.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,294.3 508.9,383.7 442,395.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,456 477,300.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,443.8 537.1,514.2 543.4,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,342.3 492.6,430.7 432,399.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="262.4" r="42" fill="#fff"/>
+<g transform="translate(444 262.4) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 399.8 L404 407.8" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 407.8 L208 407.8 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 447.8 H394 M228 487.8 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q2"><polyline points="560,442.7 532.3,511.3 617.9,539.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,293.1 508.9,382.6 442,394.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,454.8 477,298.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,442.7 560,516.7 581.8,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,341.1 492.6,429.5 432,398.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="261.2" r="42" fill="#fff"/>
+<g transform="translate(444 261.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 398.7 L404 406.7" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 406.7 L208 406.7 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 446.7 H394 M228 486.7 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q3"><polyline points="560,457.6 508.6,510.9 496.1,600" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,308.1 508.9,397.5 442,409.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,469.8 477,313.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,457.6 590.1,525.2 654.8,587.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,356.1 492.6,444.5 432,413.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="276.2" r="42" fill="#fff"/>
+<g transform="translate(444 276.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 413.6 L404 421.6" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 421.6 L208 421.6 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 461.6 H394 M228 501.6 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q4"><polyline points="560,446.5 516.5,506.4 488.7,592" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,297 508.9,386.4 442,398.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,458.7 477,302.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,446.5 607.6,503.2 697.5,506.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,345 492.6,433.4 432,402.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="265.1" r="42" fill="#fff"/>
+<g transform="translate(444 265.1) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 402.5 L404 410.5" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 410.5 L208 410.5 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 450.5 H394 M228 490.5 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q5"><polyline points="560,429.8 537.1,500.2 543.4,590" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,280.3 508.9,369.7 442,381.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,442 477,286.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,429.8 582.9,500.2 659.2,452.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,328.3 492.6,416.7 432,385.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="248.4" r="42" fill="#fff"/>
+<g transform="translate(444 248.4) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 385.8 L404 393.8" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 393.8 L208 393.8 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 433.8 H394 M228 473.8 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q6"><polyline points="560,434.7 560,508.7 581.8,596" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,285.1 508.9,374.6 442,386.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,446.8 477,290.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,434.7 532.3,503.3 617.9,531.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,333.1 492.6,421.5 432,390.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="253.2" r="42" fill="#fff"/>
+<g transform="translate(444 253.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 390.7 L404 398.7" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 398.7 L208 398.7 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 438.7 H394 M228 478.7 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="q q7"><polyline points="560,459.6 590.1,527.2 654.8,589.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="499.1,310.1 508.9,399.5 442,411.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="567,471.8 477,315.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="560,459.6 508.6,512.9 496.1,602" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="475.9,358.1 492.6,446.5 432,415.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="444" cy="278.2" r="42" fill="#fff"/>
+<g transform="translate(444 278.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M436 415.6 L404 423.6" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M398 423.6 L208 423.6 L230 524 L388 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M222 463.6 H394 M228 503.6 H390" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M388 524 L394 552 H238" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="374" cy="582" r="20" fill="#fff"/><circle cx="374" cy="582" r="7" fill="#000"/>
+  <circle cx="252" cy="582" r="20" fill="#fff"/><circle cx="252" cy="582" r="7" fill="#000"/>
+</g></g><g class="fim"><polyline points="600,457.8 647.6,514.5 737.1,523.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="539.1,308.2 548.9,397.7 482,409.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="607,469.9 517,314" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="600,457.8 552.4,514.5 543,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="515.9,356.2 532.6,444.7 472,413.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="484" cy="276.3" r="42" fill="#fff"/>
+<g transform="translate(484 276.3) rotate(-14)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g>
+  <path d="M476 413.8 L444 421.8" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M438 421.8 L248 421.8 L270 524 L428 524 Z" fill="#DEAB2C" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M262 461.8 H434 M268 501.8 H430" stroke="#fff" stroke-width="6" opacity=".55"/>
+  <path d="M428 524 L434 552 H278" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="414" cy="582" r="20" fill="#fff"/><circle cx="414" cy="582" r="7" fill="#000"/>
+  <circle cx="292" cy="582" r="20" fill="#fff"/><circle cx="292" cy="582" r="7" fill="#000"/>
+</g></g>
+</svg>

@@ -52,8 +52,32 @@ def setor_required(group_name=None, morador_attr=None, morador_view_attr=None, m
     return decorator
 
 
+# Grupo do Django que concede acesso total a cada módulo. Precisa ser o mesmo
+# nome usado em ``setor_required(group_name=...)`` nas views.
+GRUPO_POR_MODULO = {
+    'financeiro': 'Financeiro',
+    'compras': 'Compras',
+    'estoque': 'Estoque',
+    'manutencao': 'Manutencao',
+    'rock': 'Rock',
+    'reunioes': 'Reunioes',
+}
+
+
+def _grupo_do_atributo(attr_name):
+    # 'acesso_financeiro_editar' -> 'financeiro'
+    partes = attr_name.split('_')
+    if len(partes) >= 3 and partes[0] == 'acesso':
+        return GRUPO_POR_MODULO.get('_'.join(partes[1:-1]))
+    return None
+
+
 def can_edit(request, attr_name):
     if request.user.is_superuser:
+        return True
+    grupo = _grupo_do_atributo(attr_name)
+    if grupo and request.user.groups.filter(name=grupo).exists():
+        # Coerente com setor_required: o grupo já libera GET e POST no módulo.
         return True
     morador = get_user_morador(request.user)
     if morador:

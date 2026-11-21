@@ -1,40 +1,13 @@
+{% extends 'core/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
-    <script defer src="{% static 'core/table_tools.js' %}"></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Rock</title>
-    <style>
-        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
-        * { box-sizing:border-box; }
-        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
-        .wrap { max-width:1000px; margin:0 auto; }
-        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
-        h1 { margin:0; }
-        .btn, button { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
-        .btn.light { background:#fff; color:#111; }
-        .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
-        form p { margin:0 0 12px; }
-        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
-        textarea { min-height:36px; height:36px; }
-        .table-wrap { overflow:auto; }
-        .row-actions { display:flex; justify-content:center; }
-        .btn-danger { background:#fff; color:#111; border-color:#c00; }
-        .btn-add { margin-top:10px; }
-        table { width:100%; min-width:720px; border-collapse:collapse; }
-        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:top; }
-        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
-        .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:14px; }
-        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} .actions{flex-direction:column;} }
-    </style>
-</head>
-<body class="app-body">
+
+{% block title %}Editar Rock{% endblock %}
+{% block page_title %}Editar Rock{% endblock %}
+{% block page_subtitle %}Dados da festa, bebidas e itens.{% endblock %}
+
+{% block content %}
 <div class="wrap">
     <div class="top">
-        <h1>Editar Rock</h1>
         <a class="btn light" href="{% url 'rock' %}">Voltar</a>
     </div>
 
@@ -73,9 +46,9 @@
             <button type="button" class="btn btn-add" id="add-rock-item">Adicionar linha</button>
 
             <div class="actions">
-                <button type="submit" name="excluir_submit" class="btn light" onclick="return confirm('Tem certeza que deseja excluir este rock?');">Excluir</button>
+                <button type="submit" name="excluir_submit" class="btn light btn-danger" onclick="return confirm('Tem certeza que deseja excluir este rock?');">Excluir</button>
                 <a class="btn light" href="{% url 'rock' %}">Cancelar</a>
-                <button type="submit" class="btn">Salvar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
             </div>
         </form>
     </section>
@@ -137,5 +110,4 @@ if (addRockItemBtn) {
     addRockItemBtn.addEventListener('click', addRow);
 }
 </script>
-</body>
-</html>
+{% endblock %}

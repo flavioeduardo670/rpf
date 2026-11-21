@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="150 96 610 516" role="img"><style>.q{opacity:0}@keyframes q0{0%,24.99%{opacity:1}25.00%,100%{opacity:0}}.q0{animation:q0 0.62s linear 3}@keyframes q1{0%,24.99%{opacity:0}25.00%,49.99%{opacity:1}50.00%,100%{opacity:0}}.q1{animation:q1 0.62s linear 3}@keyframes q2{0%,49.99%{opacity:0}50.00%,74.99%{opacity:1}75.00%,100%{opacity:0}}.q2{animation:q2 0.62s linear 3}@keyframes q3{0%,74.99%{opacity:0}75.00%,99.99%{opacity:1}100.00%,100%{opacity:0}}.q3{animation:q3 0.62s linear 3}.fim{opacity:0;animation:fim 1.86s linear forwards}@keyframes fim{0%,99.9%{opacity:0}100%{opacity:1}}@media (prefers-reduced-motion: reduce){.q{display:none}.fim{opacity:1;animation:none}}</style>
+<g class="q q0"><g>
+  <polygon points="398.7,478 397.2,496.8 370,507.7 364.2,521.6 375.8,548.5 363.5,562.9 335.1,555.7 322.3,563.5 315.8,592.1 297.4,596.5 278.7,574 263.7,572.8 241.6,592.1 224.2,584.9 222.2,555.7 210.8,545.9 181.6,548.5 171.7,532.5 187.4,507.7 183.9,493 158.7,478 160.1,459.2 187.4,448.3 193.1,434.4 181.6,407.5 193.8,393.1 222.2,400.3 235.1,392.5 241.6,363.9 259.9,359.5 278.7,382 293.7,383.2 315.8,363.9 333.1,371.1 335.1,400.3 346.6,410.1 375.8,407.5 385.6,423.5 370,448.3 373.5,463" fill="#DEAB2C" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="278.7" cy="478" r="38.4" fill="#fff"/>
+</g><polyline points="600,467.8 653.2,519.2 722.2,577.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="495.8,344.4 438.3,413.6 401.8,471" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="610.4,477.2 476.6,356.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="600,467.8 543.3,515.4 527.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="488.7,397.2 398.7,398.1 381.9,464" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="434.7" cy="329.4" r="42" fill="#fff"/>
+<g transform="translate(434.7 329.4) rotate(-18)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="q q1"><g>
+  <polygon points="397.2,496.8 392.8,515.1 364.2,521.6 356.3,534.4 363.5,562.9 349.2,575.1 322.3,563.5 308.3,569.3 297.4,596.5 278.7,598 263.7,572.8 249,569.3 224.2,584.9 208.1,575.1 210.8,545.9 201,534.4 171.7,532.5 164.5,515.1 183.9,493 182.7,478 160.1,459.2 164.5,440.9 193.1,434.4 201,421.6 193.8,393.1 208.1,380.9 235.1,392.5 249,386.7 259.9,359.5 278.7,358 293.7,383.2 308.3,386.7 333.1,371.1 349.2,380.9 346.6,410.1 356.3,421.6 385.6,423.5 392.8,440.9 373.5,463 374.7,478" fill="#DEAB2C" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="278.7" cy="478" r="38.4" fill="#fff"/>
+</g><polyline points="600,467.8 653.2,519.2 722.2,577.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="495.8,344.4 438.3,413.6 401.8,471" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="610.4,477.2 476.6,356.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="600,467.8 543.3,515.4 527.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="488.7,397.2 398.7,398.1 381.9,464" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="434.7" cy="329.4" r="42" fill="#fff"/>
+<g transform="translate(434.7 329.4) rotate(-18)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="q q2"><g>
+  <polygon points="392.8,515.1 385.6,532.5 356.3,534.4 346.6,545.9 349.2,575.1 333.1,584.9 308.3,569.3 293.7,572.8 278.7,598 259.9,596.5 249,569.3 235.1,563.5 208.1,575.1 193.8,562.9 201,534.4 193.1,521.6 164.5,515.1 160.1,496.8 182.7,478 183.9,463 164.5,440.9 171.7,423.5 201,421.6 210.8,410.1 208.1,380.9 224.2,371.1 249,386.7 263.7,383.2 278.7,358 297.4,359.5 308.3,386.7 322.3,392.5 349.2,380.9 363.5,393.1 356.3,421.6 364.2,434.4 392.8,440.9 397.2,459.2 374.7,478 373.5,493" fill="#DEAB2C" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="278.7" cy="478" r="38.4" fill="#fff"/>
+</g><polyline points="600,467.8 653.2,519.2 722.2,577.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="495.8,344.4 438.3,413.6 401.8,471" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="610.4,477.2 476.6,356.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="600,467.8 543.3,515.4 527.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="488.7,397.2 398.7,398.1 381.9,464" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="434.7" cy="329.4" r="42" fill="#fff"/>
+<g transform="translate(434.7 329.4) rotate(-18)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="q q3"><g>
+  <polygon points="385.6,532.5 375.8,548.5 346.6,545.9 335.1,555.7 333.1,584.9 315.8,592.1 293.7,572.8 278.7,574 259.9,596.5 241.6,592.1 235.1,563.5 222.2,555.7 193.8,562.9 181.6,548.5 193.1,521.6 187.4,507.7 160.1,496.8 158.7,478 183.9,463 187.4,448.3 171.7,423.5 181.6,407.5 210.8,410.1 222.2,400.3 224.2,371.1 241.6,363.9 263.7,383.2 278.7,382 297.4,359.5 315.8,363.9 322.3,392.5 335.1,400.3 363.5,393.1 375.8,407.5 364.2,434.4 370,448.3 397.2,459.2 398.7,478 373.5,493 370,507.7" fill="#DEAB2C" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="278.7" cy="478" r="38.4" fill="#fff"/>
+</g><polyline points="600,467.8 653.2,519.2 722.2,577.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="495.8,344.4 438.3,413.6 401.8,471" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="610.4,477.2 476.6,356.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="600,467.8 543.3,515.4 527.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="488.7,397.2 398.7,398.1 381.9,464" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="434.7" cy="329.4" r="42" fill="#fff"/>
+<g transform="translate(434.7 329.4) rotate(-18)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g><g class="fim"><g>
+  <polygon points="398.7,478 397.2,496.8 370,507.7 364.2,521.6 375.8,548.5 363.5,562.9 335.1,555.7 322.3,563.5 315.8,592.1 297.4,596.5 278.7,574 263.7,572.8 241.6,592.1 224.2,584.9 222.2,555.7 210.8,545.9 181.6,548.5 171.7,532.5 187.4,507.7 183.9,493 158.7,478 160.1,459.2 187.4,448.3 193.1,434.4 181.6,407.5 193.8,393.1 222.2,400.3 235.1,392.5 241.6,363.9 259.9,359.5 278.7,382 293.7,383.2 315.8,363.9 333.1,371.1 335.1,400.3 346.6,410.1 375.8,407.5 385.6,423.5 370,448.3 373.5,463" fill="#DEAB2C" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="278.7" cy="478" r="38.4" fill="#fff"/>
+</g><polyline points="600,467.8 653.2,519.2 722.2,577.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="495.8,344.4 438.3,413.6 401.8,471" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="610.4,477.2 476.6,356.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="600,467.8 543.3,515.4 527.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="488.7,397.2 398.7,398.1 381.9,464" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="434.7" cy="329.4" r="42" fill="#fff"/>
+<g transform="translate(434.7 329.4) rotate(-18)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g></g>
+</svg>

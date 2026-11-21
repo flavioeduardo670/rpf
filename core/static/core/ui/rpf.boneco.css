@@ -1,0 +1,181 @@
+/* Boneco do logo com acessório por seção, transição "entrando pela porta",
+   roleta da página inicial e atalhos da home. */
+@layer boneco {
+    /* ---------- Boneco (SVGs em core/static/core/boneco, gerados por scripts/boneco) ---------- */
+    .bn { display: block; height: auto; }
+
+    /* ---------- Transição: o boneco corre e entra pela porta ---------- */
+    .rpf-transicao {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: var(--espaco-3);
+        background: var(--preto);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .rpf-transicao__cena { width: min(900px, 94vw); height: auto; }
+    .rpf-transicao__destino { margin: 0; min-height: 2.4em; opacity: 0; }
+    .rpf-transicao__destino .rpf-subtitulo { font-size: clamp(1.4rem, 1rem + 1.5vw, 2.1rem); }
+
+    html.rpf-saindo .rpf-transicao {
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
+        transition: opacity .1s linear;
+    }
+    html.rpf-saindo .rpf-transicao__destino { animation: bn-aparecer .25s .1s ease-out forwards; }
+
+    /* Chegada: a porta abre (porta-abrindo.svg) e a página aparece */
+    html.rpf-chegando .rpf-transicao { visibility: visible; opacity: 1; }
+    html.rpf-chegando.rpf-chegou .rpf-transicao {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .3s .3s ease-out, visibility 0s .6s;
+    }
+
+    @keyframes bn-aparecer {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .rpf-transicao { display: none !important; }
+    }
+
+    /* ---------- Roleta (carrossel) do título da página inicial ---------- */
+    .rpf-roleta {
+        position: relative;
+        overflow: hidden;
+        border: var(--borda-forte);
+        border-radius: var(--raio-painel);
+        background: var(--preto);
+        aspect-ratio: 5 / 2;
+        min-height: 300px;
+        max-height: 520px;
+        width: 100%;
+        margin-bottom: var(--espaco-6);
+    }
+    .rpf-roleta__trilho {
+        display: flex;
+        height: 100%;
+        transition: transform .6s cubic-bezier(.65, 0, .35, 1);
+    }
+    .rpf-roleta__slide {
+        flex: 0 0 100%;
+        height: 100%;
+        margin: 0;
+    }
+    .rpf-roleta__slide img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .rpf-roleta__texto {
+        position: absolute;
+        left: clamp(16px, 3vw, 36px);
+        bottom: clamp(16px, 3vw, 32px);
+        right: 180px;
+        pointer-events: none;
+    }
+    .rpf-roleta__titulo {
+        margin: 0 0 var(--espaco-3);
+        font-size: clamp(1.7rem, 1rem + 3vw, 3.2rem);
+        font-weight: 800;
+        line-height: 1.3;
+        letter-spacing: -0.02em;
+    }
+    .rpf-roleta__legenda { margin: 0; max-width: 62ch; }
+    /* Legenda como a caixa branca dos stories: legível sobre qualquer foto */
+    .rpf-roleta__legenda .rpf-subtitulo {
+        background: var(--branco);
+        box-shadow: 0 0 0 2px var(--preto);
+    }
+    .rpf-roleta__controles {
+        position: absolute;
+        right: clamp(12px, 2vw, 24px);
+        bottom: clamp(12px, 2vw, 24px);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .rpf-roleta__botao {
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        background: var(--preto);
+        color: var(--branco);
+        border: 2px solid var(--branco);
+        border-radius: var(--raio);
+        cursor: pointer;
+        padding: 0;
+    }
+    .rpf-roleta__botao:hover { background: var(--amarelo); color: var(--preto); border-color: var(--preto); }
+    .rpf-roleta__botao svg { width: 18px; height: 18px; }
+    .rpf-roleta__botao svg[hidden] { display: none; }
+    .rpf-roleta__pontos { display: flex; gap: 6px; margin-right: 6px; }
+    .rpf-roleta__ponto {
+        width: 22px;
+        height: 10px;
+        padding: 0;
+        border: 2px solid var(--preto);
+        background: var(--branco);
+        border-radius: 2px;
+        cursor: pointer;
+    }
+    .rpf-roleta__ponto[aria-current="true"] { background: var(--preto); border-color: var(--branco); width: 34px; }
+
+    @media (max-width: 700px) {
+        .rpf-roleta { aspect-ratio: 4 / 5; max-height: 560px; }
+        .rpf-roleta__texto { right: clamp(16px, 3vw, 36px); bottom: 76px; }
+        .rpf-roleta__controles { left: 16px; right: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .rpf-roleta__trilho { transition: none; }
+    }
+
+    /* ---------- Atalhos da página inicial (uma porta para cada seção) ---------- */
+    .rpf-boas-vindas {
+        font-family: var(--fonte-elegante);
+        font-style: italic;
+        font-size: 1.5rem;
+        margin: 0 0 var(--espaco-4);
+    }
+    .rpf-atalhos {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+        gap: var(--espaco-3);
+        margin-bottom: var(--espaco-6);
+    }
+    .rpf-atalho {
+        display: grid;
+        grid-template-columns: 76px 1fr;
+        gap: var(--espaco-3);
+        align-items: center;
+        padding: var(--espaco-3);
+        border: var(--borda-forte);
+        border-radius: var(--raio-painel);
+        color: var(--preto);
+        text-decoration: none;
+        background: var(--branco);
+    }
+    .rpf-atalho:hover { background: var(--amarelo); text-decoration: none; }
+    .rpf-atalho__icone {
+        width: 76px;
+        height: 76px;
+        display: grid;
+        place-items: center;
+        background: var(--preto);
+        border-radius: var(--raio);
+    }
+    .rpf-atalho__icone .bn { width: 66px; }
+    .rpf-atalho__nome { display: block; font-weight: 800; font-size: 1.0625rem; line-height: 1.25; }
+    .rpf-atalho__descricao { display: block; font-size: 0.8125rem; color: var(--cinza-texto); margin-top: 2px; }
+    .rpf-atalho:hover .rpf-atalho__descricao { color: var(--preto); }
+}

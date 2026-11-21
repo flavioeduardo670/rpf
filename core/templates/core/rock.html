@@ -1,51 +1,14 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    {% load static %}
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setor de Rocks</title>
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
-    <script defer src="{% static 'core/table_tools.js' %}"></script>
-    <style>
-        :root { --panel:#fff; --ink:#121212; --muted:#666; --line:#d7d7d7; --light:#f6f6f6; --dark:#0f0f0f; }
-        * { box-sizing:border-box; }
-        body { margin:0; padding:26px; background:linear-gradient(165deg,#f7f7f7,#ededed); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
-        .wrap { max-width:1280px; margin:0 auto; }
-        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
-        h1 { margin:0; }
-        .btn, button { text-decoration:none; border:1px solid #111; background:var(--dark); color:#fafafa; padding:9px 14px; border-radius:999px; font-weight:700; font-size:.86rem; cursor:pointer; }
-        .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 10px 20px rgba(0,0,0,.06); margin-bottom:14px; }
-        .panel h2, .panel h3 { margin-top:0; }
-        form p { margin:0 0 12px; }
-        input, select, textarea { width:100%; border:1px solid #cfcfcf; border-radius:8px; padding:8px; background:#fff; }
-        textarea { min-height:36px; height:36px; }
-        .table-wrap { overflow:auto; }
-        .row-actions { display:flex; justify-content:center; }
-        .evento-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-        .evento-actions .btn { white-space:nowrap; }
-        .btn-danger { background:#fff; color:#111; border-color:#c00; }
-        .btn-add { margin-top:10px; }
-        table { width:100%; min-width:860px; border-collapse:collapse; }
-        th, td { padding:10px 11px; border-bottom:1px solid #e8e8e8; text-align:left; vertical-align:top; }
-        th { background:var(--light); font-size:.78rem; text-transform:uppercase; letter-spacing:.6px; }
-        .empty { color:var(--muted); text-align:center; }
-        @media (max-width:920px){ body{padding:14px;} .top{flex-direction:column; align-items:flex-start;} .btn, button{width:100%; text-align:center;} }
-    </style>
-</head>
-<body class="app-body">
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Setor de Rocks{% endblock %}
+{% block page_title %}Rocks{% endblock %}
+{% block page_subtitle %}As festas da casa: datas, ingressos e gastos.{% endblock %}
+
+{% block content %}
 <div class="wrap app-wrap">
     <div class="top app-topbar">
-        <h1>Setor de Rocks</h1>
-        <a class="btn app-btn" href="{% url 'home' %}">Voltar ao inicio</a>
     </div>
-    {% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-        <li class="message {{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 
     <section class="panel app-card">
         <h2>Novo rock (festa)</h2>
@@ -118,11 +81,11 @@
                         {% if evento.horario_inicio %}{{ evento.horario_inicio }}{% else %}-{% endif %}
                         {% if evento.horario_fim %} - {{ evento.horario_fim }}{% endif %}
                     </td>
-                    <td>R$ {{ evento.valor_arrecadado }}</td>
-                    <td>R$ {{ evento.total_gasto|floatformat:2 }}</td>
+                    <td>R$&nbsp;{{ evento.valor_arrecadado }}</td>
+                    <td>R$&nbsp;{{ evento.total_gasto|floatformat:2 }}</td>
                     <td>
                         {% for lote in evento.lotes_resumo %}
-                        <div>{{ lote.nome }} - Qtd: {{ lote.quantidade_total }} - R$ {{ lote.preco }}</div>
+                        <div>{{ lote.nome }} - Qtd: {{ lote.quantidade_total }} -&nbsp;R$&nbsp;{{ lote.preco }}</div>
                         {% empty %}
                         <div>-</div>
                         {% endfor %}
@@ -144,7 +107,7 @@
                 {% endfor %}
             </table>
         </div>
-        <p class="muted">Total gasto (todos os rocks): R$ {{ total_gasto|floatformat:2 }}</p>
+        <p class="muted">Total gasto (todos os rocks): R$&nbsp;{{ total_gasto|floatformat:2 }}</p>
     </section>
 
     <section class="panel app-card">
@@ -229,5 +192,4 @@ if (addRockItemBtn) {
     addRockItemBtn.addEventListener('click', addRow);
 }
 </script>
-</body>
-</html>
+{% endblock %}

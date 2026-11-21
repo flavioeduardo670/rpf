@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="70 130 1000 500" role="img"><style>.q{opacity:0}@keyframes q0{0%,12.49%{opacity:1}12.50%,100%{opacity:0}}.q0{animation:q0 0.56s linear infinite}@keyframes q1{0%,12.49%{opacity:0}12.50%,24.99%{opacity:1}25.00%,100%{opacity:0}}.q1{animation:q1 0.56s linear infinite}@keyframes q2{0%,24.99%{opacity:0}25.00%,37.49%{opacity:1}37.50%,100%{opacity:0}}.q2{animation:q2 0.56s linear infinite}@keyframes q3{0%,37.49%{opacity:0}37.50%,49.99%{opacity:1}50.00%,100%{opacity:0}}.q3{animation:q3 0.56s linear infinite}@keyframes q4{0%,49.99%{opacity:0}50.00%,62.49%{opacity:1}62.50%,100%{opacity:0}}.q4{animation:q4 0.56s linear infinite}@keyframes q5{0%,62.49%{opacity:0}62.50%,74.99%{opacity:1}75.00%,100%{opacity:0}}.q5{animation:q5 0.56s linear infinite}@keyframes q6{0%,74.99%{opacity:0}75.00%,87.49%{opacity:1}87.50%,100%{opacity:0}}.q6{animation:q6 0.56s linear infinite}@keyframes q7{0%,87.49%{opacity:0}87.50%,99.99%{opacity:1}100.00%,100%{opacity:0}}.q7{animation:q7 0.56s linear infinite}.anda{animation:anda 0.88s linear forwards}@keyframes anda{0%{transform:translateX(640px);opacity:1}70%{opacity:1}84%{transform:translateX(-300px);opacity:0}100%{transform:translateX(-300px);opacity:0}}.fecha{transform-box:fill-box;transform-origin:100% 50%;transform:scaleX(0);animation:fecha 0.88s linear forwards}@keyframes fecha{0%,76%{transform:scaleX(0)}94%,100%{transform:scaleX(1)}}</style>
+<rect x="120" y="197" width="188" height="406" rx="9" fill="#fff"/><polygon points="130,212 213,250 213,550 130,588" fill="#000" stroke="#000" stroke-width="6" stroke-linejoin="round"/><defs><clipPath id="entra"><rect x="308" y="0" width="2000" height="1000"/><polygon points="130,212 213,250 213,550 130,588"/></clipPath></defs><g clip-path="url(#entra)"><g class="anda"><g class="q q0"><polyline points="520,458.5 567.6,515.2 657.5,518.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,301.9 540.7,368.8 506.7,427.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,471.5 457.8,304.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,458.5 476.5,518.4 448.7,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,346.2 366.3,377 322.6,324.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="266.1" r="42" fill="#fff"/>
+<g transform="translate(425.6 266.1) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 324.9) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q1"><polyline points="520,443.8 542.9,514.2 619.2,466.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,287.3 519.9,368.1 466.3,410" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,456.8 457.8,289.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,443.8 497.1,514.2 503.4,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,331.5 366.3,362.3 322.6,310.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="251.4" r="42" fill="#fff"/>
+<g transform="translate(425.6 251.4) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 310.2) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q2"><polyline points="520,442.7 492.3,511.3 577.9,539.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,286.1 480.5,376.1 412.8,383.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,455.7 457.8,288.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,442.7 520,516.7 541.8,604" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,330.4 366.3,361.2 322.6,309.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="250.2" r="42" fill="#fff"/>
+<g transform="translate(425.6 250.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 309.1) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q3"><polyline points="520,457.6 468.6,510.9 456.1,600" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,301.1 435.5,379 372.4,353.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,470.6 457.8,303.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,457.6 550.1,525.2 614.8,587.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,345.4 366.3,376.1 322.6,324" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="265.2" r="42" fill="#fff"/>
+<g transform="translate(425.6 265.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 324) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q4"><polyline points="520,446.5 476.5,506.4 448.7,592" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,289.9 409.5,345.4 364,294.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,459.5 457.8,292.6" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,446.5 567.6,503.2 657.5,506.4" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,334.2 366.3,365 322.6,312.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="254.1" r="42" fill="#fff"/>
+<g transform="translate(425.6 254.1) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 312.9) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q5"><polyline points="520,429.8 497.1,500.2 503.4,590" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,273.3 432.8,349.6 372.7,317.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,442.8 457.8,275.9" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,429.8 542.9,500.2 619.2,452.5" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,317.5 366.3,348.3 322.6,296.2" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="237.4" r="42" fill="#fff"/>
+<g transform="translate(425.6 237.4) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 296.2) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q6"><polyline points="520,434.7 520,508.7 541.8,596" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,278.1 477.3,368 410.4,379.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,447.7 457.8,280.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,434.7 492.3,503.3 577.9,531.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,322.4 366.3,353.2 322.6,301.1" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="242.2" r="42" fill="#fff"/>
+<g transform="translate(425.6 242.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 301.1) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g><g class="q q7"><polyline points="520,459.6 550.1,527.2 614.8,589.8" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="480.5,303.1 519.9,383.9 476.2,436" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="525.2,472.6 457.8,305.7" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="60"/>
+<polyline points="520,459.6 468.6,512.9 456.1,602" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<polyline points="450.9,347.4 366.3,378.1 322.6,326" fill="none" stroke="#fff" stroke-linejoin="miter" stroke-miterlimit="3" stroke-width="38"/>
+<circle cx="425.6" cy="267.2" r="42" fill="#fff"/>
+<g transform="translate(425.6 267.2) rotate(-12)" fill="#fff"><path d="M-96 -30 L4 -64 L74 -52 L-24 -14 Z"/><path d="M-32 -30 L34 -46 L38 -20 C16 -30 -12 -24 -30 -12 Z"/><path d="M-64 -38 C-70 -26 -72 -12 -70 2" stroke="#fff" stroke-width="4" fill="none"/><circle cx="-70" cy="4" r="7"/><path d="M-77 8 L-63 8 L-58 36 L-82 36 Z"/></g><g transform="translate(322.6 326) rotate(20)">
+  <rect x="-22" y="-48" width="44" height="80" rx="8" fill="#fff"/>
+  <rect x="-15" y="-38" width="30" height="56" rx="3" fill="#DEAB2C"/>
+</g></g></g></g><polygon class="fecha" points="130,212 213,250 213,550 130,588" fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+</svg>

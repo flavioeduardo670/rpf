@@ -1,15 +1,39 @@
-{% load static %}
-<aside class="rpf-shell__sidebar">
-    <a class="rpf-brand" href="{% url 'home' %}" aria-label="Ir para início">
-        <img src="{% static 'core/brand/rpf_logo_icon.svg' %}" alt="República Portão dos Fundos">
+{% load static %}<aside class="rpf-lateral" aria-label="Menu">
+    <a class="rpf-marca" href="{% url 'home' %}">
+        <img class="rpf-marca__logo" src="{% static 'core/boneco/marca-branco.svg' %}" alt="" width="590" height="452">
+        <span class="rpf-marca__nome"><span class="rpf-marca__republica">República</span> Portão dos Fundos</span>
     </a>
-    <nav class="rpf-nav" aria-label="Principal">
-        <a class="rpf-nav__link" href="{% url 'home' %}">Início</a>
-        <a class="rpf-nav__link" href="{% url 'moradores' %}">Moradores</a>
-        <a class="rpf-nav__link" href="{% url 'financeiro' %}">Financeiro</a>
-        <a class="rpf-nav__link" href="{% url 'compras' %}">Compras</a>
-        <a class="rpf-nav__link" href="{% url 'almoxarifado' %}">Almoxarifado</a>
-        <a class="rpf-nav__link" href="{% url 'manutencao' %}">Ordens de Serviço</a>
-        <a class="rpf-nav__link" href="{% url 'calendario' %}">Reuniões</a>
+
+    <button class="rpf-menu-toggle" type="button" aria-expanded="false" aria-controls="rpf-menu">Menu</button>
+
+    <nav class="rpf-menu" id="rpf-menu" aria-label="Seções">
+        <a class="rpf-menu__link" href="{% url 'home' %}"{% if secao_atual.variante == 'inicio' %} aria-current="page"{% endif %}>
+            <img class="bn" src="{% if secao_atual.variante == 'inicio' %}{{ imagens_inicio.icone_preto }}{% else %}{{ imagens_inicio.icone_branco }}{% endif %}" alt="" width="500" height="534">
+            <span>Início</span>
+        </a>
+        {% for item in menu_secoes %}
+        <a class="rpf-menu__link" href="{{ item.url }}"{% if item.ativo %} aria-current="page"{% endif %}>
+            <img class="bn" src="{% if item.ativo %}{{ item.imagens.icone_preto }}{% else %}{{ item.imagens.icone_branco }}{% endif %}" alt="" width="500" height="534">
+            <span>{{ item.rotulo }}</span>
+        </a>
+        {% endfor %}
     </nav>
+
+    {% if user.is_authenticated %}
+    <div class="rpf-conta">
+        <span class="rpf-conta__nome">Olá, {{ user.first_name|default:user.username }}</span>
+        <div class="rpf-conta__links">
+            <a href="{% url 'perfil' %}">Meu perfil</a>
+            {% if user.is_superuser %}
+            <a href="{% url 'configurar_casa' %}">Configurações</a>
+            <a href="{% url 'gerenciar_acessos' %}">Acessos</a>
+            <a href="{% url 'admin:index' %}" data-sem-transicao>Admin</a>
+            {% endif %}
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit">Sair</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 </aside>

@@ -12,12 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 from urllib.parse import urlparse
 import dj_database_url
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
-
-MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +29,9 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
 
+# `manage.py test` (CI e máquina local).
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+
 if not SECRET_KEY:
     if DEBUG:
         # Chave apenas para ambiente local de desenvolvimento.
@@ -40,8 +40,13 @@ if not SECRET_KEY:
         raise ValueError('Defina DJANGO_SECRET_KEY no ambiente para executar em produção.')
 
 allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS')
+render_host = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
 if allowed_hosts_env:
     ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+    if render_host and render_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(render_host)
+elif render_host:
+    ALLOWED_HOSTS = [render_host]
 elif DEBUG:
     # Em desenvolvimento, permite acesso pela rede local.
     ALLOWED_HOSTS = ['*']
@@ -88,7 +93,8 @@ if not DEBUG:
             'Em produção, CSRF_TRUSTED_ORIGINS deve conter apenas origens HTTPS.'
         )
 
-    SECURE_SSL_REDIRECT = True
+    # Nos testes o cliente fala HTTP; com o redirect ligado toda resposta vira 301.
+    SECURE_SSL_REDIRECT = not TESTING
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     # Inicie com 86400 (1 dia) e eleve para 31536000 (1 ano) após validar HTTPS.
@@ -97,8 +103,13 @@ if not DEBUG:
     # Ative preload quando o domínio e subdomínios estiverem prontos para HSTS.
     SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'False').lower() == 'true'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # O healthcheck do provedor costuma bater via HTTP interno; não redirecionar.
+    SECURE_REDIRECT_EXEMPT = [r'^healthz$']
 
 SESSION_COOKIE_HTTPONLY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
 
 
 # Application definition
@@ -138,6 +149,7 @@ TEMPLATES = [
                 'django.template.context_processors.media',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.navegacao',
             ],
         },
     },
@@ -153,6 +165,7 @@ DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
@@ -206,6 +219,15 @@ STORAGES = {
     },
 }
 
+# Durante os testes o Django força DEBUG=False e o storage com manifest exige
+# um `collectstatic` prévio; sem isso toda página renderizada quebra com
+# "Missing staticfiles manifest entry". Nos testes usamos o storage simples.
+if TESTING:
+    STORAGES['staticfiles'] = {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    }
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 if STATIC_STRATEGY == 'cdn':
     static_cdn_url = os.getenv('DJANGO_STATIC_CDN_URL', '').strip()
     if not static_cdn_url:
@@ -218,6 +240,10 @@ if MEDIA_STORAGE_BACKEND not in {'local', 's3'}:
 
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
+if TESTING:
+    # Uploads feitos pelos testes não devem cair na pasta media/ do projeto.
+    import tempfile
+    MEDIA_ROOT = Path(tempfile.mkdtemp(prefix='rpf-test-media-'))
 
 if MEDIA_STORAGE_BACKEND == 's3':
     AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '').strip()
@@ -278,21 +304,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
 
 MERCADOPAGO_ACCESS_TOKEN = os.getenv('MERCADOPAGO_ACCESS_TOKEN', '')
 MERCADOPAGO_TIMEOUT = int(os.getenv('MERCADOPAGO_TIMEOUT', '10'))
 MERCADOPAGO_WEBHOOK_SECRET = os.getenv('MERCADOPAGO_WEBHOOK_SECRET', '')
 MERCADOPAGO_NOTIFICATION_URL = os.getenv('MERCADOPAGO_NOTIFICATION_URL', '')
 MERCADOPAGO_PAYER_EMAIL_FALLBACK = os.getenv('MERCADOPAGO_PAYER_EMAIL_FALLBACK', 'pagador@example.com')
-
-EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'localhost')
-EMAIL_PORT = int(os.getenv('DJANGO_EMAIL_PORT', '25'))
-EMAIL_HOST_USER = os.getenv('DJANGO_EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('DJANGO_EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.getenv('DJANGO_EMAIL_USE_TLS', 'False').lower() == 'true'
-EMAIL_USE_SSL = os.getenv('DJANGO_EMAIL_USE_SSL', 'False').lower() == 'true'
-DEFAULT_FROM_EMAIL = os.getenv('DJANGO_DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'webmaster@localhost')
 
 EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'localhost')
@@ -345,6 +363,9 @@ LOGGING = {
 SENTRY_DSN = os.getenv('SENTRY_DSN', '').strip()
 SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', 'development').strip()
 if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         environment=SENTRY_ENVIRONMENT,

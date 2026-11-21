@@ -1,98 +1,15 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    {% load static %}
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financeiro</title>
-    <link rel="stylesheet" href="{% static 'core/base.css' %}">
-    <script defer src="{% static 'core/table_tools.js' %}"></script>
-    <style>
-        :root {
-            --bg: #f3f3f3;
-            --panel: #ffffff;
-            --ink: #101010;
-            --muted: #616161;
-            --line: #d6d6d6;
-            --light: #f6f6f6;
-            --dark: #0e0e0e;
-            --radius: 12px;
-            --shadow: 0 10px 20px rgba(0,0,0,.06);
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            background: linear-gradient(165deg, #ffffff, #ebebeb);
-            color: var(--ink);
-            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-            padding: 26px;
-        }
-        .wrap { max-width: 1240px; margin: 0 auto; }
-        .hero {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 16px;
-            background: linear-gradient(130deg, #111111, #2b2b2b);
-            color: #f4f4f4;
-            border-radius: 16px;
-            padding: 22px;
-            box-shadow: var(--shadow);
-        }
-        .hero h1 { margin: 0; font-size: 1.85rem; }
-        .hero p { margin: 8px 0 0; color: #f0f0f0; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid #111; background: var(--dark); color: #fafafa; padding: 9px 14px; border-radius: 999px; font-weight: 700; font-size: .86rem; }
-        .btn-invert { background: #ffffff; color: #111; border-color: #3a3a3a; }
-        .hero-actions { display: flex; gap: 8px; }
-        .config-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 16px; }
-        .config-wrap h2 { margin: 0 0 10px; font-size: 1rem; }
-        .config-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
-        .config-field label { display: block; margin-bottom: 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; color: #2d2d2d; font-weight: 800; }
-        .config-field input { width: 100%; border: 1px solid #cfcfcf; border-radius: 8px; padding: 8px; background: #fff; color: #111; }
-        .errorlist { margin: 0 0 8px; padding-left: 18px; color: #111; font-size: .82rem; }
-        .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
-        .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
-        .label { margin: 0 0 7px; color: #2f2f2f; font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; }
-        .value { margin: 0; font-size: 1.4rem; font-weight: 800; }
-        .section-title { margin: 0 0 8px; font-size: 1.1rem; }
-        .table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; box-shadow: var(--shadow); margin-bottom: 18px; }
-        table { width: 100%; min-width: 760px; border-collapse: collapse; }
-        th, td { padding: 11px 12px; border-bottom: 1px solid #e8e8e8; text-align: left; }
-        th { background: #e5e5e5; color: #111; font-size: .78rem; text-transform: uppercase; letter-spacing: .6px; }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid #cfcfcf; font-size: .75rem; font-weight: 700; }
-        .empty { color: #2a2a2a; text-align: center; font-weight: 600; }
-        form { margin: 0; }
-        @media (max-width: 1080px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (max-width: 760px) {
-            body { padding: 14px; }
-            .hero { flex-direction: column; align-items: flex-start; }
-            .config-grid { grid-template-columns: 1fr; }
-            .cards { grid-template-columns: 1fr; }
-            .hero-actions { width: 100%; flex-direction: column; }
-            .btn { width: 100%; }
-        }
-    </style>
-</head>
-<body class="app-body">
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Financeiro{% endblock %}
+{% block page_title %}Aluguel de {{ mes_referencia|date:'m/Y' }}{% endblock %}
+{% block page_subtitle %}Rateio do mês, contas da casa, extras e descontos.{% endblock %}
+{% block header_actions %}
+<a href="{% url 'exportar_financeiro_csv' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-light">Exportar planilha</a>
+{% endblock %}
+
+{% block content %}
 <div class="wrap">
-    <header class="hero">
-        <div>
-            <h1>Financeiro</h1>
-            <p>Resumo, rateio e acompanhamento de notas fiscais.</p>
-        </div>
-        <div class="hero-actions">
-            <a href="{% url 'home' %}" class="btn">Voltar ao inicio</a>
-            <a href="{% url 'exportar_financeiro_csv' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-invert">Exportar planilha</a>
-        </div>
-    </header>
-    {% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-        <li class="message {{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 
     <section class="config-wrap">
         <h2>Mes de referencia</h2>
@@ -116,10 +33,10 @@
                     {{ configuracao_form.valor_aluguel.errors }}
                 </div>
             </div>
-            <button type="submit" class="btn">Salvar aluguel</button>
+            <button type="submit" class="btn btn-primary">Salvar aluguel</button>
         </form>
         {% else %}
-        <p>Visualizacao apenas. Valor atual: <strong>R$ {{ valor_aluguel|floatformat:2 }}</strong></p>
+        <p>Visualizacao apenas. Valor atual: <strong>R$&nbsp;{{ valor_aluguel|floatformat:2 }}</strong></p>
         {% endif %}
     </section>
 
@@ -158,7 +75,7 @@
                     {% endfor %}
                 </table>
             </div>
-            <button type="submit" name="contas_casa_submit" class="btn">Salvar contas da casa</button>
+            <button type="submit" name="contas_casa_submit" class="btn btn-primary">Salvar contas da casa</button>
         </form>
         {% endif %}
 
@@ -170,7 +87,7 @@
                 <tr>
                     <td>{{ conta.vencimento_rateio|date:"d/m/Y" }}</td>
                     <td>{{ conta.nome }}</td>
-                    <td>R$ {{ conta.valor|floatformat:2 }}</td>
+                    <td>R$&nbsp;{{ conta.valor|floatformat:2 }}</td>
                     <td>{{ conta.forma_pagamento|default:"-" }}</td>
                     <td>{% if conta.repetir_meses_futuros %}Repete nos meses futuros{% else %}Somente este mês{% endif %}</td>
                 </tr>
@@ -182,14 +99,14 @@
     </section>
 
     <section class="cards">
-        <article class="card"><p class="label">Valor do aluguel</p><p class="value">R$ {{ valor_aluguel|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Contas fixas</p><p class="value">R$ {{ valor_fixas_total|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Total recebido</p><p class="value">R$ {{ total_recebido|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Total da caixinha</p><p class="value">R$ {{ total_caixinha_mes|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Total a arrecadar</p><p class="value">R$ {{ total_a_arrecadar|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Total para rateio</p><p class="value">R$ {{ total_rateio|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Valor do aluguel</p><p class="value">R$&nbsp;{{ valor_aluguel|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Contas fixas</p><p class="value">R$&nbsp;{{ valor_fixas_total|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total recebido</p><p class="value">R$&nbsp;{{ total_recebido|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total da caixinha</p><p class="value">R$&nbsp;{{ total_caixinha_mes|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total a arrecadar</p><p class="value">R$&nbsp;{{ total_a_arrecadar|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Total para rateio</p><p class="value">R$&nbsp;{{ total_rateio|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Moradores ativos</p><p class="value">{{ total_moradores_ativos }}</p></article>
-        <article class="card"><p class="label">Valor medio por morador</p><p class="value">R$ {{ valor_por_morador|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">Valor medio por morador</p><p class="value">R$&nbsp;{{ valor_por_morador|floatformat:2 }}</p></article>
     </section>
 
     <section class="config-wrap">
@@ -215,7 +132,7 @@
                         <td>{{ form.valor }}</td>
                         <td>{{ form.motivo }}</td>
                         <td>
-                            <button type="button" class="btn btn-invert" data-remove-pendencia>Excluir</button>
+                            <button type="button" class="btn btn-invert btn-danger" data-remove-pendencia>Excluir</button>
                             <span style="display:none;">{{ form.DELETE }}</span>
                         </td>
                     </tr>
@@ -224,14 +141,14 @@
                 </table>
             </div>
             <button type="button" class="btn btn-invert" id="add-pendencia">Adicionar linha</button>
-            <button type="submit" name="pendencia_submit" class="btn">Salvar pendências e descontos</button>
+            <button type="submit" name="pendencia_submit" class="btn btn-primary">Salvar pendências e descontos</button>
         </form>
         {% else %}
-        <p>Extras atuais: <strong>R$ {{ pendencia_total_mes|floatformat:2 }}</strong></p>
-        <p>Descontos atuais: <strong>R$ {{ desconto_total_mes|floatformat:2 }}</strong></p>
+        <p>Extras atuais: <strong>R$&nbsp;{{ pendencia_total_mes|floatformat:2 }}</strong></p>
+        <p>Descontos atuais: <strong>R$&nbsp;{{ desconto_total_mes|floatformat:2 }}</strong></p>
         <ul>
             {% for pendencia in pendencias_items %}
-            <li>{{ pendencia.get_tipo_display }} — {{ pendencia.motivo|default:pendencia.descricao }} — R$ {{ pendencia.valor|floatformat:2 }}</li>
+            <li>{{ pendencia.get_tipo_display }} — {{ pendencia.motivo|default:pendencia.descricao }} — R$&nbsp;{{ pendencia.valor|floatformat:2 }}</li>
             {% empty %}
             <li>Nenhuma linha registrada no mês.</li>
             {% endfor %}
@@ -265,9 +182,9 @@
                         <td>{{ form.motivo }}</td>
                         <td>
                             {% if form.instance.pk %}
-                            <button type="submit" class="btn btn-invert" name="delete_ajuste_id" value="{{ form.instance.pk }}">Excluir</button>
+                            <button type="submit" class="btn btn-invert btn-danger" name="delete_ajuste_id" value="{{ form.instance.pk }}">Excluir</button>
                             {% else %}
-                            <button type="button" class="btn btn-invert" data-remove-ajuste>Excluir</button>
+                            <button type="button" class="btn btn-invert btn-danger" data-remove-ajuste>Excluir</button>
                             {% endif %}
                             <span style="display:none;">{{ form.DELETE }}</span>
                         </td>
@@ -277,7 +194,7 @@
                 </table>
             </div>
             <button type="button" class="btn btn-invert" id="add-ajuste">Adicionar morador</button>
-            <button type="submit" name="ajuste_submit" class="btn">Salvar ajustes</button>
+            <button type="submit" name="ajuste_submit" class="btn btn-primary">Salvar ajustes</button>
         </form>
         {% else %}
         <p>Somente visualizacao para ajustes individuais.</p>
@@ -304,15 +221,15 @@
             {% for item in rateio_moradores %}
             <tr data-hierarquia="{{ item.morador.ordem_hierarquia }}">
                 <td>{{ item.morador.apelido|default:item.morador.nome }}</td>
-                <td>R$ {{ item.aluguel|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ item.aluguel|floatformat:2 }}</td>
                 {% for valor in item.fixas_detalhe %}
-                <td>R$ {{ valor|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ valor|floatformat:2 }}</td>
                 {% endfor %}
-                <td>R$ {{ item.caixinha|floatformat:2 }}</td>
-                <td>R$ {{ item.parcelas|floatformat:2 }}</td>
-                <td>R$ {{ item.desconto|floatformat:2 }}</td>
-                <td>R$ {{ item.extra|floatformat:2 }}</td>
-                <td>R$ {{ item.valor|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ item.caixinha|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ item.parcelas|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ item.desconto|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ item.extra|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ item.valor|floatformat:2 }}</td>
                 <td>{% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
                 <td>
                     {% if item.comprovante %}
@@ -346,9 +263,9 @@
             <tr>
                 <td>{{ nota.nota.descricao }}</td>
                 <td>{{ nota.nota.fornecedor }}</td>
-                <td>R$ {{ nota.nota.valor|floatformat:2 }}</td>
-                <td>R$ {{ nota.total_valor|floatformat:2 }}</td>
-                <td>R$ {{ nota.valor|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ nota.nota.valor|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ nota.total_valor|floatformat:2 }}</td>
+                <td>R$&nbsp;{{ nota.valor|floatformat:2 }}</td>
                 <td>{{ nota.vencimento }}</td>
                 <td>
                     {% if can_edit_financeiro %}
@@ -372,7 +289,7 @@
         <td>{{ ajuste_formset.empty_form.valor }}</td>
         <td>{{ ajuste_formset.empty_form.motivo }}</td>
         <td>
-            <button type="button" class="btn btn-invert" data-remove-ajuste>Excluir</button>
+            <button type="button" class="btn btn-invert btn-danger" data-remove-ajuste>Excluir</button>
             <span style="display:none;">{{ ajuste_formset.empty_form.DELETE }}</span>
         </td>
     </tr>
@@ -384,7 +301,7 @@
         <td>{{ pendencia_formset.empty_form.valor }}</td>
         <td>{{ pendencia_formset.empty_form.motivo }}</td>
         <td>
-            <button type="button" class="btn btn-invert" data-remove-pendencia>Excluir</button>
+            <button type="button" class="btn btn-invert btn-danger" data-remove-pendencia>Excluir</button>
             <span style="display:none;">{{ pendencia_formset.empty_form.DELETE }}</span>
         </td>
     </tr>
@@ -483,5 +400,4 @@ if (addPendenciaBtn) {
     addPendenciaBtn.addEventListener('click', addPendenciaRow);
 }
 </script>
-</body>
-</html>
+{% endblock %}

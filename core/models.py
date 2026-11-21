@@ -1,15 +1,10 @@
-from datetime import datetime, time
-
-from django.db import models, transaction
-from django.db.models.signals import post_save, pre_save
-from django.db.models import Q
-from django.dispatch import receiver
-from decimal import Decimal
-from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import models, transaction
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
+from django.utils import timezone
 
 
 # =====================================================
@@ -793,22 +788,35 @@ class AtaReuniao(models.Model):
             raise ValidationError(erros)
 
     def _montar_pdf_final(self):
+        # Import tardio para evitar import circular (services importa models).
+        from core.services.pdf import gerar_pdf_texto
+
         linhas = [
-            self.identificador_formatado,
             f"Status: {self.get_status_display()}",
             f"Data: {self.reuniao.data:%d/%m/%Y}",
+            f"Local: {self.reuniao.local}",
             f"Horário real: {self.horario_inicio_real.strftime('%H:%M')} - {self.horario_fim_real.strftime('%H:%M')}",
-            "",
-            "Participantes:",
         ]
+        if self.texto_abertura:
+            linhas += ["", "Abertura:", self.texto_abertura]
+        linhas += ["", "Participantes:"]
         for participante in self.participantes.order_by('nome'):
             if participante.presente:
                 linhas.append(f"- {participante.nome}")
-        linhas.append("")
-        linhas.append("Tópicos:")
+        linhas += ["", "Tópicos:"]
         for topico in self.topicos.order_by('ordem', 'id'):
-            linhas.append(f"- {topico.texto}")
-        return ContentFile(("\n".join(linhas) + "\n").encode('utf-8'))
+            for indice, parte in enumerate((topico.texto or '').splitlines() or ['']):
+                linhas.append(f"{topico.ordem}. {parte}" if indice == 0 else f"   {parte}")
+        linhas_5w2h = list(self.linhas_5w2h.all())
+        if linhas_5w2h:
+            linhas += ["", "Plano de ação (5W2H):"]
+            for linha in linhas_5w2h:
+                linhas.append(f"- O quê: {linha.o_que} | Quem: {linha.quem} | Onde: {linha.onde}")
+                if linha.quando:
+                    linhas.append(f"  Quando: {linha.quando:%d/%m/%Y}")
+        if self.encerramento_texto:
+            linhas += ["", "Encerramento:", self.encerramento_texto]
+        return ContentFile(gerar_pdf_texto(self.identificador_formatado, linhas))
 
     def _gerar_os_das_linhas_5w2h(self):
         if self.gerou_os:
@@ -847,13 +855,16 @@ class AtaReuniao(models.Model):
         self._validar_para_registro()
         quantidade_os = self._gerar_os_das_linhas_5w2h()
 
-        pdf_content = self._montar_pdf_final()
-        nome_pdf = f"ata_{self.ano}_{self.numero_sequencial:02d}.pdf"
-        self.pdf_final.save(nome_pdf, pdf_content, save=False)
-
+        # O status muda antes de montar o PDF para o documento sair como
+        # "Registrada" (antes saía "Rascunho"). Tem que ser depois de gerar as
+        # OS, porque as linhas 5W2H só podem ser salvas com a ata em rascunho.
         self.status = 'registrada'
         self.registrada_por = registrado_por
         self.registrada_em = timezone.now()
+
+        pdf_content = self._montar_pdf_final()
+        nome_pdf = f"ata_{self.ano}_{self.numero_sequencial:02d}.pdf"
+        self.pdf_final.save(nome_pdf, pdf_content, save=False)
         self.save(update_fields=['pdf_final', 'status', 'registrada_por', 'registrada_em'])
         return quantidade_os
 
@@ -1277,3 +1288,28 @@ def _auditar_status_pedido_ingresso(sender, instance, created, **kwargs):
             'status_novo': status_novo,
         },
     )
+
+
+# =====================================================
+# PÁGINA INICIAL: ROLETA DE IMAGENS
+# =====================================================
+
+class SlideInicio(models.Model):
+    """Imagem da roleta do título da página inicial (gerenciada pelo admin).
+
+    Enquanto não houver nenhum slide ativo, a página usa ilustrações padrão.
+    """
+    titulo = models.CharField('Descrição da imagem', max_length=120, help_text='Texto alternativo, para quem não enxerga a imagem.')
+    legenda = models.CharField(max_length=160, blank=True, default='', help_text='Frase curta que aparece sobre a imagem.')
+    imagem = models.ImageField(upload_to='roleta/', help_text='De preferência horizontal (proporção 5:2), com pelo menos 1600 px de largura.')
+    ordem = models.PositiveIntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['ordem', 'id']
+        verbose_name = 'Imagem da roleta'
+        verbose_name_plural = 'Imagens da roleta (página inicial)'
+
+    def __str__(self):
+        return self.titulo

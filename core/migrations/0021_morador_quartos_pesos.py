@@ -8,6 +8,12 @@ from django.db import migrations, models
 def carregar_quartos_pesos(apps, schema_editor):
     Morador = apps.get_model('core', 'Morador')
 
+    # Esta carga só faz sentido no banco da própria casa, que já tinha
+    # moradores cadastrados. Em bancos novos (testes, homologação, nova
+    # instalação) ela criava moradores reais indevidamente.
+    if not Morador.objects.exists():
+        return
+
     dados = [
         ('Cazares', '21S', 'Quarto 2º andar s/ GR', Decimal('8.75'), True),
         ('Casimiro', '12S', 'Quarto do 1º andar (maior)', Decimal('8.75'), True),

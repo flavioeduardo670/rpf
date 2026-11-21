@@ -8,7 +8,7 @@ Workflow versionado em `.github/workflows/homologacao.yml` com estágios:
 1. `lint`
 2. `testes`
 3. `deploy_staging`
-4. `migracoes_staging` (`migrate --noinput`)
+4. `migracoes_staging` (`migrate --noinput` e reinício do serviço)
 5. `smoke_tests`
 
 Também existe operação manual de `rollback_operacional` via `workflow_dispatch`.

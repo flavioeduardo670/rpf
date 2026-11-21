@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django import forms
 
 from .models import (
+    SlideInicio,
     AcessoUsuario,
     AtaLinha5W2H,
     AtaParticipante,
@@ -337,3 +338,10 @@ class UserAdmin(BaseUserAdmin):
         if morador_selecionado:
             morador_selecionado.user = obj
             morador_selecionado.save(update_fields=['user'])
+
+
+@admin.register(SlideInicio)
+class SlideInicioAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'legenda', 'ordem', 'ativo')
+    list_editable = ('ordem', 'ativo')
+    search_fields = ('titulo', 'legenda')
