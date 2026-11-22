@@ -157,6 +157,22 @@ class NotaFiscal(models.Model):
         return f"{self.descricao} - {self.fornecedor}"
 
 
+class ControleDistribuicaoNFe(models.Model):
+    """Onde parou a leitura da Distribuição de DF-e da Receita (notas emitidas
+    para o CNPJ da república). A SEFAZ bloqueia quem consulta de novo sem
+    novidade antes de 1 hora, por isso guardamos quando pode consultar."""
+
+    cnpj = models.CharField(max_length=14, unique=True)
+    ult_nsu = models.CharField(max_length=15, default='000000000000000')
+    max_nsu = models.CharField(max_length=15, default='000000000000000')
+    ultima_consulta = models.DateTimeField(null=True, blank=True)
+    proxima_consulta_apos = models.DateTimeField(null=True, blank=True)
+    ultimo_status = models.CharField(max_length=255, blank=True, default='')
+
+    def __str__(self):
+        return f'Distribuição NF-e {self.cnpj} (NSU {self.ult_nsu})'
+
+
 class RockEvento(models.Model):
     TIPO_CHOICES = [
         ('nosso', 'Nosso Rock'),

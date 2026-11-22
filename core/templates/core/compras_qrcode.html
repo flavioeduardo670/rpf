@@ -31,6 +31,10 @@
     .nfce-passos ol li:first-child { list-style: none; margin-left: -20px; }
     .nfce-passos textarea { width: 100%; font-size: 0.85rem; }
     .nfce-passos summary { cursor: pointer; margin-top: 4px; }
+    .nfce-auto { padding-left: 18px; display: grid; gap: 8px; }
+    .card details { margin-top: 8px; }
+    .card details summary { cursor: pointer; }
+    label.btn { cursor: pointer; display: inline-block; }
 </style>
 {% endblock %}
 
@@ -72,6 +76,21 @@
                 </details>
             </form>
         </div>
+        {% if foto_configurada %}
+        <div class="nfce-passos">
+            <h3>Ou leia pela foto da nota</h3>
+            <p class="muted">Fotografe o cupom inteiro, bem esticado e com boa luz. O sistema lê itens, valor e data da foto.</p>
+            <form method="post" enctype="multipart/form-data" class="nfce-form-foto">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="foto">
+                <input type="hidden" name="completar" value="1">
+                <label class="btn btn-primary">Fotografar a nota
+                    <input type="file" name="foto_nota" accept="image/*" capture="environment" hidden class="nfce-foto-nota">
+                </label>
+                <p class="nfce-status" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+        {% endif %}
         {% endif %}
         <div class="nfce-resumo">
             <div><small>Loja</small><strong>{{ dados.fornecedor|default:"-" }}</strong></div>
@@ -146,11 +165,98 @@
             </div>
         </form>
     </section>
+
+    <section class="card">
+        <h2>2. Ler pela foto da nota</h2>
+        {% if foto_configurada %}
+        <p class="muted">Para notas de MG e de qualquer estado: fotografe o cupom inteiro e o sistema lê loja, itens, valor e data. Você confere antes de registrar.</p>
+        <form method="post" enctype="multipart/form-data" class="nfce-form-foto">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="foto">
+            <label class="btn btn-primary">Fotografar a nota inteira
+                <input type="file" name="foto_nota" accept="image/*" capture="environment" hidden class="nfce-foto-nota">
+            </label>
+            <p class="nfce-status" role="status" aria-live="polite"></p>
+        </form>
+        {% else %}
+        <p class="muted">Desligada: falta configurar a chave <code>ANTHROPIC_API_KEY</code> no servidor (Render → Environment).</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <h2>3. Atalho na página da SEFAZ</h2>
+        <p class="muted">Depois de marcar "não sou robô" na página da nota, um toque envia a nota para cá.</p>
+        <details>
+            <summary><strong>No celular (Android): instalar o app e usar "Compartilhar"</strong></summary>
+            <ol>
+                <li>No Chrome, abra este sistema, toque em <strong>⋮ → Instalar app</strong> (ou "Adicionar à tela inicial").</li>
+                <li>Na página da nota da SEFAZ, toque e segure no texto → <strong>Selecionar tudo → Compartilhar → RPF</strong>.</li>
+                <li>Toque em <strong>Importar nota</strong>.</li>
+            </ol>
+        </details>
+        <details>
+            <summary><strong>Favorito "Enviar ao RPF" (computador ou celular)</strong></summary>
+            <p>No computador, arraste este botão para a barra de favoritos: <a class="btn" href="{{ bookmarklet }}" onclick="event.preventDefault();">Enviar ao RPF</a></p>
+            <p>No celular: copie o código, crie um favorito qualquer, edite e cole o código no lugar do endereço. Na página da nota, digite "Enviar ao RPF" na barra de endereço e toque no favorito.</p>
+            <textarea id="nfce-bookmarklet" rows="3" readonly style="width:100%;font-family:monospace;font-size:.75rem;">{{ bookmarklet }}</textarea>
+            <button type="button" class="btn light" id="nfce-copiar-bookmarklet">Copiar código do atalho</button>
+        </details>
+    </section>
+
+    <section class="card">
+        <h2>4. Arquivo XML da nota</h2>
+        <p class="muted">Se a loja mandou a nota por e-mail, envie o arquivo .xml anexo. É o dado oficial e completo.</p>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="xml">
+            <input type="file" name="xml_nota" accept=".xml,text/xml,application/xml" required>
+            <div class="actions"><button type="submit" class="btn">Ler XML</button></div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Importação automática</h2>
+        <ul class="nfce-auto">
+            <li>
+                <strong>E-mail das notas:</strong>
+                {% if email_configurado %}ligado. Peça no caixa para enviar a nota para <code>{{ email_notas }}</code>; o XML vira compra sozinho.
+                {% else %}desligado (configure <code>NFE_EMAIL_IMAP_HOST</code>, <code>NFE_EMAIL_USUARIO</code> e <code>NFE_EMAIL_SENHA</code> e o cron <code>importar_notas_email</code>).{% endif %}
+            </li>
+            <li>
+                <strong>Receita (NF-e no CNPJ da república):</strong>
+                {% if receita_configurada %}ligado.{% if controle_receita %} Última consulta: {{ controle_receita.ultima_consulta|date:"d/m H:i"|default:"nunca" }} ({{ controle_receita.ultimo_status|default:"-" }}).{% endif %}
+                {% else %}desligado (configure <code>NFE_CNPJ</code>, o certificado A1 e o cron <code>importar_nfe_receita</code>).{% endif %}
+            </li>
+        </ul>
+        <p class="muted">Compras importadas automaticamente entram como pendentes, categoria Geral e cobradas no aluguel; confira em Compras.</p>
+    </section>
     {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script>
+(() => {
+    document.querySelectorAll('.nfce-foto-nota').forEach((input) => {
+        input.addEventListener('change', () => {
+            if (!input.files || !input.files[0]) return;
+            const form = input.closest('form');
+            const status = form.querySelector('.nfce-status');
+            if (status) status.textContent = 'Lendo a foto da nota… pode levar alguns segundos.';
+            form.querySelectorAll('label.btn').forEach((b) => b.setAttribute('aria-disabled', 'true'));
+            form.submit();
+        });
+    });
+    const copiar = document.getElementById('nfce-copiar-bookmarklet');
+    if (copiar) {
+        copiar.addEventListener('click', async () => {
+            const campo = document.getElementById('nfce-bookmarklet');
+            try { await navigator.clipboard.writeText(campo.value); copiar.textContent = 'Copiado!'; }
+            catch (e) { campo.select(); document.execCommand('copy'); copiar.textContent = 'Copiado!'; }
+        });
+    }
+})();
+</script>
 {% if link_sefaz %}
 <script>
 (() => {

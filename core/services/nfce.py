@@ -67,6 +67,7 @@ class DadosNFCe:
     consulta_sefaz_ok: bool = False
     aviso_consulta: str = ''
     sefaz_pede_verificacao: bool = False
+    origem: str = 'QR Code da NFC-e'
 
     def para_sessao(self) -> dict:
         """Versão serializável em JSON (sessão do Django)."""
@@ -411,6 +412,8 @@ def aplicar_texto_copiado(dados: DadosNFCe, texto: str) -> DadosNFCe:
             f'O texto colado é de outra loja (CNPJ {formatar_cnpj(extraido["cnpj"])}). '
             'Copie a página desta nota.'
         )
+    if extraido['cnpj'] and not dados.cnpj_emitente:
+        dados.cnpj_emitente = extraido['cnpj']
     if extraido['fornecedor']:
         dados.fornecedor = extraido['fornecedor']
     if extraido['itens']:
