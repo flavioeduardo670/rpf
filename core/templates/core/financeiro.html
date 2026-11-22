@@ -202,6 +202,13 @@
     </section>
 
     <h2 class="section-title">Divisão do aluguel dos moradores — mês {{ mes_referencia|date:"m/Y" }}</h2>
+    {% if avisos_pagamento and can_edit_financeiro %}
+    <ul class="messages" id="avisos-pagamento-aluguel">
+        {% for aviso in avisos_pagamento %}
+        <li class="warning">{{ aviso }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
     <div class="table-wrap">
         <table data-enable-hierarchy-sort="true" data-hierarchy-sort-label="Ordem de hierarquia">
             <tr>
@@ -230,7 +237,17 @@
                 <td>R$&nbsp;{{ item.desconto|floatformat:2 }}</td>
                 <td>R$&nbsp;{{ item.extra|floatformat:2 }}</td>
                 <td>R$&nbsp;{{ item.valor|floatformat:2 }}</td>
-                <td>{% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}</td>
+                <td>
+                    {% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}
+                    {% if can_edit_financeiro and item.status_pagamento != 'pago' %}
+                    <form method="post" action="{% url 'confirmar_pagamento_aluguel_morador' item.morador.id %}" style="margin-top:8px;"
+                          onsubmit="return confirm('Confirmar que {{ item.morador.apelido|default:item.morador.nome|escapejs }} pagou o aluguel de {{ mes_referencia|date:'m/Y' }}? O recibo será enviado por email.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m' }}">
+                        <button type="submit" class="btn">Confirmar pagamento</button>
+                    </form>
+                    {% endif %}
+                </td>
                 <td>
                     {% if item.comprovante %}
                     <a class="btn btn-invert" href="{% url 'ver_comprovante_pagamento' item.comprovante.id %}" target="_blank" rel="noopener">Ver anexo</a>

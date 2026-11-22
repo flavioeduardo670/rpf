@@ -21,7 +21,11 @@
 Para o sistema reconhecer sozinho o pagamento do boleto e mandar o recibo:
 
 1. `MERCADOPAGO_ACCESS_TOKEN` — sem ele o boleto sai com um PIX "local" (chave da
-   casa), que **não** é reconhecido automaticamente.
+   casa), que **não** é reconhecido automaticamente. Use o **Access Token de produção
+   da conta real que recebe o aluguel** (com chave PIX cadastrada no Mercado Pago).
+   O token de produção de um *usuário de teste* é recusado com
+   `401 Unauthorized use of live credentials`; a tela Financeiro → Aluguel mostra
+   esse motivo quando acontece.
 2. `MERCADOPAGO_NOTIFICATION_URL=https://<seu-dominio>/financeiro/pix/webhook/` e
    `MERCADOPAGO_WEBHOOK_SECRET` (mesma URL/segredo cadastrados no painel do Mercado Pago).
 3. SMTP: `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`,
@@ -32,6 +36,13 @@ Para o sistema reconhecer sozinho o pagamento do boleto e mandar o recibo:
    ```bash
    python manage.py verificar_pagamentos_aluguel
    ```
+
+Pagamento que não passou pelo Mercado Pago (PIX local, dinheiro, transferência):
+botão **Confirmar pagamento** na coluna Status de Financeiro → Aluguel. Ele quita a
+mensalidade, cancela o PIX pendente no Mercado Pago e envia o recibo.
+
+Sem SMTP o recibo não sai por email; ele continua disponível em PDF pelo botão
+"Gerar boleto de aluguel" do mês já pago.
 
 O QR do boleto vale até o dia 10 do mês (ou 3 dias a partir da emissão, se já passou);
 ao regerar o boleto, um QR vencido é trocado e o anterior é cancelado no Mercado Pago.

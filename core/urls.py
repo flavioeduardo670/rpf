@@ -34,6 +34,11 @@ urlpatterns = [
         name='anexar_comprovante_pagamento',
     ),
     path(
+        'financeiro/moradores/<int:morador_id>/confirmar-pagamento/',
+        views.confirmar_pagamento_aluguel_morador,
+        name='confirmar_pagamento_aluguel_morador',
+    ),
+    path(
         'financeiro/comprovantes/<int:comprovante_id>/ver/',
         views.ver_comprovante_pagamento,
         name='ver_comprovante_pagamento',

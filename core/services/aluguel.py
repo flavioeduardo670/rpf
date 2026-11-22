@@ -10,11 +10,12 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from core.models import CobrancaAluguel, Mensalidade
-from core.services.pix_gateway import consultar_status_por_txid, mercado_pago_configurado
+from core.services.pix_gateway import cancelar_pagamento_mercado_pago, consultar_status_por_txid, mercado_pago_configurado
 
 logger = logging.getLogger('core.services.aluguel')
 
@@ -114,6 +115,82 @@ def verificar_cobranca_no_gateway(cobranca: CobrancaAluguel) -> bool:
         cobranca.provider_payload = provider_payload
         cobranca.save(update_fields=['status_gateway', 'provider_payload', 'atualizado_em'])
     return False
+
+
+def confirmar_pagamento_manual(cobranca: CobrancaAluguel, *, usuario=None) -> bool:
+    """Confirmação feita pelo financeiro (ex.: PIX pago direto na chave da casa).
+
+    Antes confere no Mercado Pago, para registrar o pagamento real se houver;
+    depois cancela o PIX pendente no gateway para o morador não pagar duas vezes.
+    """
+    if cobranca.status == 'pago':
+        enviar_comprovante_se_pendente(cobranca)
+        return False
+    if cobranca.payment_id and mercado_pago_configurado():
+        try:
+            if verificar_cobranca_no_gateway(cobranca):
+                return True
+        except Exception:
+            logger.exception('Falha ao conferir cobranca no Mercado Pago antes da confirmacao manual.', extra={'cobranca_id': cobranca.id})
+        cobranca.refresh_from_db()
+        if cobranca.status == 'pago':
+            return False
+    payment_id_pendente = cobranca.payment_id
+    payload = dict(cobranca.provider_payload or {})
+    payload['confirmacao_manual'] = {
+        'usuario': getattr(usuario, 'username', '') or '',
+        'em': timezone.now().isoformat(),
+    }
+    confirmada = confirmar_pagamento_aluguel(cobranca, status_gateway='confirmado_manual', provider_payload=payload)
+    if confirmada and payment_id_pendente:
+        cancelar_pagamento_mercado_pago(payment_id_pendente)
+    return confirmada
+
+
+def email_configurado() -> bool:
+    """False quando o recibo não tem como sair (SMTP apontando para localhost)."""
+    backend = getattr(settings, 'EMAIL_BACKEND', '') or ''
+    if not backend.endswith('smtp.EmailBackend'):
+        return True
+    host = (getattr(settings, 'EMAIL_HOST', '') or '').strip().lower()
+    return host not in {'', 'localhost', '127.0.0.1'}
+
+
+def cobranca_usa_pix_local(cobranca: CobrancaAluguel) -> bool:
+    """PIX gerado na chave da casa: o dinheiro não passa pelo Mercado Pago."""
+    return cobranca.status != 'pago' and (
+        (cobranca.provider_payload or {}).get('modo') == 'local' or not cobranca.payment_id
+    )
+
+
+def avisos_pagamento_aluguel(cobrancas) -> list[str]:
+    """Explica na tela do financeiro por que um pagamento não vai se confirmar sozinho."""
+    avisos = []
+    locais = [c for c in cobrancas if c.txid and cobranca_usa_pix_local(c)]
+    if not mercado_pago_configurado():
+        avisos.append(
+            'Mercado Pago não configurado (MERCADOPAGO_ACCESS_TOKEN): os boletos saem com PIX na chave da casa '
+            'e o pagamento precisa ser confirmado manualmente no botão "Confirmar pagamento".'
+        )
+    elif locais:
+        detalhe = next(((c.provider_payload or {}).get('detalhe') for c in locais if (c.provider_payload or {}).get('detalhe')), '')
+        motivo = f' Resposta do Mercado Pago: "{detalhe}".' if detalhe else ''
+        if 'live credentials' in (detalhe or '').lower():
+            motivo += (
+                ' Isso acontece quando o token é de um usuário de teste: use o Access Token de produção '
+                'da conta real que recebe o aluguel.'
+            )
+        avisos.append(
+            f'{len(locais)} boleto(s) deste mês saíram com PIX na chave da casa porque o Mercado Pago não criou a cobrança.'
+            f'{motivo} Esses pagamentos não são reconhecidos sozinhos: confirme no botão "Confirmar pagamento" '
+            'ou gere o boleto de novo depois de corrigir o token.'
+        )
+    if not email_configurado():
+        avisos.append(
+            'Email não configurado (DJANGO_EMAIL_HOST): o recibo não é enviado ao morador. '
+            'O recibo em PDF continua disponível no botão "Gerar boleto de aluguel" do mês pago.'
+        )
+    return avisos
 
 
 def verificar_pagamentos_pendentes(cobrancas=None) -> dict[str, int]:

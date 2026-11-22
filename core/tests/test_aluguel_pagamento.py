@@ -1,8 +1,11 @@
+import hashlib
+import hmac
 import json
 from datetime import date, timedelta
 from decimal import Decimal
-from io import StringIO
+from io import BytesIO, StringIO
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 from django.contrib.auth.models import Group, User
 from django.core import mail
@@ -186,6 +189,24 @@ class BoletoAluguelTests(TestCase):
         cobranca = CobrancaAluguel.objects.get(morador=self.morador)
         self.assertEqual((cobranca.payment_id, cobranca.qr_code), ('222', 'pix-novo'))
 
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='APP_USR-de-usuario-de-teste')
+    @patch('core.services.pix_gateway.request.urlopen')
+    def test_token_de_usuario_de_teste_gera_pix_local_com_motivo(self, urlopen):
+        # Situação real de produção: o Mercado Pago recusa o token com 401 e o
+        # boleto sai com a chave da casa, que nunca é confirmada sozinha.
+        corpo = json.dumps({'cause': [{'code': 7, 'description': 'Unauthorized use of live credentials'}], 'status': 401}).encode('utf-8')
+        urlopen.side_effect = HTTPError('https://api.mercadopago.com/v1/payments', 401, 'Unauthorized', {}, BytesIO(corpo))
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        cobranca = CobrancaAluguel.objects.get(morador=self.morador)
+        self.assertEqual(cobranca.status_gateway, 'erro_autorizacao_fallback_local')
+        self.assertEqual(cobranca.provider_payload['detalhe'], 'Unauthorized use of live credentials')
+
+        pagina = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
+        self.assertContains(pagina, 'Unauthorized use of live credentials')
+        self.assertContains(pagina, 'usuário de teste')
+        self.assertContains(pagina, reverse('confirmar_pagamento_aluguel_morador', args=[self.morador.id]))
+
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.views.financeiro.criar_cobranca_pix_avulsa')
     @patch('core.services.aluguel.consultar_status_por_txid')
@@ -200,3 +221,127 @@ class BoletoAluguelTests(TestCase):
         criar.assert_not_called()
         self.assertIn('comprovante_aluguel_', response['Content-Disposition'])
         self.assertEqual(len(mail.outbox), 1)
+
+
+class ConfirmacaoManualTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='fin_manual', password='123456')
+        self.user.groups.add(Group.objects.get_or_create(name='Financeiro')[0])
+        self.client.force_login(self.user)
+        self.morador = Morador.objects.create(nome='Duda', email='duda@example.com', ativo=True)
+        ConfiguracaoFinanceira.objects.create(valor_aluguel=Decimal('500.00'), conta_recebimentos_pix='15998509135')
+        self.url = reverse('confirmar_pagamento_aluguel_morador', args=[self.morador.id])
+
+    def test_confirma_pix_local_quita_mensalidade_e_envia_recibo(self):
+        cobranca = CobrancaAluguel.objects.create(
+            morador=self.morador, mes_referencia=date(2026, 5, 1), valor=Decimal('500.00'),
+            txid='RPFAL00000000000000000010', status='aguardando_pagamento',
+            status_gateway='erro_autorizacao_fallback_local', provider_payload={'modo': 'local'},
+        )
+        response = self.client.post(self.url, {'mes_referencia': '2026-05'})
+        self.assertRedirects(response, reverse('financeiro_aluguel') + '?mes=2026-05', fetch_redirect_response=False)
+        cobranca.refresh_from_db()
+        self.assertEqual((cobranca.status, cobranca.status_gateway), ('pago', 'confirmado_manual'))
+        self.assertEqual(cobranca.provider_payload['confirmacao_manual']['usuario'], 'fin_manual')
+        self.assertIsNotNone(cobranca.comprovante_enviado_em)
+        self.assertTrue(Mensalidade.objects.get(morador=self.morador, mes_referencia=date(2026, 5, 1)).pago)
+        self.assertEqual(mail.outbox[0].to, ['duda@example.com'])
+
+        # Clicar de novo não duplica recibo.
+        self.client.post(self.url, {'mes_referencia': '2026-05'})
+        self.assertEqual(len(mail.outbox), 1)
+
+        pagina = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
+        self.assertNotContains(pagina, self.url)
+
+    def test_cria_cobranca_quando_boleto_nao_foi_gerado(self):
+        self.client.post(self.url, {'mes_referencia': '2026-05'})
+        cobranca = CobrancaAluguel.objects.get(morador=self.morador, mes_referencia=date(2026, 5, 1))
+        self.assertEqual(cobranca.status, 'pago')
+        self.assertTrue(cobranca.txid.startswith('RPFAL'))
+        self.assertGreater(cobranca.valor, Decimal('0.00'))
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
+    @patch('core.services.aluguel.cancelar_pagamento_mercado_pago')
+    @patch('core.services.aluguel.consultar_status_por_txid')
+    def test_cancela_pix_pendente_no_mercado_pago(self, consultar, cancelar):
+        CobrancaAluguel.objects.create(
+            morador=self.morador, mes_referencia=date(2026, 5, 1), valor=Decimal('500.00'),
+            txid='RPFAL00000000000000000011', payment_id='444', status='aguardando_pagamento', status_gateway='pending',
+        )
+        consultar.return_value = {'status': 'pending', 'provider_payload': {}}
+        self.client.post(self.url, {'mes_referencia': '2026-05'})
+        cancelar.assert_called_once_with('444')
+        self.assertEqual(CobrancaAluguel.objects.get(payment_id='444').status, 'pago')
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
+    @patch('core.services.aluguel.cancelar_pagamento_mercado_pago')
+    @patch('core.services.aluguel.consultar_status_por_txid')
+    def test_usa_pagamento_real_se_o_mercado_pago_ja_aprovou(self, consultar, cancelar):
+        CobrancaAluguel.objects.create(
+            morador=self.morador, mes_referencia=date(2026, 5, 1), valor=Decimal('500.00'),
+            txid='RPFAL00000000000000000012', payment_id='445', status='aguardando_pagamento', status_gateway='pending',
+        )
+        consultar.return_value = {'status': 'pago', 'payment_id': '445', 'provider_payload': {'id': 445}}
+        self.client.post(self.url, {'mes_referencia': '2026-05'})
+        cancelar.assert_not_called()
+        self.assertEqual(CobrancaAluguel.objects.get(payment_id='445').status_gateway, 'pago')
+
+    def test_quem_nao_e_do_financeiro_nao_confirma(self):
+        outro = User.objects.create_user(username='curioso', password='123456')
+        self.client.force_login(outro)
+        self.client.post(self.url, {'mes_referencia': '2026-05'})
+        self.assertFalse(CobrancaAluguel.objects.filter(morador=self.morador, status='pago').exists())
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend', EMAIL_HOST='localhost')
+    def test_avisa_quando_email_nao_esta_configurado(self):
+        pagina = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
+        self.assertContains(pagina, 'Email não configurado')
+
+
+@override_settings(DEBUG=False, MERCADOPAGO_WEBHOOK_SECRET='segredo-webhook', MERCADOPAGO_ACCESS_TOKEN='TEST-123')
+class WebhookSemAssinaturaTests(TestCase):
+    def setUp(self):
+        self.morador = Morador.objects.create(nome='Eva', email='eva@example.com', ativo=True)
+        self.cobranca = CobrancaAluguel.objects.create(
+            morador=self.morador, mes_referencia=date(2026, 5, 1), valor=Decimal('800.00'),
+            txid='RPFAL00000000000000000020', payment_id='900', status='aguardando_pagamento',
+        )
+
+    @patch('core.views.pix.consultar_evento_mercado_pago')
+    def test_ipn_sem_assinatura_e_conferido_na_api(self, consultar):
+        consultar.return_value = {'txid': self.cobranca.txid, 'payment_id': '900', 'status': 'pago', 'provider_payload': {'id': 900}}
+        response = self.client.post(f"{reverse('webhook_pix_financeiro')}?topic=payment&id=900", data='{}', content_type='application/json', secure=True)
+        self.assertEqual(response.status_code, 200)
+        self.cobranca.refresh_from_db()
+        self.assertEqual(self.cobranca.status, 'pago')
+
+    @patch('core.views.pix.consultar_evento_mercado_pago')
+    def test_corpo_sem_assinatura_nao_vale_mais_que_a_api(self, consultar):
+        consultar.return_value = {'txid': self.cobranca.txid, 'payment_id': '900', 'status': 'pending', 'provider_payload': {}}
+        corpo = json.dumps({'type': 'payment', 'data': {'id': '900'}, 'status': 'approved', 'txid': self.cobranca.txid})
+        response = self.client.post(reverse('webhook_pix_financeiro'), data=corpo, content_type='application/json',
+                                    HTTP_X_SIGNATURE='ts=1,v1=falsa', HTTP_X_REQUEST_ID='r', secure=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(consultar.call_args.args[2], {})
+        self.cobranca.refresh_from_db()
+        self.assertEqual(self.cobranca.status, 'aguardando_pagamento')
+
+    def test_sem_assinatura_e_sem_id_continua_recusado(self):
+        corpo = json.dumps({'txid': self.cobranca.txid, 'status': 'approved'})
+        response = self.client.post(reverse('webhook_pix_financeiro'), data=corpo, content_type='application/json', secure=True)
+        self.assertEqual(response.status_code, 400)
+
+    @patch('core.views.pix.consultar_evento_mercado_pago')
+    def test_assinatura_valida_continua_funcionando(self, consultar):
+        consultar.return_value = {'txid': self.cobranca.txid, 'payment_id': '900', 'status': 'pago', 'provider_payload': {}}
+        manifest = 'id:900;request-id:req-1;ts:1700000000;'
+        v1 = hmac.new(b'segredo-webhook', manifest.encode(), hashlib.sha256).hexdigest()
+        response = self.client.post(
+            f"{reverse('webhook_pix_financeiro')}?data.id=900&type=payment",
+            data=json.dumps({'type': 'payment', 'data': {'id': '900'}}), content_type='application/json',
+            HTTP_X_SIGNATURE=f'ts=1700000000,v1={v1}', HTTP_X_REQUEST_ID='req-1', secure=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.cobranca.refresh_from_db()
+        self.assertEqual(self.cobranca.status, 'pago')

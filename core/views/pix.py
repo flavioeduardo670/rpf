@@ -47,10 +47,20 @@ def webhook_pix(request):
     # string (em minúsculas). Se ele não vier na URL, o campo é omitido do
     # manifesto; usar o id do corpo como fallback invalidava assinaturas legítimas.
     data_id = (request.GET.get('data.id') or '').strip().lower()
-    if not validar_assinatura_webhook(request.body, assinatura, request_id=request_id, data_id=data_id):
-        return HttpResponseBadRequest('Assinatura invalida.')
-
     status = (payload.get('status') or '').strip().lower()
+    if not validar_assinatura_webhook(request.body, assinatura, request_id=request_id, data_id=data_id):
+        # Notificações IPN (?topic=payment&id=...) não vêm assinadas, e um
+        # segredo diferente do painel recusava todos os avisos. Sem assinatura
+        # válida o corpo não é confiável, mas o id do pagamento pode ser
+        # conferido na API com o nosso token: só o que o Mercado Pago responder
+        # vale (um id falso ou de outra conta volta 404 e é ignorado).
+        if not (payment_id and mercado_pago_configurado() and event_type in {'', 'payment', 'merchant_order'}):
+            return HttpResponseBadRequest('Assinatura invalida.')
+        logger.info('Webhook PIX sem assinatura valida; conferindo na API do Mercado Pago.', extra={'event': 'pix.webhook.unsigned_checked', 'event_type': event_type, 'payment_id': payment_id})
+        txid = ''
+        status = ''
+        payload = {}
+
     provider_payload = payload
     if payment_id and (mercado_pago_configurado() or event_type == 'order'):
         resultado = consultar_evento_mercado_pago(payment_id, event_type, payload)
