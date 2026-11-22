@@ -28,8 +28,16 @@ Para o sistema reconhecer sozinho o pagamento do boleto e mandar o recibo:
    esse motivo quando acontece.
 2. `MERCADOPAGO_NOTIFICATION_URL=https://<seu-dominio>/financeiro/pix/webhook/` e
    `MERCADOPAGO_WEBHOOK_SECRET` (mesma URL/segredo cadastrados no painel do Mercado Pago).
-3. SMTP: `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`,
-   `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS=True`, `DJANGO_DEFAULT_FROM_EMAIL`.
+3. Email do recibo. **No plano gratuito do Render o SMTP de saída (portas 25, 465 e
+   587) é bloqueado**: a conexão fica pendurada e não funciona. Use a API HTTPS do
+   Brevo (grátis até 300 emails/dia):
+   - `BREVO_API_KEY` (Brevo → SMTP & API → API Keys);
+   - `DJANGO_DEFAULT_FROM_EMAIL=República RPF <email-verificado-no-brevo>` (o remetente
+     precisa estar verificado em Brevo → Senders).
+   Em plano pago (ou fora do Render), o SMTP comum também serve: `DJANGO_EMAIL_HOST`,
+   `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`,
+   `DJANGO_EMAIL_USE_TLS=True`. Qualquer envio tem timeout de `DJANGO_EMAIL_TIMEOUT`
+   (10 s) e a tela do financeiro tenta no máximo 3 recibos por visita.
 4. Email de cada morador preenchido no cadastro.
 5. Garantia para webhook perdido / email que falhou — rodar a cada 15–30 min (Cron Job do Render):
 

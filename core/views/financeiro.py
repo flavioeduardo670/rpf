@@ -808,7 +808,8 @@ def _sincronizar_cobrancas_pix_aluguel(mes_referencia, moradores):
         morador_id__in=moradores_ids,
         status='aguardando_pagamento',
     )
-    return verificar_pagamentos_pendentes(cobrancas)['confirmadas']
+    # Poucos recibos por visita: o envio é síncrono e a página não pode esperar muito.
+    return verificar_pagamentos_pendentes(cobrancas, limite_recibos=3)['confirmadas']
 
 def _gerar_pdf_comprovante_aluguel(cobranca):
     largura_pagina = Decimal('595')

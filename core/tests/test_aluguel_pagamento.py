@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac
 import json
@@ -95,6 +96,26 @@ class ConfirmacaoPagamentoTests(TestCase):
         self.morador.save()
         verificar_pagamentos_pendentes()
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_reenvio_para_na_primeira_falha_e_respeita_limite(self):
+        outros = []
+        for i in range(3):
+            m = Morador.objects.create(nome=f'M{i}', email=f'm{i}@example.com', ativo=True)
+            outros.append(CobrancaAluguel.objects.create(
+                morador=m, mes_referencia=date(2026, 5, 1), valor=Decimal('1.00'), txid=f'RPFALX{i}',
+                status='pago', pago_em=timezone.now(),
+            ))
+        CobrancaAluguel.objects.filter(pk=self.cobranca.pk).update(status='pago', pago_em=timezone.now())
+        with patch('core.views.financeiro.EmailMessage.send', side_effect=TimeoutError('smtp bloqueado')) as send:
+            verificar_pagamentos_pendentes()
+        self.assertEqual(send.call_count, 1)
+
+        self.assertEqual(verificar_pagamentos_pendentes(limite_recibos=2)['comprovantes_enviados'], 2)
+        self.assertEqual(verificar_pagamentos_pendentes()['comprovantes_enviados'], 2)
+
+    def test_email_tem_timeout(self):
+        from django.conf import settings
+        self.assertGreater(settings.EMAIL_TIMEOUT, 0)
 
     def test_nao_reenvia_recibo_de_pagamento_antigo(self):
         CobrancaAluguel.objects.filter(pk=self.cobranca.pk).update(status='pago', pago_em=timezone.now() - timedelta(days=90))
@@ -297,6 +318,50 @@ class ConfirmacaoManualTests(TestCase):
     def test_avisa_quando_email_nao_esta_configurado(self):
         pagina = self.client.get(reverse('financeiro_aluguel') + '?mes=2026-05')
         self.assertContains(pagina, 'Email não configurado')
+
+
+@override_settings(
+    EMAIL_BACKEND='core.email_backends.BrevoEmailBackend', BREVO_API_KEY='xkeysib-teste',
+    DEFAULT_FROM_EMAIL='República RPF <rpf@example.com>',
+)
+class BrevoEmailBackendTests(TestCase):
+    @patch('core.email_backends.request.urlopen')
+    def test_recibo_sai_pela_api_https_com_anexo(self, urlopen):
+        urlopen.return_value = _resposta_json({'messageId': '<1@brevo>'})
+        morador = Morador.objects.create(nome='Gil', email='gil@example.com', ativo=True)
+        cobranca = CobrancaAluguel.objects.create(
+            morador=morador, mes_referencia=date(2026, 5, 1), valor=Decimal('800.00'),
+            txid='RPFAL00000000000000000030', status='aguardando_pagamento',
+        )
+        confirmar_pagamento_aluguel(cobranca)
+        cobranca.refresh_from_db()
+        self.assertIsNotNone(cobranca.comprovante_enviado_em)
+
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.full_url, 'https://api.brevo.com/v3/smtp/email')
+        self.assertEqual(req.get_header('Api-key'), 'xkeysib-teste')
+        self.assertEqual(urlopen.call_args.kwargs['timeout'], 10)
+        enviado = json.loads(req.data)
+        self.assertEqual(enviado['sender'], {'email': 'rpf@example.com', 'name': 'República RPF'})
+        self.assertEqual(enviado['to'], [{'email': 'gil@example.com'}])
+        self.assertTrue(enviado['attachment'][0]['name'].endswith('.pdf'))
+        self.assertTrue(base64.b64decode(enviado['attachment'][0]['content']).startswith(b'%PDF'))
+
+    @patch('core.email_backends.request.urlopen')
+    def test_erro_da_api_deixa_recibo_pendente(self, urlopen):
+        urlopen.side_effect = HTTPError(BREVO_URL, 401, 'Unauthorized', {}, BytesIO(b'{"message":"Key not found"}'))
+        morador = Morador.objects.create(nome='Hil', email='hil@example.com', ativo=True)
+        cobranca = CobrancaAluguel.objects.create(
+            morador=morador, mes_referencia=date(2026, 5, 1), valor=Decimal('800.00'),
+            txid='RPFAL00000000000000000031', status='aguardando_pagamento',
+        )
+        confirmar_pagamento_aluguel(cobranca)
+        cobranca.refresh_from_db()
+        self.assertEqual(cobranca.status, 'pago')
+        self.assertIsNone(cobranca.comprovante_enviado_em)
+
+
+BREVO_URL = 'https://api.brevo.com/v3/smtp/email'
 
 
 @override_settings(DEBUG=False, MERCADOPAGO_WEBHOOK_SECRET='segredo-webhook', MERCADOPAGO_ACCESS_TOKEN='TEST-123')
