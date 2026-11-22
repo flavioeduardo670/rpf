@@ -314,12 +314,19 @@ MERCADOPAGO_PAYER_EMAIL_FALLBACK = os.getenv('MERCADOPAGO_PAYER_EMAIL_FALLBACK',
 
 # Em desenvolvimento sem SMTP configurado, os emails (ex.: recibo do aluguel)
 # aparecem no terminal do runserver em vez de falhar contra localhost:25.
-_EMAIL_BACKEND_PADRAO = (
-    'django.core.mail.backends.console.EmailBackend'
-    if DEBUG and not os.getenv('DJANGO_EMAIL_HOST')
-    else 'django.core.mail.backends.smtp.EmailBackend'
-)
+# Em produção no Render (plano gratuito) o SMTP de saída é bloqueado; com
+# BREVO_API_KEY os emails saem pela API HTTPS do Brevo.
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
+if BREVO_API_KEY:
+    _EMAIL_BACKEND_PADRAO = 'core.email_backends.BrevoEmailBackend'
+elif DEBUG and not os.getenv('DJANGO_EMAIL_HOST'):
+    _EMAIL_BACKEND_PADRAO = 'django.core.mail.backends.console.EmailBackend'
+else:
+    _EMAIL_BACKEND_PADRAO = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', _EMAIL_BACKEND_PADRAO)
+# Sem timeout, um SMTP bloqueado segurava a requisição até o gunicorn matar o
+# processo (a tela Financeiro > Aluguel caía).
+EMAIL_TIMEOUT = int(os.getenv('DJANGO_EMAIL_TIMEOUT', '10'))
 EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'localhost')
 EMAIL_PORT = int(os.getenv('DJANGO_EMAIL_PORT', '25'))
 EMAIL_HOST_USER = os.getenv('DJANGO_EMAIL_HOST_USER', '')

@@ -29,10 +29,10 @@ def status_indica_pagamento(status: str) -> bool:
     return (status or '').strip().lower() in STATUS_PAGO
 
 
-def enviar_comprovante_se_pendente(cobranca: CobrancaAluguel) -> bool:
-    """Envia o recibo uma única vez. Falhas ficam para a próxima tentativa."""
+def _tentar_enviar_comprovante(cobranca: CobrancaAluguel) -> str:
+    """Resultado: 'enviado', 'sem_email', 'erro' ou 'nada' (já enviado/não pago)."""
     if cobranca.status != 'pago' or cobranca.comprovante_enviado_em:
-        return False
+        return 'nada'
     from core.views.financeiro import enviar_comprovante_aluguel_por_email
 
     try:
@@ -42,17 +42,22 @@ def enviar_comprovante_se_pendente(cobranca: CobrancaAluguel) -> bool:
             'Falha ao enviar comprovante de aluguel por email; nova tentativa na proxima verificacao.',
             extra={'event': 'aluguel.comprovante.erro_envio', 'cobranca_id': cobranca.id},
         )
-        return False
+        return 'erro'
     if not enviado:
         logger.warning(
             'Morador sem email cadastrado; comprovante de aluguel nao enviado.',
             extra={'event': 'aluguel.comprovante.sem_email', 'cobranca_id': cobranca.id, 'morador_id': cobranca.morador_id},
         )
-        return False
+        return 'sem_email'
     cobranca.comprovante_enviado_em = timezone.now()
     cobranca.save(update_fields=['comprovante_enviado_em', 'atualizado_em'])
     logger.info('Comprovante de aluguel enviado.', extra={'event': 'aluguel.comprovante.enviado', 'cobranca_id': cobranca.id})
-    return True
+    return 'enviado'
+
+
+def enviar_comprovante_se_pendente(cobranca: CobrancaAluguel) -> bool:
+    """Envia o recibo uma única vez. Falhas ficam para a próxima tentativa."""
+    return _tentar_enviar_comprovante(cobranca) == 'enviado'
 
 
 def confirmar_pagamento_aluguel(
@@ -187,14 +192,19 @@ def avisos_pagamento_aluguel(cobrancas) -> list[str]:
         )
     if not email_configurado():
         avisos.append(
-            'Email não configurado (DJANGO_EMAIL_HOST): o recibo não é enviado ao morador. '
+            'Email não configurado (BREVO_API_KEY ou DJANGO_EMAIL_HOST): o recibo não é enviado ao morador. '
             'O recibo em PDF continua disponível no botão "Gerar boleto de aluguel" do mês pago.'
         )
     return avisos
 
 
-def verificar_pagamentos_pendentes(cobrancas=None) -> dict[str, int]:
-    """Confirma pagamentos que o webhook não avisou e reenvia recibos pendentes."""
+def verificar_pagamentos_pendentes(cobrancas=None, *, limite_recibos: int | None = None) -> dict[str, int]:
+    """Confirma pagamentos que o webhook não avisou e reenvia recibos pendentes.
+
+    ``limite_recibos`` limita quantos recibos tentar (a tela do financeiro usa
+    um número pequeno para não demorar). A primeira falha de envio interrompe
+    o reenvio: se o servidor de email está fora, os demais falhariam igual.
+    """
     confirmadas = 0
     if mercado_pago_configurado():
         pendentes = cobrancas if cobrancas is not None else CobrancaAluguel.objects.filter(status='aguardando_pagamento')
@@ -212,7 +222,12 @@ def verificar_pagamentos_pendentes(cobrancas=None) -> dict[str, int]:
         comprovante_enviado_em__isnull=True,
         pago_em__gte=limite,
     )
+    if limite_recibos is not None:
+        sem_recibo = sem_recibo.order_by('-pago_em')[:limite_recibos]
     for cobranca in sem_recibo:
-        if enviar_comprovante_se_pendente(cobranca):
+        resultado = _tentar_enviar_comprovante(cobranca)
+        if resultado == 'enviado':
             reenviados += 1
+        elif resultado == 'erro':
+            break
     return {'confirmadas': confirmadas, 'comprovantes_enviados': reenviados}
