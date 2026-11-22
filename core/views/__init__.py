@@ -21,6 +21,7 @@ from .financeiro import (
     salvar_registro_financeiro,
     pagar_parcela,
     ver_comprovante_pagamento,
+    confirmar_pagamento_aluguel_morador,
 )
 
 from .compras_nfce import compras_nfce_receber, compras_qrcode, pwa_manifest, pwa_service_worker

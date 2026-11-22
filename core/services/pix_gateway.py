@@ -132,6 +132,20 @@ def _mercado_pago_request(method: str, path: str, *, payload: dict[str, Any] | N
         return json.loads(response.read().decode('utf-8'))
 
 
+def _mensagem_erro_mercado_pago(exc: error.HTTPError) -> str:
+    """Texto do erro devolvido pelo Mercado Pago (ex.: 'Unauthorized use of live credentials')."""
+    try:
+        corpo = json.loads(exc.read().decode('utf-8') or '{}')
+    except Exception:
+        return ''
+    if not isinstance(corpo, dict):
+        return ''
+    causas = corpo.get('cause') or []
+    if isinstance(causas, list) and causas and isinstance(causas[0], dict) and causas[0].get('description'):
+        return str(causas[0]['description'])[:200]
+    return str(corpo.get('message') or corpo.get('error') or '')[:200]
+
+
 def _extrair_dados_pix_mercado_pago(data: dict[str, Any]) -> dict[str, str]:
     transaction_data = (data.get('point_of_interaction') or {}).get('transaction_data') or {}
     qr_code = transaction_data.get('qr_code') or ''
@@ -264,14 +278,16 @@ def criar_cobranca_pix_avulsa(
             'provider_payload': data,
         }
     except error.HTTPError as exc:
+        detalhe = _mensagem_erro_mercado_pago(exc)
         if exc.code in {401, 403}:
-            logger.error('Mercado Pago recusou a credencial configurada para criar cobranca PIX', extra={'event': 'pix.mercadopago.authorization_error', 'txid': txid, 'http_status': exc.code})
+            logger.error('Mercado Pago recusou a credencial configurada para criar cobranca PIX', extra={'event': 'pix.mercadopago.authorization_error', 'txid': txid, 'http_status': exc.code, 'detalhe': detalhe})
             if chave_pix:
                 fallback = _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria)
                 fallback['status_gateway'] = 'erro_autorizacao_fallback_local'
                 fallback['provider_payload'].update({
                     'erro': 'mercadopago_authorization_error',
                     'http_status': exc.code,
+                    'detalhe': detalhe,
                     'observacao': 'PIX local gerado porque o Mercado Pago recusou a credencial configurada.',
                 })
                 return fallback
@@ -285,10 +301,16 @@ def criar_cobranca_pix_avulsa(
                 'status_gateway': 'erro_autorizacao',
                 'qr_code_url': '',
                 'qr_code_data_uri': '',
-                'provider_payload': {'erro': 'mercadopago_authorization_error', 'http_status': exc.code},
+                'provider_payload': {'erro': 'mercadopago_authorization_error', 'http_status': exc.code, 'detalhe': detalhe},
             }
-        logger.exception('Falha HTTP ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_http_error', 'txid': txid, 'http_status': exc.code})
-        return _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria) if chave_pix else {
+        logger.exception('Falha HTTP ao criar cobranca PIX no Mercado Pago', extra={'event': 'pix.mercadopago.payment_create_http_error', 'txid': txid, 'http_status': exc.code, 'detalhe': detalhe})
+        if chave_pix:
+            fallback = _fallback_pix_local(txid=txid, valor=valor, chave_pix=chave_pix, categoria=categoria)
+            # Marca o erro: assim a tela avisa que este PIX não confirma sozinho.
+            fallback['status_gateway'] = 'erro_gateway_fallback_local'
+            fallback['provider_payload'].update({'erro': 'mercadopago_payment_create_error', 'http_status': exc.code, 'detalhe': detalhe})
+            return fallback
+        return {
             'txid': txid,
             'payment_id': '',
             'payload_pix': '',

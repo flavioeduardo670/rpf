@@ -49,7 +49,13 @@ from core.models import (
 )
 from core.services.estoque import garantir_setores_e_locais_base
 from core.services.pdf import montar_pdf_por_comandos as _montar_pdf_por_comandos
-from core.services.aluguel import verificar_cobranca_no_gateway, verificar_pagamentos_pendentes
+from core.services.aluguel import (
+    avisos_pagamento_aluguel,
+    confirmar_pagamento_manual,
+    email_configurado,
+    verificar_cobranca_no_gateway,
+    verificar_pagamentos_pendentes,
+)
 from core.services.pix_gateway import (
     cancelar_pagamento_mercado_pago,
     criar_cobranca_pix_avulsa,
@@ -1323,13 +1329,11 @@ def financeiro(request):
             morador__in=resumo['moradores_ativos'],
         ).select_related('morador')
     }
-    cobrancas_pagas_ids = set(
-        CobrancaAluguel.objects.filter(
-            mes_referencia=mes_referencia,
-            morador__in=resumo['moradores_ativos'],
-            status='pago',
-        ).values_list('morador_id', flat=True)
-    )
+    cobrancas_mes = list(CobrancaAluguel.objects.filter(
+        mes_referencia=mes_referencia,
+        morador__in=resumo['moradores_ativos'],
+    ))
+    cobrancas_pagas_ids = {c.morador_id for c in cobrancas_mes if c.status == 'pago'}
     mensalidades_pagas_ids = set(
         Mensalidade.objects.filter(
             mes_referencia=mes_referencia,
@@ -1385,6 +1389,7 @@ def financeiro(request):
         ),
         'rateio_colspan': 9 + len(resumo['contas_fixas']),
         'can_edit_financeiro': can_edit_financeiro,
+        'avisos_pagamento': avisos_pagamento_aluguel(cobrancas_mes),
         **resumo,
     })
 
@@ -1454,6 +1459,56 @@ def pagar_parcela(request, parcela_id):
         parcela.status = 'pago'
         parcela.save(update_fields=['status'])
     return redirect('financeiro_aluguel')
+
+
+@require_POST
+@setor_required(group_name='Financeiro', morador_edit_attr='acesso_financeiro_editar')
+def confirmar_pagamento_aluguel_morador(request, morador_id):
+    """Botão "Confirmar pagamento" do financeiro.
+
+    Necessário quando o morador paga um PIX que não passa pelo Mercado Pago
+    (boleto emitido com a chave da casa) ou paga por fora: marca a cobrança
+    como paga, quita a mensalidade e envia o recibo.
+    """
+    morador = get_object_or_404(Morador, id=morador_id)
+    mes_referencia = _mes_referencia_post(request)
+    destino = f"{redirect('financeiro_aluguel').url}?mes={mes_referencia.strftime('%Y-%m')}"
+    morador_label = morador.apelido or morador.nome
+
+    cobranca = CobrancaAluguel.objects.filter(morador=morador, mes_referencia=mes_referencia).first()
+    if cobranca is None:
+        resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
+        item = next((i for i in resumo['rateio_moradores'] if i['morador'].id == morador.id), None)
+        if item is None:
+            messages.error(request, f'{morador_label} não está no rateio de {mes_referencia.strftime("%m/%Y")}.')
+            return redirect(destino)
+        _, _, _, saldo = _montar_extrato_morador(resumo, item, mes_referencia)
+        cobranca = CobrancaAluguel.objects.create(
+            morador=morador,
+            mes_referencia=mes_referencia,
+            valor=(saldo or Decimal('0.00')).quantize(Decimal('0.01')),
+        )
+        cobranca.txid = f"RPFAL{cobranca.id:020d}"
+        cobranca.save(update_fields=['txid', 'atualizado_em'])
+
+    if cobranca.status == 'pago':
+        confirmar_pagamento_manual(cobranca, usuario=request.user)
+        messages.info(request, f'O aluguel de {morador_label} em {mes_referencia.strftime("%m/%Y")} já estava pago.')
+        return redirect(destino)
+
+    confirmar_pagamento_manual(cobranca, usuario=request.user)
+    cobranca.refresh_from_db()
+    texto = f'Pagamento do aluguel de {morador_label} ({mes_referencia.strftime("%m/%Y")}) confirmado.'
+    if cobranca.comprovante_enviado_em:
+        texto += f' Recibo enviado para {morador.email}.'
+    elif not (morador.email or '').strip():
+        texto += ' Recibo não enviado: o morador não tem email no cadastro.'
+    elif not email_configurado():
+        texto += ' Recibo não enviado: o email do sistema não está configurado.'
+    else:
+        texto += ' O envio do recibo falhou e será tentado de novo.'
+    messages.success(request, texto)
+    return redirect(destino)
 
 
 @login_required
