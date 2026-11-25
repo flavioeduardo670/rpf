@@ -16,17 +16,49 @@ rebranding** ("Insta da Portão"):
   branca e subtítulo logo abaixo.
 - **Layout limpo:** títulos curtos, espaço em branco, painéis com contorno
   preto fino e sem sombras.
+- **Fundo dos slides:** cinza-claro `#F0F0F0` com a grade quadriculada
+  (`#DEDEDE`), como na apresentação. Menu em pílulas com contorno no topo,
+  etiquetas pequenas em caixa alta espaçada e rodapé com "✦ RPF ✦" e a data.
 
 As fontes estão em `core/static/core/fonts/` (licença OFL, arquivos `OFL-*.txt`).
 
-## O boneco
+## O boneco animado (vídeos)
+
+O cabeçalho de cada seção mostra o boneco do logo fazendo a ação da seção, em
+loop, a partir dos vídeos feitos no Canva. Os arquivos ficam em
+`core/static/core/boneco/loop-<seção>.webp`: boneco **preto**, caneca com as
+cores do chopp e **fundo transparente**, sem cartão nem camada, direto sobre o
+quadriculado.
+
+| Seção | Loop |
+| --- | --- |
+| Início | corre e passa pelo portão dos fundos |
+| Moradores | três moradores chegam pela porta e acenam |
+| Financeiro | conta as notas e joga uma moeda |
+| Compras | empurra o carrinho de compras |
+| Almoxarifado | empilha as caixas |
+| Ordens de serviço | martela o prego na bancada |
+| Rocks | dança com o chopp entre as notas musicais |
+| Reuniões | fala na mesa da reunião |
+| Calendário | vira a folha e marca o dia |
+| Meu perfil | faz pose com o chopp |
+
+Acessos e Configurações ainda não têm vídeo e continuam com a ação em SVG
+(abaixo). Para trocar um loop, gere um WebP animado com fundo transparente e o
+mesmo nome, e atualize largura e altura em `LOOPS`
+(`core/context_processors.py`). Seções fora de `LOOPS` usam o SVG.
+
+## O boneco em SVG
 
 É o boneco do logo, redesenhado como um **esqueleto articulado** (quadril,
 tronco, cabeça, ombros, cotovelos e joelhos), sempre virado para a esquerda,
 para a porta. Assim ele muda de pose de verdade, e os objetos ficam presos às
 mãos na posição certa.
 
-| Seção | O que ele faz no cabeçalho |
+Ele é usado nos ícones do menu e dos atalhos, na troca de página e no
+cabeçalho das seções sem vídeo.
+
+| Seção | O que ele faz na ação em SVG |
 | --- | --- |
 | Início | corre para a porta com o chopp (o logo) |
 | Moradores | chega de mochila e acena para a casa |
@@ -77,20 +109,14 @@ segundo.
 - Quem ativa **"reduzir movimento"** no sistema operacional não vê a animação.
 - Para um link específico não animar, use o atributo `data-sem-transicao`.
 
-## Roleta da página inicial
+## Página inicial
 
-O título da página inicial é uma roleta de imagens.
+A página inicial abre com a saudação ("Bom dia", "Boa tarde" ou "Boa noite"
+e o nome da pessoa), a data, o próximo rock e a próxima reunião, os botões
+"Abrir financeiro" e "Ver calendário" (para quem tem acesso) e o boneco do
+início em loop. Abaixo, "Por onde a gente começa?" mostra as seções em blocos
+numerados: Financeiro em dourado, Rocks em preto e Calendário em branco
+ocupam dois espaços.
 
-- **Para colocar fotos da casa:** Admin → *Imagens da roleta (página
-  inicial)* → Adicionar. Use fotos horizontais (proporção 5:2, pelo menos
-  1600 px de largura), escreva a descrição (para leitores de tela) e uma
-  legenda curta. Ordem e "ativo" controlam o que aparece.
-- Sem nenhuma foto ativa, aparecem três ilustrações padrão
-  (`core/static/core/roleta/`), com legendas automáticas do próximo rock e da
-  próxima reunião.
-- A roleta pausa com o mouse em cima, tem botão de pausa e aceita as setas do
-  teclado.
-
-> Em produção, uploads só ficam guardados entre deploys com
-> `DJANGO_MEDIA_BACKEND=s3` (ver `README_PRODUCAO.md`). Sem isso, as fotos
-> enviadas pelo admin somem no próximo deploy do Render.
+> A roleta de fotos saiu da página inicial. O cadastro *Imagens da roleta*
+> continua no Admin, com as fotos guardadas, mas elas não aparecem mais.

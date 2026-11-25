@@ -42,6 +42,10 @@
     --cinza-linha: #e1e1e1;
     --cinza-fundo: #f3f3f3;
 
+    /* Fundo quadriculado dos slides da apresentação */
+    --quadro: #f0f0f0;
+    --quadro-linha: #dedede;
+
     /* Estados (só onde a informação depende disso) */
     --verde: #0e7a4c;
     --verde-fundo: #e3f4ec;

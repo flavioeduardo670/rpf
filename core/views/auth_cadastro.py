@@ -13,13 +13,6 @@ from core.models import EventoCalendario, OrdemServico, Reuniao, RockEvento
 from .common import can_edit, get_user_morador, setor_required
 
 
-# Slides usados enquanto ninguém cadastrar fotos da casa no admin.
-SLIDES_PADRAO = [
-    {'arquivo': 'core/roleta/casa.svg', 'titulo': 'Ilustração da casa à noite, com o boneco saindo pela porta dos fundos'},
-    {'arquivo': 'core/roleta/rock.svg', 'titulo': 'Ilustração de duas canecas de chopp brindando'},
-    {'arquivo': 'core/roleta/agenda.svg', 'titulo': 'Ilustração do calendário da casa com o boneco segurando a ata'},
-]
-
 # Atalhos da página inicial: (variante do boneco, rota, título, descrição, módulo de permissão)
 ATALHOS = [
     ('financeiro', 'financeiro', 'Financeiro', 'Aluguel, rateio e prestação de contas.', 'financeiro'),
@@ -34,54 +27,60 @@ ATALHOS = [
 ]
 
 
-def _legendas_padrao():
+# Blocos que ganham destaque na grade de atalhos (os demais ficam com contorno).
+ESTILO_ATALHO = {'financeiro': 'destaque', 'rock': 'escuro', 'calendario': 'largo'}
+
+
+def _saudacao(agora):
+    if 5 <= agora.hour < 12:
+        return 'Bom dia'
+    if 12 <= agora.hour < 18:
+        return 'Boa tarde'
+    return 'Boa noite'
+
+
+def _avisos_casa():
+    """Próximo rock e próxima reunião, mostrados abaixo da saudação."""
     hoje = timezone.localdate()
-    legendas = ['Tudo da casa num lugar só: contas, compras, rocks e reuniões.']
     rock = RockEvento.objects.filter(data__gte=hoje).order_by('data').first()
-    legendas.append(
-        f'Próximo rock: {rock.nome}, {rock.data:%d/%m}.' if rock else 'Nenhum rock marcado ainda. Bora marcar?'
-    )
     reuniao = Reuniao.objects.filter(data__gte=hoje, status='marcada').order_by('data', 'horario_marcado').first()
-    legendas.append(
-        f'Próxima reunião: {reuniao.data:%d/%m}, às {reuniao.horario_marcado:%H:%M}, em {reuniao.local}.'
-        if reuniao else 'Nenhuma reunião marcada.'
-    )
-    return legendas
+    return [
+        f'Próximo rock: {rock.nome}, {rock.data:%d/%m}' if rock else 'Nenhum rock marcado ainda',
+        f'Próxima reunião: {reuniao.data:%d/%m}, às {reuniao.horario_marcado:%H:%M}'
+        if reuniao else 'Nenhuma reunião marcada',
+    ]
 
 
 @login_required
 def home(request):
-    from django.templatetags.static import static
     from django.urls import reverse
 
-    from core.context_processors import pode_ver_modulo
-    from core.models import SlideInicio
+    from core.context_processors import imagens_boneco, pode_ver_modulo
 
     morador = get_user_morador(request.user)
-    slides = [
-        {'url': s.imagem.url, 'titulo': s.titulo, 'legenda': s.legenda}
-        for s in SlideInicio.objects.filter(ativo=True).exclude(imagem='')
-    ]
-    if not slides:
-        slides = [
-            {'url': static(item['arquivo']), 'titulo': item['titulo'], 'legenda': legenda}
-            for item, legenda in zip(SLIDES_PADRAO, _legendas_padrao())
-        ]
 
     atalhos = []
     for variante, rota, titulo, descricao, modulo in ATALHOS:
         if variante == 'rock' and morador is None and not request.user.is_superuser:
             # Quem não mora na casa só compra ingressos.
             atalhos.append({'variante': 'rock', 'url': reverse('comprar_rocks'), 'titulo': 'Ingressos',
-                            'descricao': 'Compre ingressos para os rocks.'})
+                            'descricao': 'Compre ingressos para os rocks.', 'estilo': ESTILO_ATALHO['rock']})
             continue
         if pode_ver_modulo(request.user, modulo):
-            atalhos.append({'variante': variante, 'url': reverse(rota), 'titulo': titulo, 'descricao': descricao})
+            atalhos.append({'variante': variante, 'url': reverse(rota), 'titulo': titulo, 'descricao': descricao,
+                            'estilo': ESTILO_ATALHO.get(variante, '')})
+
+    # Botões da saudação: financeiro e calendário, quando a pessoa pode abrir essas seções.
+    rotulos_acao = {'financeiro': 'Abrir financeiro', 'calendario': 'Ver calendário'}
+    acoes = [{'url': a['url'], 'rotulo': rotulos_acao[a['variante']]} for a in atalhos if a['variante'] in rotulos_acao]
 
     return render(request, 'core/home.html', {
         'usuario_sem_vinculo': morador is None,
-        'slides': slides,
         'atalhos': atalhos,
+        'acoes': acoes,
+        'saudacao': _saudacao(timezone.localtime()),
+        'avisos': _avisos_casa(),
+        'loop_inicio': imagens_boneco('inicio')['loop'],
     })
 
 

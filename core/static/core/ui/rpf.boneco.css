@@ -1,8 +1,14 @@
 /* Boneco do logo com acessório por seção, transição "entrando pela porta",
-   roleta da página inicial e atalhos da home. */
+   saudação e atalhos da página inicial. */
 @layer boneco {
     /* ---------- Boneco (SVGs em core/static/core/boneco, gerados por scripts/boneco) ---------- */
     .bn { display: block; height: auto; }
+
+    /* Boneco em vídeo (loop-<seção>.webp): cada cena tem uma largura, então a altura manda */
+    .bn.rpf-cabecalho__boneco--loop { width: auto; max-width: 42vw; height: clamp(120px, 13vw, 170px); object-fit: contain; }
+    @media (max-width: 900px) {
+        .bn.rpf-cabecalho__boneco--loop { height: 96px; }
+    }
 
     /* ---------- Transição: o boneco corre e entra pela porta ---------- */
     .rpf-transicao {
@@ -47,135 +53,136 @@
         .rpf-transicao { display: none !important; }
     }
 
-    /* ---------- Roleta (carrossel) do título da página inicial ---------- */
-    .rpf-roleta {
-        position: relative;
-        overflow: hidden;
-        border: var(--borda-forte);
-        border-radius: var(--raio-painel);
-        background: var(--preto);
-        aspect-ratio: 5 / 2;
-        min-height: 300px;
-        max-height: 520px;
-        width: 100%;
-        margin-bottom: var(--espaco-6);
-    }
-    .rpf-roleta__trilho {
+    /* ---------- Saudação da página inicial (com o boneco do início em loop) ---------- */
+    .rpf-saudacao {
         display: flex;
-        height: 100%;
-        transition: transform .6s cubic-bezier(.65, 0, .35, 1);
+        flex-wrap: wrap;
+        align-items: stretch;
+        gap: var(--espaco-6);
+        margin-bottom: var(--espaco-7);
     }
-    .rpf-roleta__slide {
-        flex: 0 0 100%;
-        height: 100%;
+    .rpf-saudacao__texto {
+        flex: 3 1 480px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        gap: var(--espaco-4);
+    }
+    .rpf-saudacao__titulo {
         margin: 0;
-    }
-    .rpf-roleta__slide img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
-    .rpf-roleta__texto {
-        position: absolute;
-        left: clamp(16px, 3vw, 36px);
-        bottom: clamp(16px, 3vw, 32px);
-        right: 180px;
-        pointer-events: none;
-    }
-    .rpf-roleta__titulo {
-        margin: 0 0 var(--espaco-3);
-        font-size: clamp(1.7rem, 1rem + 3vw, 3.2rem);
-        font-weight: 800;
-        line-height: 1.3;
+        font-size: clamp(2.6rem, 1.4rem + 4.4vw, 4.75rem);
+        font-weight: 900;
+        line-height: 0.95;
         letter-spacing: -0.02em;
+        text-transform: uppercase;
     }
-    .rpf-roleta__legenda { margin: 0; max-width: 62ch; }
-    /* Legenda como a caixa branca dos stories: legível sobre qualquer foto */
-    .rpf-roleta__legenda .rpf-subtitulo {
-        background: var(--branco);
-        box-shadow: 0 0 0 2px var(--preto);
-    }
-    .rpf-roleta__controles {
-        position: absolute;
-        right: clamp(12px, 2vw, 24px);
-        bottom: clamp(12px, 2vw, 24px);
+    .rpf-saudacao__sub { margin: 0; font-size: clamp(1.1rem, 1rem + 0.5vw, 1.375rem); font-weight: 400; line-height: 1.4; max-width: 30ch; }
+    .rpf-saudacao__avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .rpf-saudacao__avisos .rpf-pilula { cursor: default; text-transform: none; letter-spacing: 0.02em; font-size: 0.75rem; font-weight: 600; }
+    .rpf-saudacao__acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+    .rpf-saudacao__boneco {
+        flex: 2 1 320px;
+        min-width: 0;
+        min-height: 300px;
         display: flex;
-        align-items: center;
-        gap: 6px;
+        align-items: flex-end;
+        justify-content: center;
     }
-    .rpf-roleta__botao {
-        width: 40px;
-        height: 40px;
-        display: grid;
-        place-items: center;
+    .rpf-saudacao__boneco .bn { width: 100%; max-width: 500px; }
+
+    .rpf-botao-pilula {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 0 22px;
+        box-sizing: border-box;
+        border: 1.5px solid var(--preto);
+        border-radius: 999px;
         background: var(--preto);
         color: var(--branco);
-        border: 2px solid var(--branco);
-        border-radius: var(--raio);
-        cursor: pointer;
-        padding: 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        text-decoration: none;
     }
-    .rpf-roleta__botao:hover { background: var(--amarelo); color: var(--preto); border-color: var(--preto); }
-    .rpf-roleta__botao svg { width: 18px; height: 18px; }
-    .rpf-roleta__botao svg[hidden] { display: none; }
-    .rpf-roleta__pontos { display: flex; gap: 6px; margin-right: 6px; }
-    .rpf-roleta__ponto {
-        width: 22px;
-        height: 10px;
-        padding: 0;
-        border: 2px solid var(--preto);
-        background: var(--branco);
-        border-radius: 2px;
-        cursor: pointer;
-    }
-    .rpf-roleta__ponto[aria-current="true"] { background: var(--preto); border-color: var(--branco); width: 34px; }
+    .rpf-botao-pilula svg { width: 16px; height: 16px; }
+    .rpf-botao-pilula:hover { background: var(--amarelo); color: var(--preto); text-decoration: none; }
+    .rpf-botao-pilula--contorno { background: transparent; color: var(--preto); }
+    .rpf-botao-pilula--contorno:hover { background: var(--branco); }
 
-    @media (max-width: 700px) {
-        .rpf-roleta { aspect-ratio: 4 / 5; max-height: 560px; }
-        .rpf-roleta__texto { right: clamp(16px, 3vw, 36px); bottom: 76px; }
-        .rpf-roleta__controles { left: 16px; right: auto; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .rpf-roleta__trilho { transition: none; }
-    }
-
-    /* ---------- Atalhos da página inicial (uma porta para cada seção) ---------- */
-    .rpf-boas-vindas {
-        font-family: var(--fonte-elegante);
-        font-style: italic;
-        font-size: 1.5rem;
-        margin: 0 0 var(--espaco-4);
+    /* ---------- Atalhos da página inicial (grade de blocos) ---------- */
+    .rpf-areas { display: grid; gap: var(--espaco-5); margin-bottom: var(--espaco-6); }
+    .rpf-areas__topo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--espaco-3); }
+    .rpf-areas__titulo {
+        margin: var(--espaco-2) 0 0;
+        font-size: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+        font-weight: 900;
+        line-height: 1;
+        text-transform: uppercase;
     }
     .rpf-atalhos {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
-        gap: var(--espaco-3);
-        margin-bottom: var(--espaco-6);
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+        grid-auto-flow: dense;
+        gap: var(--espaco-4);
     }
     .rpf-atalho {
-        display: grid;
-        grid-template-columns: 76px 1fr;
-        gap: var(--espaco-3);
-        align-items: center;
-        padding: var(--espaco-3);
-        border: var(--borda-forte);
-        border-radius: var(--raio-painel);
+        min-height: 210px;
+        padding: 22px 24px;
+        box-sizing: border-box;
+        border: 1.5px solid var(--preto);
+        border-radius: 24px;
+        background: var(--quadro);
         color: var(--preto);
         text-decoration: none;
-        background: var(--branco);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: var(--espaco-4);
     }
-    .rpf-atalho:hover { background: var(--amarelo); text-decoration: none; }
-    .rpf-atalho__icone {
-        width: 76px;
-        height: 76px;
+    .rpf-atalho:hover { background: var(--branco); text-decoration: none; }
+    .rpf-atalho__topo { display: flex; justify-content: space-between; align-items: center; }
+    .rpf-atalho__numero {
+        width: 34px;
+        height: 34px;
         display: grid;
         place-items: center;
-        background: var(--preto);
-        border-radius: var(--raio);
+        border: 1.5px solid currentColor;
+        border-radius: 50%;
+        box-sizing: border-box;
+        font-size: 0.75rem;
+        font-weight: 700;
     }
-    .rpf-atalho__icone .bn { width: 66px; }
-    .rpf-atalho__nome { display: block; font-weight: 800; font-size: 1.0625rem; line-height: 1.25; }
-    .rpf-atalho__descricao { display: block; font-size: 0.8125rem; color: var(--cinza-texto); margin-top: 2px; }
-    .rpf-atalho:hover .rpf-atalho__descricao { color: var(--preto); }
+    .rpf-atalho__seta { width: 22px; height: 22px; transition: transform .15s ease; }
+    .rpf-atalho:hover .rpf-atalho__seta { transform: translate(3px, -3px); }
+    .rpf-atalho__corpo { display: flex; flex-direction: column; gap: 6px; }
+    .rpf-atalho__icone .bn { width: 58px; margin-bottom: 6px; }
+    .rpf-atalho__nome { font-weight: 800; font-size: 0.9375rem; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.25; }
+    .rpf-atalho__descricao { font-size: 0.875rem; line-height: 1.45; color: var(--cinza-texto); }
+
+    /* Blocos grandes: financeiro (dourado), rocks (preto) e calendário (branco) */
+    .rpf-atalho--destaque, .rpf-atalho--escuro, .rpf-atalho--largo { grid-column: span 2; }
+    .rpf-atalho--destaque .rpf-atalho__nome,
+    .rpf-atalho--escuro .rpf-atalho__nome,
+    .rpf-atalho--largo .rpf-atalho__nome { font-size: 1.625rem; }
+    .rpf-atalho--destaque .rpf-atalho__icone .bn,
+    .rpf-atalho--escuro .rpf-atalho__icone .bn,
+    .rpf-atalho--largo .rpf-atalho__icone .bn { width: 72px; }
+    .rpf-atalho--destaque { background: var(--amarelo); }
+    .rpf-atalho--destaque:hover { background: #e8bb48; }
+    .rpf-atalho--destaque .rpf-atalho__descricao { color: var(--preto); }
+    .rpf-atalho--escuro { background: var(--preto); color: var(--branco); }
+    .rpf-atalho--escuro:hover { background: #1e1e1e; }
+    .rpf-atalho--escuro .rpf-atalho__descricao { color: #cfcfcf; }
+    .rpf-atalho--largo { background: var(--branco); }
+    .rpf-atalho--largo:hover { background: var(--amarelo-claro); }
+
+    @media (max-width: 560px) {
+        .rpf-atalho--destaque, .rpf-atalho--escuro, .rpf-atalho--largo { grid-column: auto; }
+        .rpf-saudacao__boneco { min-height: 0; }
+    }
 }

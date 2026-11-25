@@ -1,31 +1,36 @@
-"""Novo visual: roleta da página inicial, boneco por seção e menu por permissão."""
+"""Novo visual: saudação da página inicial, boneco por seção e menu por permissão."""
 from django.contrib.auth.models import Group, User
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from core.context_processors import secao_por_caminho
-from core.models import SlideInicio
+from core.context_processors import LOOPS, secao_por_caminho
 
 
-class RoletaInicioTests(TestCase):
+class SaudacaoInicioTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_superuser('admin', 'a@a.com', 'x')
+        self.user = User.objects.create_superuser('admin', 'a@a.com', 'x', first_name='Demo')
         self.client.force_login(self.user)
 
-    def test_sem_fotos_usa_ilustracoes_padrao(self):
+    def test_saudacao_com_nome_e_boneco_do_inicio(self):
         response = self.client.get(reverse('home'))
-        self.assertContains(response, 'data-roleta')
-        self.assertContains(response, 'core/roleta/casa.svg')
-        self.assertContains(response, 'Portão dos Fundos')
+        self.assertContains(response, 'rpf-saudacao')
+        self.assertContains(response, 'Demo.')
+        self.assertContains(response, 'core/boneco/loop-inicio.webp')
+        self.assertContains(response, 'Nenhum rock marcado ainda')
+        self.assertNotContains(response, 'data-roleta')
 
-    def test_fotos_cadastradas_substituem_as_padrao(self):
-        gif = (b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00'
-               b',\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;')
-        SlideInicio.objects.create(titulo='Fachada da casa', legenda='Nossa casa', imagem=SimpleUploadedFile('casa.gif', gif, 'image/gif'))
+    def test_atalhos_em_blocos_com_destaques(self):
         response = self.client.get(reverse('home'))
-        self.assertContains(response, 'alt="Fachada da casa"')
-        self.assertNotContains(response, 'core/roleta/casa.svg')
+        self.assertContains(response, 'rpf-atalho--destaque')  # financeiro
+        self.assertContains(response, 'rpf-atalho--escuro')    # rocks
+        self.assertContains(response, 'href="%s"' % reverse('financeiro'))
+        self.assertContains(response, 'Abrir financeiro')
+
+    def test_menu_no_topo_e_rodape_com_conta(self):
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'class="rpf-topo"')
+        self.assertContains(response, 'class="rpf-rodape"')
+        self.assertNotContains(response, 'rpf-lateral')
 
 
 class BonecoPorSecaoTests(TestCase):
@@ -40,9 +45,15 @@ class BonecoPorSecaoTests(TestCase):
         user = User.objects.create_superuser('admin', 'a@a.com', 'x')
         self.client.force_login(user)
         response = self.client.get(reverse('compras'))
-        self.assertContains(response, 'core/boneco/acao-compras-preto.svg')
+        self.assertContains(response, 'core/boneco/loop-compras.webp')
         self.assertContains(response, 'rpf-transicao')  # cena da troca de página
         self.assertContains(response, 'corrida-compras.svg')  # mapa usado pela animação
+
+    def test_secao_sem_loop_usa_a_acao_em_svg(self):
+        user = User.objects.create_superuser('admin', 'a@a.com', 'x')
+        self.client.force_login(user)
+        response = self.client.get(reverse('gerenciar_acessos'))
+        self.assertContains(response, 'core/boneco/acao-acessos-preto.svg')
 
     def test_todos_os_desenhos_existem(self):
         from pathlib import Path
@@ -53,6 +64,8 @@ class BonecoPorSecaoTests(TestCase):
             for nome in (f'acao-{variante}-preto.svg', f'icone-{variante}-branco.svg',
                          f'icone-{variante}-preto.svg', f'corrida-{variante}.svg'):
                 self.assertTrue((pasta / nome).exists(), nome)
+        for variante in LOOPS:
+            self.assertTrue((pasta / f'loop-{variante}.webp').exists(), variante)
 
 
 class MenuPorPermissaoTests(TestCase):
