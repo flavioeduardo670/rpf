@@ -11,14 +11,14 @@
     </div>
 
     <section class="panel app-card">
-        <h2>Novo rock (festa)</h2>
+        <h2>Novo {{ termos.evento }}</h2>
         {% if can_edit_rock %}
         <form method="post">
             {% csrf_token %}
             <h3>Dados da festa</h3>
             {{ evento_form.as_p }}
 
-            <h3>Bebidas e itens do rock</h3>
+            <h3>Bebidas e itens {{ termos.do_evento }}</h3>
             {{ itens_formset.management_form }}
             <div class="table-wrap">
                 <table>
@@ -49,15 +49,15 @@
             </div>
             <button type="button" class="btn btn-add" id="add-rock-item">Adicionar linha</button>
 
-            <button type="submit">Salvar rock</button>
+            <button type="submit">Salvar {{ termos.evento }}</button>
         </form>
         {% else %}
-        <p>Somente visualizacao. Para cadastrar rock, solicite acesso de edicao.</p>
+        <p>Somente visualizacao. Para cadastrar {{ termos.evento }}, solicite acesso de edicao.</p>
         {% endif %}
     </section>
 
     <section class="panel app-card">
-        <h2>Rocks registrados</h2>
+        <h2>{{ termos.Eventos }} registrados</h2>
         <div class="table-wrap">
             <table>
                 <tr>
@@ -103,19 +103,19 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="9" class="empty">Nenhum rock registrado.</td></tr>
+                <tr><td colspan="9" class="empty">Nenhum {{ termos.evento }} registrado.</td></tr>
                 {% endfor %}
             </table>
         </div>
-        <p class="muted">Total gasto (todos os rocks): R$&nbsp;{{ total_gasto|floatformat:2 }}</p>
+        <p class="muted">Total gasto (todos {{ termos.os_eventos }}): R$&nbsp;{{ total_gasto|floatformat:2 }}</p>
     </section>
 
     <section class="panel app-card">
-        <h2>Gastos por rock (almoxarifado)</h2>
+        <h2>Gastos por {{ termos.evento }} (almoxarifado)</h2>
         <div class="table-wrap">
             <table>
                 <tr>
-                    <th>Rock</th>
+                    <th>{{ termos.Evento }}</th>
                     <th>Item</th>
                     <th>Quantidade</th>
                     <th>Data</th>

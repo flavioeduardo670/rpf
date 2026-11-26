@@ -12,12 +12,12 @@
         </header>
 
         {% if morador %}
-        <p class="hint">Esta area e focada para usuarios sem vinculo com a casa, mas voce tambem pode usar.</p>
+        <p class="hint">Esta area e focada para usuarios sem vinculo com {{ termos.o_local }}, mas voce tambem pode usar.</p>
         {% endif %}
 
         <section class="grid">
             <article class="card app-card">
-                <h2>Rocks cadastrados</h2>
+                <h2>{{ termos.Eventos }} cadastrados</h2>
                 {% for evento in eventos %}
                 <div class="evento">
                     <p><strong>{{ evento.nome }}</strong> - {{ evento.data }}</p>
@@ -30,7 +30,7 @@
                     </div>
                 </div>
                 {% empty %}
-                <p class="muted">Nenhum rock cadastrado.</p>
+                <p class="muted">Nenhum {{ termos.evento }} cadastrado.</p>
                 {% endfor %}
             </article>
 

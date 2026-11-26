@@ -32,14 +32,14 @@
     {% endfor %}
   </article>
   <article class="rpf-card" style="grid-column:1/-1;">
-    <p class="rpf-kpi__label">Rateio por morador (use apelidos)</p>
-    <div style="overflow:auto;"><table class="rpf-table" style="width:100%; min-width:900px;"><thead><tr><th>Morador</th><th>Aluguel</th><th>Fixas</th><th>Caixinha</th><th>Materiais</th><th>Extras</th><th>Descontos</th><th>Total</th></tr></thead><tbody>
+    <p class="rpf-kpi__label">Rateio por {{ termos.membro }} (use apelidos)</p>
+    <div style="overflow:auto;"><table class="rpf-table" style="width:100%; min-width:900px;"><thead><tr><th>{{ termos.Membro }}</th><th>Aluguel</th><th>Fixas</th><th>Caixinha</th><th>Materiais</th><th>Extras</th><th>Descontos</th><th>Total</th></tr></thead><tbody>
       {% for item in rateio_moradores %}
       <tr>
         <td><a href="{% url 'financeiro_prestacao_contas_morador' item.morador.id %}?mes={{ mes_referencia|date:'Y-m' }}">{{ item.morador.apelido|default:item.morador.nome }}</a></td>
         <td>R$&nbsp;{{ item.aluguel|floatformat:2 }}</td><td>R$&nbsp;{{ item.fixas|floatformat:2 }}</td><td>R$&nbsp;{{ item.caixinha|floatformat:2 }}</td><td>R$&nbsp;{{ item.parcelas|floatformat:2 }}</td><td>R$&nbsp;{{ item.extra|floatformat:2 }}</td><td>-&nbsp;R$&nbsp;{{ item.desconto|floatformat:2 }}</td><td><strong>R$&nbsp;{{ item.valor|floatformat:2 }}</strong></td>
       </tr>
-      {% empty %}<tr><td colspan="8">Nenhum morador ativo.</td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="8">Nenhum {{ termos.membro }} ativo.</td></tr>{% endfor %}
     </tbody></table></div>
   </article>
   <article class="rpf-card" style="grid-column:1/-1;">

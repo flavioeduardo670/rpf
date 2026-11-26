@@ -9,7 +9,7 @@
 <div class="wrap">
 
     <section class="card">
-        <h2>Comodos e locais da casa</h2>
+        <h2>Comodos e locais {{ termos.do_local }}</h2>
         <p class="muted">Edite andares, cômodos e locais de armazenamento.</p>
         <form method="post">
             {% csrf_token %}
@@ -75,7 +75,7 @@
     </section>
 
     <section class="card">
-        <h2>Setores da casa</h2>
+        <h2>Setores {{ termos.do_local }}</h2>
         <p class="muted">Edite os setores utilizados no sistema.</p>
         <form method="post">
             {% csrf_token %}

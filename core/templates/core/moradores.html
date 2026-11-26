@@ -23,7 +23,7 @@
                 <th>Apelido</th>
                 <th>Email</th>
                 <th>Codigo</th>
-                <th>Quarto</th>
+                <th>{{ termos.Unidade }}</th>
                 <th>Curso</th>
                 <th>Funções</th>
                 <th>Status</th>
@@ -43,7 +43,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="9" class="empty">Nenhum morador cadastrado.</td>
+                <td colspan="9" class="empty">Nenhum {{ termos.membro }} cadastrado.</td>
             </tr>
             {% endfor %}
         </table>

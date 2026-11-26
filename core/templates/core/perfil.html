@@ -38,7 +38,7 @@
     </section>
 
     <section class="panel">
-        <h2>Vinculo com morador</h2>
+        <h2>Vinculo com {{ termos.membro }}</h2>
         {% if morador %}
         <form method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
             {% csrf_token %}
@@ -70,7 +70,7 @@
                 <p class="value">{{ morador.apelido|default:"-" }}</p>
             </div>
             <div class="item">
-                <p class="label">Quarto</p>
+                <p class="label">{{ termos.Unidade }}</p>
                 <p class="value">{{ morador.quarto|default:"-" }}</p>
             </div>
             <div class="item">
@@ -116,7 +116,7 @@
                 </p>
             </div>
             <div class="item">
-                <p class="label">Acesso rock (V/E)</p>
+                <p class="label">Acesso {{ termos.evento }} (V/E)</p>
                 <p class="value">
                     {% if morador.acesso_rock_visualizar %}V{% else %}-{% endif %}
                     /
@@ -125,13 +125,13 @@
             </div>
         </div>
         {% else %}
-        <p class="muted">Seu usuario ainda nao esta vinculado a um morador.</p>
+        <p class="muted">Seu usuario ainda nao esta vinculado a {{ termos.um_membro }}.</p>
         {% endif %}
     </section>
 
     {% if morador %}
     <section class="panel">
-        <h2>Notificações de aluguel</h2>
+        <h2>Notificações de {{ termos.cobranca }}</h2>
         {% if notificacoes %}
         <div class="table-wrap">
             <table>
@@ -165,7 +165,7 @@
             </table>
         </div>
         {% else %}
-        <p class="muted">Sem notificações de aluguel no momento.</p>
+        <p class="muted">Sem notificações de {{ termos.cobranca }} no momento.</p>
         {% endif %}
     </section>
 

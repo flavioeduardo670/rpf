@@ -43,6 +43,13 @@ from .models import (
 )
 
 
+def termos_do_cliente():
+    """Vocabulário da organização (core/terminologia.py) para rótulos de formulário."""
+    from .models import Organizacao
+
+    return Organizacao.atual().vocabulario
+
+
 def apply_form_config(form, form_key):
     configs = list(FormFieldConfig.objects.filter(form_key=form_key))
     if not configs:
@@ -288,7 +295,7 @@ class TransferirSituacaoOSForm(forms.ModelForm):
         self.fields['executado_por'] = forms.ChoiceField(
             choices=[('', '---')] + [(m.apelido or m.nome, m.apelido or m.nome) for m in moradores],
             required=True,
-            label='Morador responsável',
+            label='{Membro} responsável'.format_map(termos_do_cliente()),
         )
         self.fields['status'].choices = [
             ('finalizada', 'Finalizada'),
@@ -620,10 +627,13 @@ class AtaParticipanteForm(forms.ModelForm):
         model = AtaParticipante
         fields = ['morador', 'nome', 'presente']
         labels = {
-            'morador': 'Morador',
             'nome': 'Nome',
             'presente': 'Presente',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['morador'].label = termos_do_cliente()['Membro']
 
 
 class AtaTopicoForm(forms.ModelForm):
@@ -765,13 +775,13 @@ class ContaCasaForm(forms.ModelForm):
         }
         labels = {
             'data_vencimento': 'Data de vencimento',
-            'mes_cobranca_aluguel': 'Mês de cobrança no aluguel',
             'forma_pagamento': 'Forma de pagamento',
             'repetir_meses_futuros': 'Repetir nos meses futuros',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['mes_cobranca_aluguel'].label = 'Mês de cobrança {no_cobranca}'.format_map(termos_do_cliente())
         apply_form_config(self, 'conta_casa_form')
 
 

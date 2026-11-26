@@ -46,7 +46,7 @@
       <div><strong>Descontos</strong><br>R$&nbsp;{{ registro_selecionado.desconto_total_mes|floatformat:2 }}</div>
       <div><strong>Total do rateio</strong><br>R$&nbsp;{{ registro_selecionado.total_rateio|floatformat:2 }}</div>
       <div><strong>Total a arrecadar</strong><br>R$&nbsp;{{ registro_selecionado.total_a_arrecadar|floatformat:2 }}</div>
-      <div><strong>Moradores no registro</strong><br>{{ registro_selecionado.total_moradores }}</div>
+      <div><strong>{{ termos.Membros }} no registro</strong><br>{{ registro_selecionado.total_moradores }}</div>
     </div>
     {% else %}
     <p>Salve um mês para visualizar o registro congelado aqui.</p>
@@ -60,7 +60,7 @@
       <table class="rpf-table" style="width:100%;min-width:960px;">
         <thead>
           <tr>
-            <th>Morador</th>
+            <th>{{ termos.Membro }}</th>
             <th>Aluguel</th>
             <th>Fixas</th>
             <th>Caixinha</th>
@@ -83,7 +83,7 @@
             <td><strong>R$&nbsp;{{ item.valor|floatformat:2 }}</strong></td>
           </tr>
           {% empty %}
-          <tr><td colspan="8">Nenhum morador salvo neste registro.</td></tr>
+          <tr><td colspan="8">Nenhum {{ termos.membro }} salvo neste registro.</td></tr>
           {% endfor %}
         </tbody>
       </table>

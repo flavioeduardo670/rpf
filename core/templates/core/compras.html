@@ -31,7 +31,7 @@
         </section>
         <section class="card">
             <h2>Ajuda rápida</h2>
-            <p class="muted">Preencha os dados da nota fiscal. Use a categoria “rock” para habilitar o vínculo com um rock cadastrado.</p>
+            <p class="muted">Preencha os dados da nota fiscal. Use a categoria “rock” para habilitar o vínculo com {{ termos.um_evento }} cadastrado.</p>
             {% if can_edit_compras %}
             <p class="muted">Tem a nota do mercado em mãos? Use <a href="{% url 'compras_qrcode' %}">Ler QR Code da nota</a>: o sistema lê a loja, a data, os itens e o valor e registra a compra.</p>
             {% endif %}
@@ -61,7 +61,7 @@
             <label><input type="checkbox" data-col="6" checked> Quantidade</label>
             <label><input type="checkbox" data-col="7" checked> Qualidade</label>
             <label><input type="checkbox" data-col="8" checked> Estoque?</label>
-            <label><input type="checkbox" data-col="9" checked> Cobrar aluguel?</label>
+            <label><input type="checkbox" data-col="9" checked> Cobrar {{ termos.no_cobranca }}?</label>
             <label><input type="checkbox" data-col="10" checked> Parcelado</label>
             <label><input type="checkbox" data-col="11" checked> Dia compra</label>
             <label><input type="checkbox" data-col="12" checked> Mês cobrança</label>
@@ -112,7 +112,7 @@
                         <button class="filter-btn" type="button" data-col="8">Filtro ▼</button>
                     </th>
                     <th>
-                        <span class="th-title">Cobrar aluguel?</span>
+                        <span class="th-title">Cobrar {{ termos.no_cobranca }}?</span>
                         <button class="filter-btn" type="button" data-col="9">Filtro ▼</button>
                     </th>
                     <th>

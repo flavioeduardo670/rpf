@@ -16,11 +16,11 @@
             {% csrf_token %}
             {{ formset.management_form }}
             {{ usuario_formset.management_form }}
-            <h2 style="margin:0 0 10px;">Acessos de moradores</h2>
+            <h2 style="margin:0 0 10px;">Acessos de {{ termos.membros }}</h2>
             <div class="table-wrap">
                 <table>
                     <tr>
-                        <th>Morador</th>
+                        <th>{{ termos.Membro }}</th>
                         <th>Usuario</th>
                         <th class="center">Financeiro V</th>
                         <th class="center">Financeiro E</th>
@@ -30,8 +30,8 @@
                         <th class="center">Estoque E</th>
                         <th class="center">Manutencao V</th>
                         <th class="center">Manutencao E</th>
-                        <th class="center">Rock V</th>
-                        <th class="center">Rock E</th>
+                        <th class="center">{{ termos.Evento }} V</th>
+                        <th class="center">{{ termos.Evento }} E</th>
                         <th class="center">Reuniões V</th>
                         <th class="center">Reuniões E</th>
                     </tr>
@@ -56,16 +56,16 @@
                         <td class="center">{{ form.acesso_reunioes_editar }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="14" class="center">Nenhum morador cadastrado.</td></tr>
+                    <tr><td colspan="14" class="center">Nenhum {{ termos.membro }} cadastrado.</td></tr>
                     {% endfor %}
                 </table>
             </div>
-            <h2 style="margin:18px 0 10px;">Acessos de usuarios sem vinculo de morador</h2>
+            <h2 style="margin:18px 0 10px;">Acessos de usuarios sem vinculo de {{ termos.membro }}</h2>
             <div class="table-wrap">
                 <table>
                     <tr>
                         <th>Usuario</th>
-                        <th>Vincular a morador</th>
+                        <th>Vincular a {{ termos.membro }}</th>
                         <th class="center">Financeiro V</th>
                         <th class="center">Financeiro E</th>
                         <th class="center">Compras V</th>
@@ -74,8 +74,8 @@
                         <th class="center">Estoque E</th>
                         <th class="center">Manutencao V</th>
                         <th class="center">Manutencao E</th>
-                        <th class="center">Rock V</th>
-                        <th class="center">Rock E</th>
+                        <th class="center">{{ termos.Evento }} V</th>
+                        <th class="center">{{ termos.Evento }} E</th>
                         <th class="center">Reuniões V</th>
                         <th class="center">Reuniões E</th>
                     </tr>
@@ -107,7 +107,7 @@
                         <td class="center">{{ form.acesso_reunioes_editar }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="14" class="center">Nenhum usuario sem morador.</td></tr>
+                    <tr><td colspan="14" class="center">Nenhum usuario sem {{ termos.membro }}.</td></tr>
                     {% endfor %}
                 </table>
             </div>

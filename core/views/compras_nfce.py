@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from core.forms import get_choice_options
+from core.forms import get_choice_options, termos_do_cliente
 from core.models import ControleDistribuicaoNFe, NotaFiscal
 from core.services.nfce import (
     DadosNFCe,
@@ -60,7 +60,9 @@ class ConfirmarCompraNFCeForm(forms.Form):
 
     def __init__(self, *args, tem_itens=False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['categoria_compra'].choices = get_choice_options('categoria_compra', [('geral', 'Geral'), ('rock', 'Rock')])
+        termos = termos_do_cliente()
+        self.fields['cobrar_no_aluguel'].label = 'Cobrar {no_cobranca} (entra no rateio)'.format_map(termos)
+        self.fields['categoria_compra'].choices = get_choice_options('categoria_compra', [('geral', 'Geral'), ('rock', termos['Evento'])])
         self.fields['tipo_item'].choices = get_choice_options(
             'nota_tipo_item',
             [('Bem de Consumo', 'Bem de Consumo'), ('Bem de Uso', 'Bem de Uso'), ('Bem Material', 'Bem Material'), ('Bem de Troca', 'Bem de Troca')],
