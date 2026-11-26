@@ -114,14 +114,59 @@ class Organizacao(models.Model):
 
     @classmethod
     def atual(cls):
-        """A organização desta instalação (a primeira ativa).
+        """A organização do acesso em andamento.
 
-        Quando o ERP atender vários clientes no mesmo sistema, a organização
-        passa a vir do usuário logado; quem chama isto hoje é o ponto a trocar.
+        1. A escolhida para o usuário logado (core/organizacao_atual.py, por requisição).
+        2. Sem usuário (login, webhooks, comandos): a única organização ativa, se houver só uma.
+        3. Com várias e nenhuma escolhida (ex.: tela de login): a marca neutra do produto.
         """
-        return cls.objects.filter(ativa=True).order_by('id').first() or cls(
-            nome='Minha organização', nome_curto='ERP', slug='minha-organizacao',
-        )
+        from django.conf import settings
+
+        from core.organizacao_atual import organizacao_da_requisicao
+
+        org = organizacao_da_requisicao()
+        if org is not None:
+            return org
+        ativas = list(cls.objects.filter(ativa=True).order_by('id')[:2])
+        if len(ativas) == 1:
+            return ativas[0]
+        return cls(nome=settings.PRODUTO_NOME, nome_curto=settings.PRODUTO_NOME, slug='', segmento='outro')
+
+
+class Vinculo(models.Model):
+    """Usuário (login) que participa de uma organização. Uma pessoa pode ter vários."""
+    PAPEL_CHOICES = [
+        ('membro', 'Membro'),
+        ('gestor', 'Gestor'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vinculos')
+    organizacao = models.ForeignKey(Organizacao, on_delete=models.CASCADE, related_name='vinculos')
+    papel = models.CharField(max_length=20, choices=PAPEL_CHOICES, default='membro')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['organizacao_id', 'usuario__username']
+        unique_together = ('usuario', 'organizacao')
+        verbose_name = 'Vínculo com organização'
+        verbose_name_plural = 'Vínculos com organizações'
+
+    def __str__(self):
+        return f'{self.usuario} em {self.organizacao}'
+
+
+@receiver(post_save, sender=User)
+def vincular_usuario_novo(sender, instance, created, raw=False, **kwargs):
+    """Usuário criado (cadastro, Admin, create_admin) entra na organização do acesso.
+
+    Sem organização definida (ex.: várias ativas e nenhuma escolhida), fica sem
+    vínculo e alguém vincula pelo Admin.
+    """
+    if not created or raw:
+        return
+    org = Organizacao.atual()
+    if org.pk:
+        Vinculo.objects.get_or_create(usuario=instance, organizacao=org)
 
 
 # =====================================================

@@ -18,8 +18,13 @@ from core.views.common import GRUPO_POR_MODULO, get_user_morador
 
 
 def marca(request):
+    from core.organizacao_atual import organizacoes_do_usuario
+
     organizacao = Organizacao.atual()
+    user = getattr(request, 'user', None)
     return {
+        # Só aparece o seletor de organização para quem participa de mais de uma.
+        'organizacoes_do_usuario': list(organizacoes_do_usuario(user)) if user is not None else [],
         'organizacao': organizacao,
         'produto_nome': settings.PRODUTO_NOME,
         'termos': organizacao.vocabulario,
