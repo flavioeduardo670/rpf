@@ -892,7 +892,10 @@ def enviar_comprovante_aluguel_por_email(cobranca):
     )
     nome_morador = slugify(morador_label) or f'morador-{cobranca.morador_id}'
     filename = f'comprovante_aluguel_{nome_morador}_{cobranca.mes_referencia.strftime("%Y_%m")}.pdf'
-    mensagem = EmailMessage(assunto, corpo, to=[email_morador])
+    mensagem = EmailMessage(
+        assunto, corpo, from_email=organizacao.remetente_email, to=[email_morador],
+        reply_to=[organizacao.email_contato] if organizacao.email_contato else None,
+    )
     mensagem.attach(filename, pdf, 'application/pdf')
     mensagem.send(fail_silently=False)
     return True

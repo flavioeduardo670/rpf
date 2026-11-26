@@ -14,8 +14,15 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from core.models import CobrancaAluguel, Mensalidade
+from core.models import CobrancaAluguel, Mensalidade, Organizacao
+from core.organizacao_atual import na_organizacao, organizacao_da_requisicao
 from core.services.pix_gateway import cancelar_pagamento_mercado_pago, consultar_status_por_txid, mercado_pago_configurado
+
+
+def _no_cliente_da(cobranca):
+    """Contexto da organização dona da cobrança: token do Mercado Pago, recibo e
+    dados certos mesmo quando quem chama não tem login (webhook, rotinas)."""
+    return na_organizacao(Organizacao.objects.get(pk=cobranca.organizacao_id))
 
 logger = logging.getLogger('core.services.aluguel')
 
@@ -36,7 +43,8 @@ def _tentar_enviar_comprovante(cobranca: CobrancaAluguel) -> str:
     from core.views.financeiro import enviar_comprovante_aluguel_por_email
 
     try:
-        enviado = enviar_comprovante_aluguel_por_email(cobranca)
+        with _no_cliente_da(cobranca):
+            enviado = enviar_comprovante_aluguel_por_email(cobranca)
     except Exception:
         logger.exception(
             'Falha ao enviar comprovante de aluguel por email; nova tentativa na proxima verificacao.',
@@ -102,10 +110,11 @@ def confirmar_pagamento_aluguel(
 
 
 def verificar_cobranca_no_gateway(cobranca: CobrancaAluguel) -> bool:
-    """Consulta o Mercado Pago pelo TXID e confirma se já foi pago."""
+    """Consulta o Mercado Pago (conta do cliente dono da cobrança) e confirma se já foi pago."""
     if cobranca.status != 'aguardando_pagamento' or not cobranca.txid:
         return False
-    resultado = consultar_status_por_txid(cobranca.txid)
+    with _no_cliente_da(cobranca):
+        resultado = consultar_status_por_txid(cobranca.txid)
     status = resultado.get('status') or ''
     provider_payload = resultado.get('provider_payload') or resultado
     if status_indica_pagamento(status):
@@ -174,7 +183,8 @@ def avisos_pagamento_aluguel(cobrancas) -> list[str]:
     locais = [c for c in cobrancas if c.txid and cobranca_usa_pix_local(c)]
     if not mercado_pago_configurado():
         avisos.append(
-            'Mercado Pago não configurado (MERCADOPAGO_ACCESS_TOKEN): os boletos saem com PIX na chave cadastrada '
+            'Mercado Pago não configurado para esta organização (token no Admin → Organizações): '
+            'os boletos saem com PIX na chave cadastrada '
             'e o pagamento precisa ser confirmado manualmente no botão "Confirmar pagamento".'
         )
     elif locais:
@@ -204,7 +214,19 @@ def verificar_pagamentos_pendentes(cobrancas=None, *, limite_recibos: int | None
     ``limite_recibos`` limita quantos recibos tentar (a tela do financeiro usa
     um número pequeno para não demorar). A primeira falha de envio interrompe
     o reenvio: se o servidor de email está fora, os demais falhariam igual.
+
+    Sem organização em uso (rotina agendada), percorre cada cliente ativo, cada
+    um com a própria conta do Mercado Pago.
     """
+    if cobrancas is None and organizacao_da_requisicao() is None:
+        total = {'confirmadas': 0, 'comprovantes_enviados': 0}
+        for org in Organizacao.objects.filter(ativa=True).order_by('id'):
+            with na_organizacao(org):
+                parcial = verificar_pagamentos_pendentes(limite_recibos=limite_recibos)
+            for chave in total:
+                total[chave] += parcial[chave]
+        return total
+
     confirmadas = 0
     if mercado_pago_configurado():
         pendentes = cobrancas if cobrancas is not None else CobrancaAluguel.objects.filter(status='aguardando_pagamento')

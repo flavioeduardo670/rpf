@@ -1,5 +1,7 @@
 from django.core.management.base import BaseCommand
 
+from core.models import Organizacao
+from core.organizacao_atual import na_organizacao
 from core.services.aluguel import verificar_pagamentos_pendentes
 from core.services.pix_gateway import mercado_pago_configurado
 
@@ -12,10 +14,12 @@ class Command(BaseCommand):
     )
 
     def handle(self, *args, **options):
-        if not mercado_pago_configurado():
-            self.stdout.write(self.style.WARNING(
-                'MERCADOPAGO_ACCESS_TOKEN não configurado: só os recibos pendentes serão reenviados.'
-            ))
+        for org in Organizacao.objects.filter(ativa=True).order_by('id'):
+            with na_organizacao(org):
+                if not mercado_pago_configurado():
+                    self.stdout.write(self.style.WARNING(
+                        f'{org.nome}: Mercado Pago sem token; só os recibos pendentes serão reenviados.'
+                    ))
         resultado = verificar_pagamentos_pendentes()
         self.stdout.write(self.style.SUCCESS(
             f"Pagamentos confirmados: {resultado['confirmadas']} | "

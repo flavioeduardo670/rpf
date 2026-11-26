@@ -146,17 +146,32 @@ class TelasIsoladasTests(DoisClientes):
 
 @override_settings(MERCADOPAGO_WEBHOOK_SECRET='', DEBUG=True)
 class WebhookComDoisClientesTests(DoisClientes):
-    def test_webhook_sem_login_acha_a_cobranca_do_cliente_certo(self):
+    def setUp(self):
+        super().setUp()
         with self.na(self.verde):
-            cobranca = CobrancaAluguel.objects.create(
+            self.cobranca = CobrancaAluguel.objects.create(
                 morador=self.morador_verde, mes_referencia=date(2026, 5, 1), valor=Decimal('100'),
                 txid='RPFALVERDE1', status='aguardando_pagamento',
             )
-        response = self.client.post(
-            reverse('webhook_pix_financeiro'), data=json.dumps({'txid': 'RPFALVERDE1', 'status': 'approved'}),
-            content_type='application/json',
+
+    def _avisar(self, url):
+        return self.client.post(
+            url, data=json.dumps({'txid': 'RPFALVERDE1', 'status': 'approved'}), content_type='application/json',
         )
+
+    def test_webhook_no_endereco_do_cliente_confirma_a_cobranca_dele(self):
+        response = self._avisar(reverse('webhook_pix_organizacao', args=['casa-verde']))
         self.assertEqual(response.status_code, 200)
-        cobranca.refresh_from_db()
-        self.assertEqual(cobranca.status, 'pago')
+        self.cobranca.refresh_from_db()
+        self.assertEqual(self.cobranca.status, 'pago')
         self.assertEqual(Mensalidade.objects.get(morador=self.morador_verde).organizacao, self.verde)
+
+    def test_webhook_de_outro_cliente_nao_confirma(self):
+        # Endereço antigo (sem cliente) é da Portão: não enxerga a cobrança da Casa Verde.
+        response = self._avisar(reverse('webhook_pix_financeiro'))
+        self.assertJSONEqual(response.content, {'ok': True, 'detail': 'pagamento_nao_encontrado'})
+        self.cobranca.refresh_from_db()
+        self.assertEqual(self.cobranca.status, 'aguardando_pagamento')
+
+    def test_webhook_de_cliente_desconhecido_responde_404(self):
+        self.assertEqual(self._avisar(reverse('webhook_pix_organizacao', args=['nao-existe'])).status_code, 404)

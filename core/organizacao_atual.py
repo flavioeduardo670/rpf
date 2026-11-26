@@ -30,6 +30,32 @@ def desfazer(token):
     _organizacao.reset(token)
 
 
+def organizacao_da_instalacao():
+    """O cliente original da instalação (a primeira organização ativa).
+
+    Dono das credenciais que ainda ficam nas variáveis do servidor (certificado
+    da NF-e, caixa de email das notas).
+    """
+    from core.models import Organizacao
+
+    return Organizacao.objects.filter(ativa=True).order_by('id').first()
+
+
+class na_organizacao:
+    """``with na_organizacao(org):`` age em nome de uma organização (webhooks, rotinas, recibos)."""
+
+    def __init__(self, org):
+        self.org = org
+
+    def __enter__(self):
+        self._token = _organizacao.set(self.org)
+        return self.org
+
+    def __exit__(self, *exc):
+        _organizacao.reset(self._token)
+        return False
+
+
 def organizacoes_do_usuario(user):
     from core.models import Organizacao
 

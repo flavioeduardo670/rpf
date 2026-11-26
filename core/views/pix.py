@@ -1,12 +1,13 @@
 import json
 import logging
 
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from core.models import CobrancaAluguel, PedidoIngressoRock
+from core.models import CobrancaAluguel, Organizacao, PedidoIngressoRock
+from core.organizacao_atual import na_organizacao
 from core.services.aluguel import confirmar_pagamento_aluguel
 from core.services.pix_gateway import consultar_evento_mercado_pago, mercado_pago_configurado, validar_assinatura_webhook
 from core.services.rock import confirmar_pagamento_pedido
@@ -32,9 +33,28 @@ def _extrair_identificadores_webhook(request, payload):
     return payment_id, txid, event_type
 
 
+def _organizacao_do_webhook(slug):
+    """O cliente vem no endereço (.../webhook/<slug>/). O endereço antigo, sem
+    cliente, é o que os pagamentos criados antes disto usam: é do cliente original
+    da instalação (a primeira organização)."""
+    ativas = Organizacao.objects.filter(ativa=True)
+    if slug:
+        return ativas.filter(slug=slug).first()
+    return ativas.order_by('id').first()
+
+
 @csrf_exempt
 @require_POST
-def webhook_pix(request):
+def webhook_pix(request, organizacao=None):
+    org = _organizacao_do_webhook(organizacao)
+    if org is None:
+        raise Http404('Organização desconhecida.')
+    # Assinatura, token do Mercado Pago e consultas: tudo do cliente do endereço.
+    with na_organizacao(org):
+        return _processar_webhook(request)
+
+
+def _processar_webhook(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except (UnicodeDecodeError, json.JSONDecodeError):

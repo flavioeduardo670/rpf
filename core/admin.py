@@ -33,19 +33,58 @@ class OrganizacaoAdminForm(forms.ModelForm):
         label='Módulos ligados', required=False, widget=forms.CheckboxSelectMultiple,
         help_text='Desmarcar tudo = pacote padrão do segmento. Pessoas fica sempre ligado.',
     )
+    # Credenciais: nunca são mostradas; em branco = mantém a atual.
+    novo_mercadopago_access_token = forms.CharField(
+        label='Token do Mercado Pago (Access Token de produção)', required=False,
+        widget=forms.PasswordInput(render_value=False, attrs={'autocomplete': 'off'}),
+    )
+    novo_mercadopago_webhook_secret = forms.CharField(
+        label='Assinatura secreta do webhook do Mercado Pago', required=False,
+        widget=forms.PasswordInput(render_value=False, attrs={'autocomplete': 'off'}),
+    )
+    apagar_credenciais_mercadopago = forms.BooleanField(
+        label='Apagar token e assinatura do Mercado Pago', required=False,
+    )
 
     class Meta:
         model = Organizacao
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
+        from core.credenciais import mascarar
         from core.modulos import opcoes_para_formulario
+        from core.services.pix_gateway import url_notificacao_mercado_pago
 
         super().__init__(*args, **kwargs)
         org = self.instance
         self.fields['modulos'].choices = opcoes_para_formulario(org.vocabulario)
         if org.pk:
             self.initial['modulos'] = sorted(org.modulos_ativos)
+        atual_token = mascarar(org.mercadopago_access_token) if org.pk else ''
+        atual_segredo = 'cadastrada' if org.pk and org.mercadopago_webhook_secret else ''
+        self.fields['novo_mercadopago_access_token'].help_text = (
+            f'Atual: {atual_token or "nenhum"}. Deixe em branco para manter.'
+        )
+        url = url_notificacao_mercado_pago(org) if org.pk else ''
+        self.fields['novo_mercadopago_webhook_secret'].help_text = (
+            f'Atual: {atual_segredo or "nenhuma"}. No painel do Mercado Pago, cadastre o webhook '
+            f'{("em " + url) if url else "(defina MERCADOPAGO_NOTIFICATION_URL no servidor)"}.'
+        )
+
+    def save(self, commit=True):
+        org = super().save(commit=False)
+        if self.cleaned_data.get('apagar_credenciais_mercadopago'):
+            org.mercadopago_access_token = ''
+            org.mercadopago_webhook_secret = ''
+        else:
+            if self.cleaned_data.get('novo_mercadopago_access_token'):
+                org.mercadopago_access_token = self.cleaned_data['novo_mercadopago_access_token']
+            if self.cleaned_data.get('novo_mercadopago_webhook_secret'):
+                org.mercadopago_webhook_secret = self.cleaned_data['novo_mercadopago_webhook_secret']
+        if commit:
+            org.save()
+            self.save_m2m()
+        return org
 
     def clean_modulos(self):
         from core.modulos import OBRIGATORIOS, TODOS
