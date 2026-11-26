@@ -369,9 +369,14 @@ def compras_nfce_receber(request):
 def pwa_manifest(request):
     import json
 
+    from django.conf import settings
+
+    from core.models import Organizacao
+
+    organizacao = Organizacao.atual()
     manifest = {
-        'name': 'RPF - Sistema da República',
-        'short_name': 'RPF',
+        'name': f'{organizacao.nome} - {settings.PRODUTO_NOME}',
+        'short_name': organizacao.nome_curto,
         'start_url': reverse('home'),
         'scope': '/',
         'display': 'standalone',

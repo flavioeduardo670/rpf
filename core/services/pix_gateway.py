@@ -75,7 +75,7 @@ def _pix_crc16(payload: str) -> str:
     return f"{crc:04X}"
 
 
-def gerar_payload_pix(chave_pix: str, valor: Decimal, txid: str, *, nome_recebedor: str = 'REPUBLICA RPF', cidade: str = 'SAO PAULO') -> str:
+def gerar_payload_pix(chave_pix: str, valor: Decimal, txid: str, *, nome_recebedor: str = 'RECEBEDOR', cidade: str = 'SAO PAULO') -> str:
     chave_pix = normalizar_chave_pix(chave_pix)
     merchant_account = _pix_tlv('00', 'br.gov.bcb.pix') + _pix_tlv('01', chave_pix)
     payload = (
@@ -171,12 +171,15 @@ def _mapear_status_mercado_pago(status: str) -> str:
 
 
 def _fallback_pix_local(*, txid: str, valor: Decimal, chave_pix: str, categoria: str = '') -> dict[str, Any]:
+    from core.models import Organizacao
+
+    nome_recebedor, cidade = Organizacao.atual().dados_pix
     payload_pix = gerar_payload_pix(
         chave_pix=chave_pix,
         valor=valor,
         txid=txid,
-        nome_recebedor='ASSOC CULT RPF',
-        cidade='SAO PAULO',
+        nome_recebedor=nome_recebedor,
+        cidade=cidade,
     )
     return {
         'txid': txid,

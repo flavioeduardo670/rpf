@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>Importar nota - RPF</title>
+    <title>Importar nota - {{ organizacao.nome_curto }}</title>
     <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
     <style>
         :root { color-scheme: light; }
@@ -22,7 +22,7 @@
     </style>
 </head>
 <body>
-<header>RPF · Compras</header>
+<header>{{ organizacao.nome_curto }} · Compras</header>
 <main>
     {% if tem_nota %}
     <h1>Importar esta nota?</h1>
@@ -47,7 +47,7 @@
     {% else %}
     <h1>Nada para importar</h1>
     <div class="card">
-        <p>Use o atalho "Enviar ao RPF" na página da nota da SEFAZ (depois de passar pelo "não sou robô"), ou selecione o texto da nota e use <strong>Compartilhar → RPF</strong>.</p>
+        <p>Use o atalho "Enviar ao {{ organizacao.nome_curto }}" na página da nota da SEFAZ (depois de passar pelo "não sou robô"), ou selecione o texto da nota e use <strong>Compartilhar → {{ organizacao.nome_curto }}</strong>.</p>
         <a class="btn" href="{% url 'compras_qrcode' %}">Ir para Ler nota fiscal</a>
     </div>
     {% endif %}

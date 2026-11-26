@@ -16,8 +16,21 @@ from .models import (
     Morador,
     Mensalidade,
     NotaFiscal,
+    Organizacao,
     Reuniao,
 )
+
+
+# =====================================================
+# ORGANIZAÇÕES (CLIENTES DO ERP)
+# =====================================================
+
+@admin.register(Organizacao)
+class OrganizacaoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'nome_curto', 'segmento', 'tema', 'ativa')
+    list_filter = ('segmento', 'ativa')
+    search_fields = ('nome', 'nome_curto', 'razao_social', 'documento')
+    prepopulated_fields = {'slug': ('nome',)}
 
 
 # =====================================================
