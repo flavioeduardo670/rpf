@@ -26,7 +26,7 @@ def _resposta_json(dados):
     return resposta
 
 
-class GatewayAluguelTests(SimpleTestCase):
+class GatewayAluguelTests(TestCase):  # o gateway lê as credenciais do cliente no banco
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.services.pix_gateway.request.urlopen')
     def test_cobranca_envia_validade_e_email_do_morador(self, urlopen):

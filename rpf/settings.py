@@ -313,6 +313,12 @@ LOGOUT_REDIRECT_URL = '/login/'
 # ser definida; o nome de cada cliente vem do modelo Organizacao.
 PRODUTO_NOME = os.getenv('PRODUTO_NOME', 'ERP')
 
+# Chave (Fernet, base64) para cifrar as credenciais de cada cliente no banco
+# (core/credenciais.py). Gere com: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+CREDENCIAIS_CHAVE = os.getenv('CREDENCIAIS_CHAVE', '')
+
+# Credenciais do servidor: usadas só enquanto houver um cliente (organização)
+# ativo. Com vários, cada um usa as próprias, cadastradas no Admin.
 MERCADOPAGO_ACCESS_TOKEN = os.getenv('MERCADOPAGO_ACCESS_TOKEN', '')
 MERCADOPAGO_TIMEOUT = int(os.getenv('MERCADOPAGO_TIMEOUT', '10'))
 MERCADOPAGO_WEBHOOK_SECRET = os.getenv('MERCADOPAGO_WEBHOOK_SECRET', '')

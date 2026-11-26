@@ -60,6 +60,9 @@ urlpatterns = [
     path('rock/comprar/', views.comprar_rocks, name='comprar_rocks'),
     path('rock/pix/webhook/', views.webhook_pix, name='webhook_pix'),
     path('financeiro/pix/webhook/', views.webhook_pix, name='webhook_pix_financeiro'),
+    # Um endereço por cliente: o Mercado Pago avisa no da organização dona do pagamento.
+    path('rock/pix/webhook/<slug:organizacao>/', views.webhook_pix, name='webhook_pix_organizacao_rock'),
+    path('financeiro/pix/webhook/<slug:organizacao>/', views.webhook_pix, name='webhook_pix_organizacao'),
     path('rock/editar/<int:evento_id>/', views.editar_rock, name='editar_rock'),
     path('rock/<int:evento_id>/lotes/', views.lotes_rock, name='lotes_rock'),
     path('rock/<int:evento_id>/ingressos/', views.ingressos_rock, name='ingressos_rock'),

@@ -55,6 +55,30 @@ Sem SMTP o recibo não sai por email; ele continua disponível em PDF pelo botã
 O QR do boleto vale até o dia 10 do mês (ou 3 dias a partir da emissão, se já passou);
 ao regerar o boleto, um QR vencido é trocado e o anterior é cancelado no Mercado Pago.
 
+## Vários clientes (organizações) no mesmo sistema
+
+Cada organização recebe na **própria conta do Mercado Pago**:
+
+1. **Antes do primeiro deploy com isto**, defina `CREDENCIAIS_CHAVE` (a chave que
+   cifra os tokens no banco). Gere uma vez e guarde em lugar seguro:
+   `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+   Sem ela a chave sai da `DJANGO_SECRET_KEY`, e trocar a SECRET_KEY apagaria os tokens.
+2. A migração `0077` copia `MERCADOPAGO_ACCESS_TOKEN` e `MERCADOPAGO_WEBHOOK_SECRET`
+   do servidor para a **primeira organização** (a Portão). Depois disso, troque o
+   token pelo **Admin → Organizações** (campos "Token do Mercado Pago" e "Assinatura
+   secreta"); as variáveis do servidor só valem enquanto houver um cliente só.
+3. `MERCADOPAGO_NOTIFICATION_URL` continua sendo a base
+   (`https://<seu-dominio>/financeiro/pix/webhook/`); cada cobrança é criada com o
+   endereço do cliente (`.../webhook/<slug>/`). No painel do Mercado Pago **de cada
+   cliente**, cadastre o webhook que aparece na tela dele no Admin. O endereço antigo,
+   sem slug, continua valendo para a primeira organização.
+4. Remetente dos recibos: com mais de um cliente, sai o nome da organização com o
+   endereço de `DJANGO_DEFAULT_FROM_EMAIL`; as respostas vão para o "Email de contato"
+   da organização.
+5. `verificar_pagamentos_aluguel` e `notificar_pagamento_aluguel` percorrem todos os
+   clientes. `importar_nfe_receita` e `importar_notas_email` usam o certificado e a
+   caixa de email do servidor, que são da **primeira organização**.
+
 ## Deploy (ordem dos comandos)
 
 ```bash

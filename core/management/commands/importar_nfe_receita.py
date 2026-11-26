@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
+from core.organizacao_atual import na_organizacao, organizacao_da_instalacao
 from core.services.nfe_distribuicao import ConfigDistribuicao, DistribuicaoErro, importar_distribuicao
 
 
@@ -14,8 +15,13 @@ class Command(BaseCommand):
         config = ConfigDistribuicao.do_ambiente()
         if config is None:
             raise CommandError('Configure NFE_CNPJ e o certificado A1 (NFE_CERTIFICADO_PFX_BASE64 e NFE_CERTIFICADO_SENHA).')
+        org = organizacao_da_instalacao()
+        if org is None:
+            raise CommandError('Nenhuma organização ativa.')
         try:
-            resultado = importar_distribuicao(config)
+            # O certificado das variáveis do servidor é do cliente original da instalação.
+            with na_organizacao(org):
+                resultado = importar_distribuicao(config)
         except DistribuicaoErro as exc:
             raise CommandError(str(exc)) from exc
         for erro in resultado.erros:

@@ -102,17 +102,60 @@ def gerar_qr_code_data_uri(payload_pix: str) -> str:
     return f'data:image/png;base64,{encoded}'
 
 
-def _mercado_pago_access_token() -> str:
-    token = getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '').strip().strip('\"\'')
+def _normalizar_token(token: str) -> str:
+    token = (token or '').strip().strip('\"\'')
     if token.lower().startswith('bearer '):
         token = token[7:].strip()
     return token
 
 
+def _um_cliente_so() -> bool:
+    from core.models import Organizacao
+
+    return Organizacao.objects.filter(ativa=True).count() <= 1
+
+
+def credenciais_mercado_pago():
+    """(organização, token, segredo do webhook) do cliente em uso.
+
+    Cada organização usa a própria conta do Mercado Pago (cadastrada no Admin).
+    As variáveis do servidor só valem enquanto houver um cliente só: com vários,
+    um cliente sem token próprio fica sem PIX automático em vez de receber na
+    conta de outro.
+    """
+    from core.models import Organizacao
+
+    org = Organizacao.atual()
+    token = org.mercadopago_access_token if org.pk else ''
+    segredo = org.mercadopago_webhook_secret if org.pk else ''
+    if (not token or not segredo) and _um_cliente_so():
+        token = token or getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '')
+        segredo = segredo or getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '')
+    return org, _normalizar_token(token), (segredo or '').strip()
+
+
+def url_notificacao_mercado_pago(org=None) -> str:
+    """Endereço do webhook com o cliente no final: .../financeiro/pix/webhook/<slug>/."""
+    base = (getattr(settings, 'MERCADOPAGO_NOTIFICATION_URL', '') or '').strip()
+    if not base:
+        return ''
+    if org is None:
+        from core.models import Organizacao
+
+        org = Organizacao.atual()
+    if not org.slug:
+        return base
+    return f"{base.rstrip('/')}/{org.slug}/"
+
+
+def _mercado_pago_access_token() -> str:
+    return credenciais_mercado_pago()[1]
+
+
 def _mercado_pago_request(method: str, path: str, *, payload: dict[str, Any] | None = None, idempotency_key: str = '') -> dict[str, Any]:
     token = _mercado_pago_access_token()
     if not token:
-        raise RuntimeError('MERCADOPAGO_ACCESS_TOKEN nao configurado.')
+        raise RuntimeError('Token do Mercado Pago da organizacao nao configurado.')
 
     headers = {
         'Authorization': f'Bearer {token}',
@@ -260,7 +303,7 @@ def criar_cobranca_pix_avulsa(
         # Sem isso o Mercado Pago expira o PIX em 24h e o morador que paga
         # depois encontra um QR Code vencido.
         payload['date_of_expiration'] = formatar_expiracao_mercado_pago(data_expiracao)
-    notification_url = getattr(settings, 'MERCADOPAGO_NOTIFICATION_URL', '').strip()
+    notification_url = url_notificacao_mercado_pago()
     if notification_url:
         payload['notification_url'] = notification_url
 
@@ -473,7 +516,7 @@ def cancelar_pagamento_mercado_pago(payment_id: str) -> bool:
 
 
 def validar_assinatura_webhook(body: bytes, assinatura_informada: str, *, request_id: str = '', data_id: str = '') -> bool:
-    secret = getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '').strip()
+    secret = credenciais_mercado_pago()[2]
     if not secret:
         # Sem segredo não há como autenticar a notificação: qualquer pessoa
         # poderia marcar um aluguel ou ingresso como pago. Só aceitamos isso

@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from core.models import Morador, NotificacaoMorador, Organizacao
+from core.organizacao_atual import na_organizacao
 
 
 class Command(BaseCommand):
@@ -17,18 +18,23 @@ class Command(BaseCommand):
             return
 
         mes_referencia = hoje.replace(day=1)
-        termos = Organizacao.atual().vocabulario
-        titulo = f'Lembrete: pagar {termos["cobranca"]} {mes_referencia.strftime("%m/%Y")}'
-        mensagem = f'{termos["Cobranca"]} pendente. Anexe o comprovante no seu perfil.'
         enviados = 0
-        for morador in Morador.objects.filter(ativo=True):
-            _, created = NotificacaoMorador.objects.get_or_create(
-                morador=morador,
-                mes_referencia=mes_referencia,
-                tipo='lembrete_aluguel',
-                defaults={'titulo': titulo, 'mensagem': mensagem},
-            )
-            if created:
-                enviados += 1
+        # Cada cliente com o próprio vocabulário; só quem usa o Financeiro.
+        for org in Organizacao.objects.filter(ativa=True).order_by('id'):
+            if 'financeiro' not in org.modulos_ativos:
+                continue
+            with na_organizacao(org):
+                termos = org.vocabulario
+                titulo = f'Lembrete: pagar {termos["cobranca"]} {mes_referencia.strftime("%m/%Y")}'
+                mensagem = f'{termos["Cobranca"]} pendente. Anexe o comprovante no seu perfil.'
+                for morador in Morador.objects.filter(ativo=True):
+                    _, created = NotificacaoMorador.objects.get_or_create(
+                        morador=morador,
+                        mes_referencia=mes_referencia,
+                        tipo='lembrete_aluguel',
+                        defaults={'titulo': titulo, 'mensagem': mensagem},
+                    )
+                    if created:
+                        enviados += 1
 
         self.stdout.write(self.style.SUCCESS(f'Notificações criadas: {enviados}'))

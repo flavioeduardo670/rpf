@@ -57,6 +57,13 @@ class Organizacao(models.Model):
         'Módulos ligados', default=list, blank=True,
         help_text='Vazio = pacote padrão do segmento. Ver core/modulos.py.',
     )
+    email_contato = models.EmailField(
+        'Email de contato', blank=True, default='',
+        help_text='Recebe as respostas dos emails enviados aos membros (recibos).',
+    )
+    # Cifrados (core/credenciais.py); use as propriedades mercadopago_*.
+    mercadopago_access_token_cifrado = models.TextField(blank=True, default='', editable=False)
+    mercadopago_webhook_secret_cifrado = models.TextField(blank=True, default='', editable=False)
     ativa = models.BooleanField(default=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
@@ -74,6 +81,46 @@ class Organizacao(models.Model):
         erros = validar_termos(self.termos or {})
         if erros:
             raise ValidationError({'termos': erros})
+
+    @property
+    def remetente_email(self):
+        """Remetente dos emails deste cliente: o endereço do servidor com o nome dele.
+
+        Com um cliente só, mantém o DEFAULT_FROM_EMAIL como está configurado.
+        """
+        from email.utils import formataddr, parseaddr
+
+        from django.conf import settings
+
+        padrao = settings.DEFAULT_FROM_EMAIL
+        _nome, endereco = parseaddr(padrao)
+        if not self.pk or not endereco or Organizacao.objects.filter(ativa=True).count() <= 1:
+            return padrao
+        return formataddr((self.nome, endereco))
+
+    @property
+    def mercadopago_access_token(self):
+        from core.credenciais import decifrar
+
+        return decifrar(self.mercadopago_access_token_cifrado)
+
+    @mercadopago_access_token.setter
+    def mercadopago_access_token(self, valor):
+        from core.credenciais import cifrar
+
+        self.mercadopago_access_token_cifrado = cifrar(valor)
+
+    @property
+    def mercadopago_webhook_secret(self):
+        from core.credenciais import decifrar
+
+        return decifrar(self.mercadopago_webhook_secret_cifrado)
+
+    @mercadopago_webhook_secret.setter
+    def mercadopago_webhook_secret(self, valor):
+        from core.credenciais import cifrar
+
+        self.mercadopago_webhook_secret_cifrado = cifrar(valor)
 
     @property
     def modulos_ativos(self):
