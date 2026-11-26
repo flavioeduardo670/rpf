@@ -4,12 +4,12 @@
 
     var html = document.documentElement;
 
-    // ---------- Menu lateral no celular ----------
-    var lateral = document.querySelector('.rpf-lateral');
+    // ---------- Menu do topo no celular ----------
+    var topo = document.querySelector('.rpf-topo');
     var toggle = document.querySelector('.rpf-menu-toggle');
-    if (lateral && toggle) {
+    if (topo && toggle) {
         toggle.addEventListener('click', function () {
-            var aberto = lateral.classList.toggle('aberto');
+            var aberto = topo.classList.toggle('aberto');
             toggle.setAttribute('aria-expanded', aberto ? 'true' : 'false');
         });
     }

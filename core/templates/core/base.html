@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#f0f0f0">
     <title>{% block title %}{{ secao_atual.rotulo }}{% endblock %} | República Portão dos Fundos</title>
     <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
     <link rel="manifest" href="{% url 'pwa_manifest' %}">
@@ -37,9 +37,9 @@
     <script defer src="{% static 'core/ui/rpf.shell.js' %}"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="rpf-quadriculado">
     <div class="rpf-shell">
-        {% include 'core/partials/sidebar.html' %}
+        {% include 'core/partials/topo.html' %}
         <main class="rpf-principal" id="conteudo">
             {% block cabecalho %}
             <header class="rpf-cabecalho">
@@ -47,7 +47,11 @@
                     <h1 class="rpf-cabecalho__titulo"><span class="rpf-bloco">{% block page_title %}{{ secao_atual.rotulo }}{% endblock %}</span></h1>
                     {% block page_subtitle_wrap %}<p class="rpf-cabecalho__subtitulo"><span class="rpf-subtitulo">{% block page_subtitle %}{% endblock %}</span></p>{% endblock %}
                 </div>
+                {% if secao_atual.imagens.loop %}
+                <img class="bn rpf-cabecalho__boneco rpf-cabecalho__boneco--loop" src="{{ secao_atual.imagens.loop.url }}" alt="" width="{{ secao_atual.imagens.loop.largura }}" height="{{ secao_atual.imagens.loop.altura }}" decoding="async">
+                {% else %}
                 {% include 'core/partials/boneco.html' with tipo='acao' tom='preto' variante=secao_atual.variante classe='bn rpf-cabecalho__boneco' %}
+                {% endif %}
             </header>
             <div class="rpf-acoes-pagina">{% block header_actions %}{% endblock %}</div>
             {% endblock %}
@@ -63,6 +67,7 @@
                 {% block content %}{% endblock %}
             </div>
         </main>
+        {% include 'core/partials/rodape.html' %}
     </div>
 
     {% include 'core/partials/transicao.html' %}

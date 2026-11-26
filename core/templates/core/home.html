@@ -4,56 +4,55 @@
 {% block title %}Início{% endblock %}
 
 {% block cabecalho %}
-<section class="rpf-roleta" data-roleta aria-roledescription="carrossel" aria-label="Fotos da república" tabindex="0">
-    <div class="rpf-roleta__trilho">
-        {% for slide in slides %}
-        <figure class="rpf-roleta__slide" aria-roledescription="slide" aria-label="{{ forloop.counter }} de {{ slides|length }}" data-legenda="{{ slide.legenda }}"{% if not forloop.first %} aria-hidden="true"{% endif %}>
-            <img src="{{ slide.url }}" alt="{{ slide.titulo }}"{% if not forloop.first %} loading="lazy"{% endif %}>
-        </figure>
-        {% endfor %}
-    </div>
-
-    <div class="rpf-roleta__texto">
-        <h1 class="rpf-roleta__titulo"><span class="rpf-bloco">República<br>Portão dos Fundos</span></h1>
-        <p class="rpf-roleta__legenda" aria-live="polite"><span class="rpf-subtitulo">{{ slides.0.legenda }}</span></p>
-    </div>
-
-    <div class="rpf-roleta__controles">
-        <div class="rpf-roleta__pontos">
-            {% for slide in slides %}
-            <button type="button" class="rpf-roleta__ponto" aria-label="Mostrar imagem {{ forloop.counter }}"{% if forloop.first %} aria-current="true"{% endif %}></button>
+<section class="rpf-saudacao" aria-labelledby="rpf-saudacao-titulo">
+    <div class="rpf-saudacao__texto">
+        <span class="rpf-etiqueta">{% now "l · j \d\e F" %}</span>
+        <h1 class="rpf-saudacao__titulo" id="rpf-saudacao-titulo">{{ saudacao }},<br>{{ user.first_name|default:user.username }}.</h1>
+        <p class="rpf-saudacao__sub">Tudo da casa num lugar só: contas, compras, rocks e reuniões.</p>
+        <ul class="rpf-saudacao__avisos">
+            {% for aviso in avisos %}<li class="rpf-pilula">{{ aviso }}</li>{% endfor %}
+        </ul>
+        {% if acoes %}
+        <div class="rpf-saudacao__acoes">
+            {% for acao in acoes %}
+            <a class="rpf-botao-pilula{% if not forloop.first %} rpf-botao-pilula--contorno{% endif %}" href="{{ acao.url }}">{{ acao.rotulo }}{% if forloop.first %}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endif %}</a>
             {% endfor %}
         </div>
-        <button type="button" class="rpf-roleta__botao" data-roleta-anterior aria-label="Imagem anterior">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13 3L6 10l7 7" fill="none" stroke="currentColor" stroke-width="3"/></svg>
-        </button>
-        <button type="button" class="rpf-roleta__botao" data-roleta-pausa aria-label="Pausar a roleta">
-            <svg data-icone="pausa" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12M14 4v12" stroke="currentColor" stroke-width="3.5"/></svg>
-            <svg data-icone="play" viewBox="0 0 20 20" aria-hidden="true" hidden><path d="M6 3l11 7-11 7z" fill="currentColor"/></svg>
-        </button>
-        <button type="button" class="rpf-roleta__botao" data-roleta-proximo aria-label="Próxima imagem">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3"/></svg>
-        </button>
+        {% endif %}
     </div>
+    {% if loop_inicio %}
+    <div class="rpf-saudacao__boneco">
+        <img class="bn" src="{{ loop_inicio.url }}" alt="" width="{{ loop_inicio.largura }}" height="{{ loop_inicio.altura }}" decoding="async">
+    </div>
+    {% endif %}
 </section>
 {% endblock %}
 
 {% block content %}
-<p class="rpf-boas-vindas">Olá, {{ user.first_name|default:user.username }}. Por onde a gente começa hoje?</p>
+<section class="rpf-areas" aria-labelledby="rpf-areas-titulo">
+    <div class="rpf-areas__topo">
+        <div>
+            <span class="rpf-etiqueta">Áreas da casa</span>
+            <h2 class="rpf-areas__titulo" id="rpf-areas-titulo">Por onde a gente começa?</h2>
+        </div>
+        <span class="rpf-pilula rpf-pilula--forte">{{ atalhos|length|stringformat:"02d" }} áreas</span>
+    </div>
 
-<nav class="rpf-atalhos" aria-label="Seções do sistema">
-    {% for atalho in atalhos %}
-    <a class="rpf-atalho" href="{{ atalho.url }}">
-        <span class="rpf-atalho__icone">{% include 'core/partials/boneco.html' with tipo='icone' tom='branco' variante=atalho.variante classe='bn' %}</span>
-        <span>
-            <span class="rpf-atalho__nome">{{ atalho.titulo }}</span>
-            <span class="rpf-atalho__descricao">{{ atalho.descricao }}</span>
-        </span>
-    </a>
-    {% endfor %}
-</nav>
-{% endblock %}
-
-{% block extra_js %}
-<script defer src="{% static 'core/ui/rpf.roleta.js' %}"></script>
+    <nav class="rpf-atalhos" aria-label="Seções do sistema">
+        {% for atalho in atalhos %}
+        <a class="rpf-atalho{% if atalho.estilo %} rpf-atalho--{{ atalho.estilo }}{% endif %}" href="{{ atalho.url }}">
+            <span class="rpf-atalho__topo" aria-hidden="true">
+                <span class="rpf-atalho__numero">{{ forloop.counter|stringformat:"02d" }}</span>
+                <svg class="rpf-atalho__seta" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="rpf-atalho__corpo">
+                <span class="rpf-atalho__icone">{% if atalho.estilo == 'escuro' %}{% include 'core/partials/boneco.html' with tipo='icone' tom='branco' variante=atalho.variante classe='bn' %}{% else %}{% include 'core/partials/boneco.html' with tipo='icone' tom='preto' variante=atalho.variante classe='bn' %}{% endif %}</span>
+                <span class="rpf-atalho__nome">{{ atalho.titulo }}</span>
+                <span class="rpf-atalho__descricao">{{ atalho.descricao }}</span>
+            </span>
+        </a>
+        {% endfor %}
+    </nav>
+</section>
 {% endblock %}

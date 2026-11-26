@@ -1,0 +1,25 @@
+<footer class="rpf-rodape">
+    <div class="rpf-rodape__selos" aria-hidden="true">
+        <span class="rpf-pilula rpf-pilula--assinatura">
+            <svg viewBox="0 0 24 24"><path d="M12 2C12.6 8 16 11.4 22 12C16 12.6 12.6 16 12 22C11.4 16 8 12.6 2 12C8 11.4 11.4 8 12 2Z" fill="currentColor"/></svg>
+            RPF
+            <svg viewBox="0 0 24 24"><path d="M12 2C12.6 8 16 11.4 22 12C16 12.6 12.6 16 12 22C11.4 16 8 12.6 2 12C8 11.4 11.4 8 12 2Z" fill="currentColor"/></svg>
+        </span>
+        <span class="rpf-pilula rpf-pilula--forte">{% now "d/m" %}</span>
+    </div>
+
+    {% if user.is_authenticated %}
+    <nav class="rpf-rodape__conta" aria-label="Conta">
+        <a class="rpf-pilula" href="{% url 'perfil' %}">Meu perfil</a>
+        {% if user.is_superuser %}
+        <a class="rpf-pilula" href="{% url 'configurar_casa' %}">Configurações</a>
+        <a class="rpf-pilula" href="{% url 'gerenciar_acessos' %}">Acessos</a>
+        <a class="rpf-pilula" href="{% url 'admin:index' %}" data-sem-transicao>Admin</a>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="rpf-pilula" type="submit">Sair</button>
+        </form>
+    </nav>
+    {% endif %}
+</footer>

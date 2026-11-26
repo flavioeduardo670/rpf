@@ -60,8 +60,9 @@ python manage.py makemigrations --check --dry-run
 
 O visual segue o manual de redes sociais e a apresentação de rebranding
 (preto, branco e o dourado `#DEAB2C` do chopp; Montserrat; logo da porta com o
-boneco de formatura). Boneco articulado por seção, transição pela porta e
-roleta da página inicial estão descritos em
+boneco de formatura; fundo cinza quadriculado e menu em pílulas no topo). O
+boneco animado de cada seção, a transição pela porta e a página inicial estão
+descritos em
 [`docs/identidade-visual.md`](docs/identidade-visual.md).
 
 ## Produção

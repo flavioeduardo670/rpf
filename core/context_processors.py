@@ -2,7 +2,7 @@
 
 - ``secao_atual``: seção da página (define o boneco do cabeçalho e o item ativo
   do menu).
-- ``menu_secoes``: itens do menu lateral que o usuário pode acessar.
+- ``menu_secoes``: itens do menu do topo que o usuário pode acessar.
 - ``mapa_secoes``: prefixos de URL → boneco, usado pela animação de troca de
   página (rpf.transicao.js) para mostrar o boneco da página de destino.
 """
@@ -27,7 +27,7 @@ SECOES = [
     ('/configuracoes', 'configuracoes', 'Configurações', 'configurar_casa', 'superuser'),
 ]
 
-# Ordem do menu lateral.
+# Ordem do menu do topo.
 ORDEM_MENU = [
     'moradores', 'financeiro', 'compras', 'almoxarifado', 'manutencao',
     'rock', 'reunioes', 'calendario',
@@ -35,11 +35,32 @@ ORDEM_MENU = [
 
 INICIO = {'variante': 'inicio', 'rotulo': 'Início'}
 
+# Animações em vídeo do boneco (loop-<seção>.webp, boneco preto com fundo
+# transparente): variante -> (largura, altura) do arquivo. Seções sem loop
+# continuam com a ação em SVG (acao-<seção>-preto.svg).
+LOOPS = {
+    'inicio': (399, 300),
+    'moradores': (452, 300),
+    'financeiro': (237, 300),
+    'compras': (366, 300),
+    'almoxarifado': (298, 300),
+    'manutencao': (324, 300),
+    'rock': (518, 300),
+    'reunioes': (303, 300),
+    'calendario': (515, 300),
+    'perfil': (196, 300),
+}
+
 
 def imagens_boneco(variante):
-    """Arquivos gerados por scripts/boneco/gerar_boneco.py para a seção."""
+    """Desenhos da seção: SVGs de scripts/boneco/gerar_boneco.py e o loop em vídeo."""
     base = 'core/boneco/'
+    loop = None
+    if variante in LOOPS:
+        largura, altura = LOOPS[variante]
+        loop = {'url': static(f'{base}loop-{variante}.webp'), 'largura': largura, 'altura': altura}
     return {
+        'loop': loop,
         'acao': static(f'{base}acao-{variante}-preto.svg'),
         'icone_branco': static(f'{base}icone-{variante}-branco.svg'),
         'icone_preto': static(f'{base}icone-{variante}-preto.svg'),
