@@ -40,17 +40,35 @@ def _saudacao(agora):
     return 'Boa noite'
 
 
-def _avisos_casa(termos):
-    """Próximo evento (rock) e próxima reunião, mostrados abaixo da saudação."""
-    hoje = timezone.localdate()
-    rock = RockEvento.objects.filter(data__gte=hoje).order_by('data').first()
-    reuniao = Reuniao.objects.filter(data__gte=hoje, status='marcada').order_by('data', 'horario_marcado').first()
-    return [
-        f'Próximo {termos["evento"]}: {rock.nome}, {rock.data:%d/%m}' if rock
-        else f'Nenhum {termos["evento"]} marcado ainda',
-        f'Próxima reunião: {reuniao.data:%d/%m}, às {reuniao.horario_marcado:%H:%M}'
-        if reuniao else 'Nenhuma reunião marcada',
+def _resumo_areas(termos, ativos):
+    """'contas, compras, rocks e reuniões', só com os módulos ligados."""
+    partes = [
+        texto for modulo, texto in (
+            ('financeiro', 'contas'), ('compras', 'compras'), ('rock', termos['eventos']), ('reunioes', 'reuniões'),
+        ) if modulo in ativos
     ]
+    if len(partes) > 1:
+        return f"{', '.join(partes[:-1])} e {partes[-1]}"
+    return partes[0] if partes else ''
+
+
+def _avisos_casa(termos, ativos):
+    """Próximo evento (rock) e próxima reunião, se esses módulos estiverem ligados."""
+    hoje = timezone.localdate()
+    avisos = []
+    if 'rock' in ativos:
+        rock = RockEvento.objects.filter(data__gte=hoje).order_by('data').first()
+        avisos.append(
+            f'Próximo {termos["evento"]}: {rock.nome}, {rock.data:%d/%m}' if rock
+            else f'Nenhum {termos["evento"]} marcado ainda'
+        )
+    if 'reunioes' in ativos:
+        reuniao = Reuniao.objects.filter(data__gte=hoje, status='marcada').order_by('data', 'horario_marcado').first()
+        avisos.append(
+            f'Próxima reunião: {reuniao.data:%d/%m}, às {reuniao.horario_marcado:%H:%M}'
+            if reuniao else 'Nenhuma reunião marcada'
+        )
+    return avisos
 
 
 @login_required
@@ -60,10 +78,14 @@ def home(request):
     from core.context_processors import imagens_boneco, pode_ver_modulo
 
     morador = get_user_morador(request.user)
-    termos = Organizacao.atual().vocabulario
+    organizacao = Organizacao.atual()
+    termos = organizacao.vocabulario
+    ativos = organizacao.modulos_ativos
 
     atalhos = []
     for variante, rota, titulo, descricao, modulo in ATALHOS:
+        if variante != 'perfil' and variante not in ativos:
+            continue
         if variante == 'rock' and morador is None and not request.user.is_superuser:
             # Quem não é membro da organização só compra ingressos.
             atalhos.append({'variante': 'rock', 'url': reverse('comprar_rocks'), 'titulo': 'Ingressos',
@@ -83,7 +105,8 @@ def home(request):
         'atalhos': atalhos,
         'acoes': acoes,
         'saudacao': _saudacao(timezone.localtime()),
-        'avisos': _avisos_casa(termos),
+        'avisos': _avisos_casa(termos, ativos),
+        'resumo_areas': _resumo_areas(termos, ativos),
         'loop_inicio': imagens_boneco('inicio')['loop'],
     })
 
@@ -133,12 +156,17 @@ def calendario(request):
     start = current
     end = (current + timedelta(days=32)).replace(day=1) - timedelta(days=1)
     eventos_por_dia = defaultdict(list)
+    # O calendário só mostra itens dos módulos que o cliente ligou.
+    ativos = Organizacao.atual().modulos_ativos
+    rocks = RockEvento.objects.filter(data__range=(start, end)) if 'rock' in ativos else []
+    ordens = OrdemServico.objects.filter(data_inicio__date__range=(start, end)) if 'manutencao' in ativos else []
+    reunioes_mes = Reuniao.objects.filter(data__range=(start, end)) if 'reunioes' in ativos else []
 
-    for rock in RockEvento.objects.filter(data__range=(start, end)):
+    for rock in rocks:
         eventos_por_dia[rock.data].append({'origem': 'rock', 'texto': rock.nome})
-    for os in OrdemServico.objects.filter(data_inicio__date__range=(start, end)):
+    for os in ordens:
         eventos_por_dia[os.data_inicio.date()].append({'origem': 'os', 'texto': f"OS {os.numero}"})
-    for reuniao in Reuniao.objects.filter(data__range=(start, end)):
+    for reuniao in reunioes_mes:
         titulo = f"Reunião {reuniao.get_tipo_display()}"
         if reuniao.tipo == 'setorial' and reuniao.setor:
             titulo = f"{titulo} - {reuniao.get_setor_display()}"

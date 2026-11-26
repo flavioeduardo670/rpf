@@ -388,13 +388,15 @@ def pwa_manifest(request):
             {'src': static('core/brand/app-192.png'), 'sizes': '192x192', 'type': 'image/png'},
             {'src': static('core/brand/app-512.png'), 'sizes': '512x512', 'type': 'image/png'},
         ],
-        'share_target': {
+    }
+    if 'compras' in organizacao.modulos_ativos:
+        # "Compartilhar → <app>" para importar a nota da SEFAZ só faz sentido com Compras ligado.
+        manifest['share_target'] = {
             'action': reverse('compras_nfce_receber'),
             'method': 'POST',
             'enctype': 'application/x-www-form-urlencoded',
             'params': {'title': 'title', 'text': 'text', 'url': 'url'},
-        },
-    }
+        }
     return HttpResponse(json.dumps(manifest, ensure_ascii=False), content_type='application/manifest+json')
 
 

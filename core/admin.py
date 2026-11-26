@@ -25,8 +25,40 @@ from .models import (
 # ORGANIZAÇÕES (CLIENTES DO ERP)
 # =====================================================
 
+class OrganizacaoAdminForm(forms.ModelForm):
+    """Módulos como caixas de seleção, em vez de editar a lista JSON à mão."""
+
+    modulos = forms.MultipleChoiceField(
+        label='Módulos ligados', required=False, widget=forms.CheckboxSelectMultiple,
+        help_text='Desmarcar tudo = pacote padrão do segmento. Pessoas fica sempre ligado.',
+    )
+
+    class Meta:
+        model = Organizacao
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        from core.modulos import opcoes_para_formulario
+
+        super().__init__(*args, **kwargs)
+        org = self.instance
+        self.fields['modulos'].choices = opcoes_para_formulario(org.vocabulario)
+        if org.pk:
+            self.initial['modulos'] = sorted(org.modulos_ativos)
+
+    def clean_modulos(self):
+        from core.modulos import OBRIGATORIOS, TODOS
+
+        escolhidos = set(self.cleaned_data.get('modulos') or [])
+        if not escolhidos:
+            return []
+        # Guarda na ordem do registro, sempre com os obrigatórios.
+        return [m for m in TODOS if m in escolhidos | OBRIGATORIOS]
+
+
 @admin.register(Organizacao)
 class OrganizacaoAdmin(admin.ModelAdmin):
+    form = OrganizacaoAdminForm
     list_display = ('nome', 'nome_curto', 'segmento', 'tema', 'ativa')
     list_filter = ('segmento', 'ativa')
     search_fields = ('nome', 'nome_curto', 'razao_social', 'documento')
