@@ -10,7 +10,7 @@
     <div class="rpf-topo__barra">
         <a class="rpf-marca" href="{% url 'home' %}">
             <img class="rpf-marca__logo" src="{% static 'core/boneco/marca-preto.svg' %}" alt="" width="590" height="452">
-            <span class="rpf-marca__nome"><span class="rpf-marca__republica">República</span> Portão dos Fundos</span>
+            <span class="rpf-marca__nome">{% with partes=organizacao.nome_partes %}{% if partes.0 %}<span class="rpf-marca__republica">{{ partes.0 }}</span> {% endif %}{{ partes.1 }}{% endwith %}</span>
         </a>
 
         <button class="rpf-menu-toggle" type="button" aria-expanded="false" aria-controls="rpf-menu">Menu</button>

@@ -5,11 +5,22 @@
 - ``menu_secoes``: itens do menu do topo que o usuário pode acessar.
 - ``mapa_secoes``: prefixos de URL → boneco, usado pela animação de troca de
   página (rpf.transicao.js) para mostrar o boneco da página de destino.
+- ``organizacao`` / ``produto_nome``: o cliente desta instalação (nome, marca)
+  e o nome do ERP, no lugar dos textos fixos da República Portão dos Fundos.
 """
+from django.conf import settings
 from django.templatetags.static import static
 from django.urls import reverse
 
+from core.models import Organizacao
 from core.views.common import GRUPO_POR_MODULO, get_user_morador
+
+
+def marca(request):
+    return {
+        'organizacao': Organizacao.atual(),
+        'produto_nome': settings.PRODUTO_NOME,
+    }
 
 # (prefixo da URL, variante do boneco, rótulo, nome da rota do menu, módulo de permissão)
 # módulo de permissão: None = qualquer usuário logado; 'superuser' = só administradores.

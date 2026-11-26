@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#000000">
-    <title>Entrar | República Portão dos Fundos</title>
+    <title>Entrar | {{ organizacao.nome }}</title>
     <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
     <link rel="stylesheet" href="{% static 'core/ui/rpf.tokens.css' %}">
     <link rel="stylesheet" href="{% static 'core/base.css' %}">
@@ -16,7 +16,7 @@
     <main class="rpf-entrada">
         <section class="rpf-entrada__arte" aria-hidden="true">
             <img class="rpf-entrada__logo" src="{% static 'core/boneco/marca-branco.svg' %}" alt="" width="590" height="452">
-            <p class="rpf-entrada__marca"><span>República</span>Portão dos Fundos</p>
+            <p class="rpf-entrada__marca">{% with partes=organizacao.nome_partes %}{% if partes.0 %}<span>{{ partes.0 }}</span>{% endif %}{{ partes.1 }}{% endwith %}</p>
         </section>
         <section class="rpf-entrada__form">
             <h1 class="rpf-entrada__titulo"><span class="rpf-bloco">Entrar</span></h1>

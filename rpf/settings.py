@@ -150,6 +150,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.navegacao',
+                'core.context_processors.marca',
             ],
         },
     },
@@ -305,6 +306,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# Nome do produto (o ERP), independente do cliente. Provisório até a marca
+# ser definida; o nome de cada cliente vem do modelo Organizacao.
+PRODUTO_NOME = os.getenv('PRODUTO_NOME', 'ERP')
 
 MERCADOPAGO_ACCESS_TOKEN = os.getenv('MERCADOPAGO_ACCESS_TOKEN', '')
 MERCADOPAGO_TIMEOUT = int(os.getenv('MERCADOPAGO_TIMEOUT', '10'))

@@ -190,14 +190,14 @@
             <summary><strong>No celular (Android): instalar o app e usar "Compartilhar"</strong></summary>
             <ol>
                 <li>No Chrome, abra este sistema, toque em <strong>⋮ → Instalar app</strong> (ou "Adicionar à tela inicial").</li>
-                <li>Na página da nota da SEFAZ, toque e segure no texto → <strong>Selecionar tudo → Compartilhar → RPF</strong>.</li>
+                <li>Na página da nota da SEFAZ, toque e segure no texto → <strong>Selecionar tudo → Compartilhar → {{ organizacao.nome_curto }}</strong>.</li>
                 <li>Toque em <strong>Importar nota</strong>.</li>
             </ol>
         </details>
         <details>
-            <summary><strong>Favorito "Enviar ao RPF" (computador ou celular)</strong></summary>
-            <p>No computador, arraste este botão para a barra de favoritos: <a class="btn" href="{{ bookmarklet }}" onclick="event.preventDefault();">Enviar ao RPF</a></p>
-            <p>No celular: copie o código, crie um favorito qualquer, edite e cole o código no lugar do endereço. Na página da nota, digite "Enviar ao RPF" na barra de endereço e toque no favorito.</p>
+            <summary><strong>Favorito "Enviar ao {{ organizacao.nome_curto }}" (computador ou celular)</strong></summary>
+            <p>No computador, arraste este botão para a barra de favoritos: <a class="btn" href="{{ bookmarklet }}" onclick="event.preventDefault();">Enviar ao {{ organizacao.nome_curto }}</a></p>
+            <p>No celular: copie o código, crie um favorito qualquer, edite e cole o código no lugar do endereço. Na página da nota, digite "Enviar ao {{ organizacao.nome_curto }}" na barra de endereço e toque no favorito.</p>
             <textarea id="nfce-bookmarklet" rows="3" readonly style="width:100%;font-family:monospace;font-size:.75rem;">{{ bookmarklet }}</textarea>
             <button type="button" class="btn light" id="nfce-copiar-bookmarklet">Copiar código do atalho</button>
         </details>

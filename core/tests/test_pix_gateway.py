@@ -3,12 +3,13 @@ from decimal import Decimal
 from urllib import error
 from unittest.mock import MagicMock, patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import TestCase, override_settings
 
 from core.services.pix_gateway import criar_cobranca_pix_avulsa, consultar_evento_mercado_pago, consultar_pagamento_mercado_pago, consultar_status_por_txid, validar_assinatura_webhook
 
 
-class PixGatewayMercadoPagoTests(SimpleTestCase):
+# TestCase (com banco): o PIX local lê o nome do recebedor da Organizacao.
+class PixGatewayMercadoPagoTests(TestCase):
     @override_settings(MERCADOPAGO_ACCESS_TOKEN='TEST-123')
     @patch('core.services.pix_gateway.request.urlopen')
     def test_criar_cobranca_pix_avulsa_usa_mercado_pago(self, urlopen):

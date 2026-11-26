@@ -8,6 +8,90 @@ from django.utils import timezone
 
 
 # =====================================================
+# PLATAFORMA: ORGANIZAÇÕES (CLIENTES DO ERP)
+# =====================================================
+
+class Organizacao(models.Model):
+    """Um cliente do ERP (uma casa, um bar, um mercado...).
+
+    Tudo que antes estava fixo no código com o nome da República Portão dos
+    Fundos (títulos, PDFs, recebedor do PIX, assinatura dos emails) vem daqui.
+    Por enquanto o sistema atende uma organização por instalação
+    (``Organizacao.atual()``); o vínculo de cada registro com sua organização
+    entra nos próximos passos.
+    """
+    SEGMENTO_CHOICES = [
+        ('moradia', 'Moradia compartilhada (república, casa)'),
+        ('bar', 'Bar / restaurante'),
+        ('mercado', 'Mercado / varejo'),
+        ('agro', 'Propriedade agrícola'),
+        ('saude', 'Saúde'),
+        ('outro', 'Outro'),
+    ]
+    TEMA_CHOICES = [
+        ('padrao', 'Padrão do ERP'),
+        ('portao', 'República Portão dos Fundos (boneco, chopp, quadriculado)'),
+    ]
+
+    nome = models.CharField('Nome', max_length=120, help_text='Como a organização aparece nas telas. Ex.: República Portão dos Fundos.')
+    nome_curto = models.CharField('Nome curto', max_length=30, help_text='Sigla ou apelido, usado no app instalado e em espaços pequenos. Ex.: RPF.')
+    razao_social = models.CharField('Razão social', max_length=150, blank=True, default='', help_text='Nome do beneficiário em boletos e recibos. Vazio = usa o nome.')
+    documento = models.CharField('CNPJ/CPF', max_length=18, blank=True, default='')
+    cidade = models.CharField('Cidade', max_length=60, blank=True, default='', help_text='Usada no QR Code do PIX.')
+    nome_recebedor_pix = models.CharField(
+        'Nome do recebedor no PIX', max_length=25, blank=True, default='',
+        help_text='Até 25 letras, sem acento. Vazio = usa o início do nome do beneficiário.',
+    )
+    slug = models.SlugField(unique=True, help_text='Identificador na URL (sem espaços nem acentos).')
+    segmento = models.CharField(max_length=20, choices=SEGMENTO_CHOICES, default='outro')
+    tema = models.CharField('Tema visual', max_length=20, choices=TEMA_CHOICES, default='padrao')
+    ativa = models.BooleanField(default=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = 'Organização'
+        verbose_name_plural = 'Organizações'
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def beneficiario(self):
+        return self.razao_social or self.nome
+
+    @property
+    def dados_pix(self):
+        """(nome do recebedor, cidade) no formato do QR Code PIX: maiúsculas, sem acento."""
+        import unicodedata
+
+        def _ascii(texto):
+            return unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii').upper().strip()
+
+        nome = _ascii(self.nome_recebedor_pix or self.beneficiario)[:25] or 'RECEBEDOR'
+        cidade = _ascii(self.cidade)[:15] or 'SAO PAULO'
+        return nome, cidade
+
+    @property
+    def nome_partes(self):
+        """(primeira palavra, resto) para a assinatura visual: 'República' leve,
+        'Portão dos Fundos' em negrito. Nome de uma palavra só fica todo em negrito."""
+        partes = self.nome.split(' ', 1)
+        return (partes[0], partes[1]) if len(partes) == 2 else ('', self.nome)
+
+    @classmethod
+    def atual(cls):
+        """A organização desta instalação (a primeira ativa).
+
+        Quando o ERP atender vários clientes no mesmo sistema, a organização
+        passa a vir do usuário logado; quem chama isto hoje é o ponto a trocar.
+        """
+        return cls.objects.filter(ativa=True).order_by('id').first() or cls(
+            nome='Minha organização', nome_curto='ERP', slug='minha-organizacao',
+        )
+
+
+# =====================================================
 # MÓDULO: MORADORES E MENSALIDADES
 # =====================================================
 

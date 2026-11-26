@@ -6,6 +6,7 @@ from decimal import Decimal
 import segno
 
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -40,6 +41,7 @@ from core.models import (
     Morador,
     NotaFiscal,
     NotaParcela,
+    Organizacao,
     ParcelaRateioExclusao,
     PendenciaMensalItem,
     RegistroFinanceiroMensal,
@@ -413,7 +415,7 @@ def _gerar_pdf_extrato_morador(contexto):
             pagina_atual += 1
         comandos = [
             '0.10 0.16 0.28 rg 0 552 842 43 re f',
-            _comando_texto_pdf('RPF - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
+            _comando_texto_pdf(f'{Organizacao.atual().nome_curto} - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
             _comando_texto_pdf(titulo, margem, Decimal('558'), 16, 'F2', '1 1 1 rg'),
             _comando_texto_direita_pdf(
                 f"Gerado em {timezone.localtime().strftime('%d/%m/%Y às %H:%M')}",
@@ -745,10 +747,11 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     vencimento = contexto['mes_referencia'].replace(day=10)
     chave_pix = _resolver_chave_pix_aluguel()
     payload = cobranca.qr_code or cobranca.payload_pix or 'PIX indisponível: configure o Mercado Pago.'
+    organizacao = Organizacao.atual()
     comandos = [
         '1 1 1 rg 0 0 595 842 re f',
         '0.10 0.16 0.28 rg 0 778 595 64 re f',
-        _comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(organizacao.beneficiario, margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
         _comando_texto_pdf('Boleto PIX - Cobrança de Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
         _comando_texto_direita_pdf(f'Emitido em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
     ]
@@ -767,7 +770,7 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
         x += Decimal('126')
 
     comandos.append(_comando_texto_pdf('Beneficiário', margem, Decimal('650'), 9, 'F2'))
-    comandos.append(_comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('632'), 11, 'F2'))
+    comandos.append(_comando_texto_pdf(organizacao.beneficiario, margem, Decimal('632'), 11, 'F2'))
     comandos.append(_comando_texto_pdf('Tipo de cobrança: Aluguel', margem, Decimal('615'), 9))
     comandos.append(_comando_texto_pdf(f'Chave PIX: {chave_pix or "não configurada"}', margem, Decimal('598'), 9))
     comandos.append(_comando_texto_pdf(f'TXID: {cobranca.txid}', margem, Decimal('581'), 8))
@@ -793,7 +796,7 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
         y -= Decimal('10')
 
     comandos.append('0.10 0.16 0.28 rg 36 64 523 34 re f')
-    comandos.append(_comando_texto_pdf('Documento gerado pelo ERP RPF. Confirme recebedor, valor e TXID antes de pagar.', Decimal('48'), Decimal('77'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f'Documento gerado pelo {settings.PRODUTO_NOME} {organizacao.nome_curto}. Confirme recebedor, valor e TXID antes de pagar.', Decimal('48'), Decimal('77'), 8, 'F2', '1 1 1 rg'))
     return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
 
 
@@ -818,10 +821,11 @@ def _gerar_pdf_comprovante_aluguel(cobranca):
     morador_label = cobranca.morador.apelido or cobranca.morador.nome
     valor = _formatar_moeda_pt_br(cobranca.valor)
     pago_em = timezone.localtime(cobranca.pago_em or timezone.now())
+    organizacao = Organizacao.atual()
     comandos = [
         '1 1 1 rg 0 0 595 842 re f',
         '0.10 0.16 0.28 rg 0 778 595 64 re f',
-        _comando_texto_pdf('Associação Cultural República Portão dos Fundos', margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(organizacao.beneficiario, margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
         _comando_texto_pdf('Comprovante de Pagamento - Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
         _comando_texto_direita_pdf(f'Gerado em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
     ]
@@ -841,7 +845,7 @@ def _gerar_pdf_comprovante_aluguel(cobranca):
 
     comandos.append(_comando_texto_pdf('Dados da confirmação', margem, Decimal('650'), 12, 'F2'))
     linhas = [
-        ('Beneficiário', 'Associação Cultural República Portão dos Fundos'),
+        ('Beneficiário', organizacao.beneficiario),
         ('Tipo de cobrança', 'Aluguel'),
         ('Data do pagamento', pago_em.strftime('%d/%m/%Y às %H:%M')),
         ('TXID', cobranca.txid or '-'),
@@ -856,7 +860,7 @@ def _gerar_pdf_comprovante_aluguel(cobranca):
         y -= Decimal('34')
 
     comandos.append('0.10 0.16 0.28 rg 36 204 523 44 re f')
-    comandos.append(_comando_texto_pdf('Este comprovante foi gerado automaticamente a partir da confirmação PIX recebida pelo ERP RPF.', Decimal('50'), Decimal('230'), 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f'Este comprovante foi gerado automaticamente a partir da confirmação PIX recebida pelo {settings.PRODUTO_NOME} {organizacao.nome_curto}.', Decimal('50'), Decimal('230'), 8, 'F2', '1 1 1 rg'))
     comandos.append(_comando_texto_pdf('Guarde este documento para sua conferência mensal.', Decimal('50'), Decimal('214'), 8, 'F1', '1 1 1 rg'))
     return _montar_pdf_por_comandos([comandos], largura_pagina, altura_pagina)
 
@@ -875,7 +879,7 @@ def enviar_comprovante_aluguel_por_email(cobranca):
         'O comprovante está anexado a este email.\n\n'
         f'TXID: {cobranca.txid}\n'
         f'Valor: {_formatar_moeda_pt_br(cobranca.valor)}\n\n'
-        'República Portão dos Fundos'
+        f'{Organizacao.atual().nome}'
     )
     nome_morador = slugify(morador_label) or f'morador-{cobranca.morador_id}'
     filename = f'comprovante_aluguel_{nome_morador}_{cobranca.mes_referencia.strftime("%Y_%m")}.pdf'
@@ -1059,7 +1063,7 @@ def exportar_rateio_prestacao_contas_pdf(request):
     comandos = [
         '1 1 1 rg 0 0 842 595 re f',
         '0.10 0.16 0.28 rg 0 540 842 55 re f',
-        _comando_texto_pdf('RPF - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(f'{Organizacao.atual().nome_curto} - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
         _comando_texto_pdf(f"Rateio por morador - {mes_referencia.strftime('%m/%Y')}", margem, Decimal('552'), 18, 'F2', '1 1 1 rg'),
         _comando_texto_direita_pdf(
             f"Gerado em {timezone.localtime().strftime('%d/%m/%Y às %H:%M')}",
