@@ -6,7 +6,7 @@ from django.forms import modelformset_factory
 from django.shortcuts import redirect, render
 
 from core.forms import AcessoMoradorForm, AcessoUsuarioForm
-from core.models import AcessoUsuario, Morador
+from core.models import AcessoUsuario, Morador, Organizacao
 
 AcessoMoradorFormSet = modelformset_factory(Morador, form=AcessoMoradorForm, extra=0)
 AcessoUsuarioFormSet = modelformset_factory(AcessoUsuario, form=AcessoUsuarioForm, extra=0)
@@ -42,7 +42,12 @@ def gerenciar_acessos(request):
 
     User = get_user_model()
     moradores_qs = Morador.objects.order_by('ordem_hierarquia', 'nome')
-    usuarios_sem_morador = User.objects.filter(morador__isnull=True, is_superuser=False).order_by('username')
+    # Só logins desta organização que ainda não são membros dela.
+    com_morador = Morador.objects.filter(user__isnull=False).values('user')
+    usuarios_sem_morador = (
+        User.objects.filter(vinculos__organizacao=Organizacao.atual(), is_superuser=False)
+        .exclude(pk__in=com_morador).distinct().order_by('username')
+    )
     for usuario in usuarios_sem_morador:
         AcessoUsuario.objects.get_or_create(user=usuario)
     acessos_usuarios_qs = AcessoUsuario.objects.select_related('user').filter(user__in=usuarios_sem_morador).order_by('user__username')

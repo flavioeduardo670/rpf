@@ -87,10 +87,21 @@ def can_edit(request, attr_name):
 
 
 def get_user_morador(user):
-    try:
-        return user.morador
-    except Morador.DoesNotExist:
+    """O membro (Morador) deste login na organização em uso, ou None.
+
+    Guardado no próprio objeto do usuário (por organização), porque o menu
+    consulta isto uma vez por módulo em cada página.
+    """
+    if not getattr(user, 'is_authenticated', False) or not user.pk:
         return None
+    from core.organizacao_atual import organizacao_da_requisicao
+
+    org = organizacao_da_requisicao()
+    chave = org.pk if org is not None else None
+    guardados = user.__dict__.setdefault('_morador_por_organizacao', {})
+    if chave not in guardados:
+        guardados[chave] = Morador.objects.filter(user=user).first()
+    return guardados[chave]
 
 
 def organizar_ordens_por_setor(ordens):

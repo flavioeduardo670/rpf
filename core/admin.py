@@ -325,11 +325,7 @@ class UserAdminChangeForm(UserChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        morador_atual = None
-        try:
-            morador_atual = self.instance.morador
-        except Morador.DoesNotExist:
-            morador_atual = None
+        morador_atual = Morador.objects.filter(user=self.instance).first() if self.instance.pk else None
 
         queryset = Morador.objects.filter(user__isnull=True)
         if morador_atual:
@@ -375,7 +371,7 @@ class UserAdmin(BaseUserAdmin):
 
     @admin.display(description='Tipo')
     def tipo_cadastro(self, obj):
-        return 'Morador' if hasattr(obj, 'morador') else 'Visitante'
+        return 'Morador' if Morador.objects.filter(user=obj).exists() else 'Visitante'
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
@@ -384,11 +380,7 @@ class UserAdmin(BaseUserAdmin):
         perfil_tipo = form.cleaned_data.get('perfil_tipo')
         morador_selecionado = form.cleaned_data.get('morador')
 
-        morador_atual = None
-        try:
-            morador_atual = obj.morador
-        except Morador.DoesNotExist:
-            morador_atual = None
+        morador_atual = Morador.objects.filter(user=obj).first()
 
         if perfil_tipo == 'visitante':
             if morador_atual:

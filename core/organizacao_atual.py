@@ -73,6 +73,33 @@ class OrganizacaoAtualMiddleware:
             _organizacao.reset(token)
 
 
+def instalar_filtro_nos_formularios():
+    """Listas de seleção de formulário (ModelChoiceField) só com dados da organização em uso.
+
+    O Django monta essas listas quando o formulário é definido (ao iniciar o
+    sistema, fora de qualquer acesso), então o filtro do gerenciador não pega.
+    Cada formulário criado copia seus campos (__deepcopy__): é aí que filtramos.
+    """
+    from django.forms import models as form_models
+
+    from core.models import ModeloDaOrganizacao
+
+    original = form_models.ModelChoiceField.__deepcopy__
+    if getattr(original, '_filtra_organizacao', False):
+        return
+
+    def deepcopy_com_filtro(self, memo):
+        copia = original(self, memo)
+        queryset = copia.queryset
+        org = organizacao_da_requisicao()
+        if org is not None and queryset is not None and issubclass(queryset.model, ModeloDaOrganizacao):
+            copia.queryset = queryset.filter(organizacao=org)
+        return copia
+
+    deepcopy_com_filtro._filtra_organizacao = True
+    form_models.ModelChoiceField.__deepcopy__ = deepcopy_com_filtro
+
+
 def _ha_varias_organizacoes():
     from core.models import Organizacao
 
