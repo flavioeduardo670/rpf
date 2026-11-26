@@ -9,6 +9,18 @@
     </div>
 
     {% if user.is_authenticated %}
+    {% if organizacoes_do_usuario|length > 1 %}
+    <form class="rpf-rodape__organizacao" method="post" action="{% url 'trocar_organizacao' %}">
+        {% csrf_token %}
+        <label for="rpf-trocar-organizacao">Organização</label>
+        <select id="rpf-trocar-organizacao" name="organizacao" onchange="this.form.submit()">
+            {% for org in organizacoes_do_usuario %}
+            <option value="{{ org.pk }}"{% if org.pk == organizacao.pk %} selected{% endif %}>{{ org.nome }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button class="rpf-pilula" type="submit">Trocar</button></noscript>
+    </form>
+    {% endif %}
     <nav class="rpf-rodape__conta" aria-label="Conta">
         <a class="rpf-pilula" href="{% url 'perfil' %}">Meu perfil</a>
         {% if user.is_superuser %}

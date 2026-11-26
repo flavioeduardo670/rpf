@@ -18,6 +18,7 @@ from .models import (
     NotaFiscal,
     Organizacao,
     Reuniao,
+    Vinculo,
 )
 
 
@@ -56,9 +57,19 @@ class OrganizacaoAdminForm(forms.ModelForm):
         return [m for m in TODOS if m in escolhidos | OBRIGATORIOS]
 
 
+class VinculoDaOrganizacaoInline(admin.TabularInline):
+    model = Vinculo
+    fk_name = 'organizacao'
+    extra = 0
+    autocomplete_fields = ('usuario',)
+    verbose_name = 'Usuário'
+    verbose_name_plural = 'Usuários que participam'
+
+
 @admin.register(Organizacao)
 class OrganizacaoAdmin(admin.ModelAdmin):
     form = OrganizacaoAdminForm
+    inlines = (VinculoDaOrganizacaoInline,)
     list_display = ('nome', 'nome_curto', 'segmento', 'tema', 'ativa')
     list_filter = ('segmento', 'ativa')
     search_fields = ('nome', 'nome_curto', 'razao_social', 'documento')
@@ -334,10 +345,19 @@ class UserAdminChangeForm(UserChangeForm):
         return cleaned_data
 
 
+class VinculoDoUsuarioInline(admin.TabularInline):
+    model = Vinculo
+    fk_name = 'usuario'
+    extra = 0
+    verbose_name = 'Organização'
+    verbose_name_plural = 'Organizações de que participa'
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     add_form = UserAdminCreationForm
     form = UserAdminChangeForm
+    inlines = (VinculoDoUsuarioInline,)
     list_display = ('username', 'email', 'is_staff', 'is_superuser', 'tipo_cadastro')
 
     fieldsets = BaseUserAdmin.fieldsets + (
