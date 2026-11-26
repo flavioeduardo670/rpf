@@ -170,19 +170,103 @@ def vincular_usuario_novo(sender, instance, created, raw=False, **kwargs):
 
 
 # =====================================================
+# PLATAFORMA: DADOS SEPARADOS POR ORGANIZAÇÃO
+# =====================================================
+
+class OrganizacaoManager(models.Manager):
+    """Consulta só os registros da organização em uso (core/organizacao_atual.py).
+
+    Sem organização em uso (comandos, webhooks, tela de login) não filtra: é o
+    que permite ao webhook do PIX achar a cobrança de qualquer cliente pelo TXID.
+    """
+
+    def get_queryset(self):
+        from core.organizacao_atual import organizacao_da_requisicao
+
+        queryset = super().get_queryset()
+        org = organizacao_da_requisicao()
+        return queryset.filter(organizacao=org) if org is not None else queryset
+
+    def bulk_create(self, objs, *args, **kwargs):
+        # bulk_create não chama save(): preenche a organização aqui.
+        objs = list(objs)
+        for obj in objs:
+            if obj.organizacao_id is None:
+                obj.organizacao_id = obj._organizacao_do_novo_registro()
+        return super().bulk_create(objs, *args, **kwargs)
+
+
+class ModeloDaOrganizacao(models.Model):
+    """Base de todo dado de cliente: cada registro pertence a uma organização."""
+
+    organizacao = models.ForeignKey(Organizacao, on_delete=models.CASCADE, related_name='+', editable=False)
+
+    objects = OrganizacaoManager()
+    # Sem filtro, para a plataforma (migrações de dados, relatórios gerais).
+    todas_as_organizacoes = models.Manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if self.organizacao_id is None:
+            self.organizacao_id = self._organizacao_do_novo_registro()
+            if self.organizacao_id is None:
+                raise ValueError(
+                    f'{type(self).__name__} sem organização: crie dentro de um acesso de usuário '
+                    'ou use core.organizacao_atual.definir_organizacao().'
+                )
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None:
+                kwargs['update_fields'] = {*update_fields, 'organizacao'}
+        return super().save(*args, **kwargs)
+
+    def validate_unique(self, exclude=None):
+        # O campo organizacao não aparece nos formulários, e o Django pularia as
+        # regras de "único" que o envolvem (ex.: um desconto por mês em cada
+        # organização), deixando o erro estourar no banco. Checa com ele.
+        if self.organizacao_id is None:
+            self.organizacao_id = self._organizacao_do_novo_registro()
+        if exclude:
+            exclude = set(exclude) - {'organizacao'}
+        return super().validate_unique(exclude=exclude)
+
+    def _organizacao_do_novo_registro(self):
+        from core.organizacao_atual import organizacao_da_requisicao
+
+        # 1. A organização do acesso em andamento.
+        org = organizacao_da_requisicao()
+        if org is not None:
+            return org.pk
+        # 2. A do registro "pai" (ex.: a mensalidade criada pelo webhook herda a do morador).
+        for campo in self._meta.concrete_fields:
+            if campo.is_relation and campo.many_to_one and issubclass(campo.related_model, ModeloDaOrganizacao):
+                id_pai = getattr(self, campo.attname)
+                if id_pai:
+                    org_id = (campo.related_model.todas_as_organizacoes
+                              .filter(pk=id_pai).values_list('organizacao_id', flat=True).first())
+                    if org_id:
+                        return org_id
+        # 3. A única organização ativa (instalação com um cliente só).
+        return Organizacao.atual().pk
+
+
+# =====================================================
 # MÓDULO: MORADORES E MENSALIDADES
 # =====================================================
 
 
 
-class Morador(models.Model):
+class Morador(ModeloDaOrganizacao):
 
-    user = models.OneToOneField(
+    # Um login pode ser membro em várias organizações, mas só uma vez em cada
+    # (ver Meta.constraints). Use core.views.common.get_user_morador(user).
+    user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='morador'
+        related_name='moradores'
     )
 
     nome = models.CharField(max_length=100)
@@ -214,6 +298,12 @@ class Morador(models.Model):
 
     class Meta:
         ordering = ['ordem_hierarquia', 'nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['organizacao', 'user'], condition=models.Q(user__isnull=False),
+                name='morador_um_por_login_em_cada_organizacao',
+            ),
+        ]
 
     def __str__(self):
         return self.nome
@@ -239,7 +329,7 @@ class AcessoUsuario(models.Model):
         return self.user.username
 
 
-class Mensalidade(models.Model):
+class Mensalidade(ModeloDaOrganizacao):
     """
     Representa a mensalidade que cada morador deve pagar.
     """
@@ -260,7 +350,7 @@ class Mensalidade(models.Model):
 # MÓDULO: FINANCEIRO (NOTAS FISCAIS)
 # =====================================================
 
-class NotaFiscal(models.Model):
+class NotaFiscal(ModeloDaOrganizacao):
     """
     Representa despesas registradas no setor financeiro.
     Pode vir de compras, manutenção ou outros setores.
@@ -319,23 +409,26 @@ class NotaFiscal(models.Model):
         return f"{self.descricao} - {self.fornecedor}"
 
 
-class ControleDistribuicaoNFe(models.Model):
+class ControleDistribuicaoNFe(ModeloDaOrganizacao):
     """Onde parou a leitura da Distribuição de DF-e da Receita (notas emitidas
     para o CNPJ da república). A SEFAZ bloqueia quem consulta de novo sem
     novidade antes de 1 hora, por isso guardamos quando pode consultar."""
 
-    cnpj = models.CharField(max_length=14, unique=True)
+    cnpj = models.CharField(max_length=14)
     ult_nsu = models.CharField(max_length=15, default='000000000000000')
     max_nsu = models.CharField(max_length=15, default='000000000000000')
     ultima_consulta = models.DateTimeField(null=True, blank=True)
     proxima_consulta_apos = models.DateTimeField(null=True, blank=True)
     ultimo_status = models.CharField(max_length=255, blank=True, default='')
 
+    class Meta:
+        unique_together = ('organizacao', 'cnpj')
+
     def __str__(self):
         return f'Distribuição NF-e {self.cnpj} (NSU {self.ult_nsu})'
 
 
-class RockEvento(models.Model):
+class RockEvento(ModeloDaOrganizacao):
     TIPO_CHOICES = [
         ('nosso', 'Nosso Rock'),
         ('aluguel', 'Aluguel da Casa'),
@@ -356,7 +449,7 @@ class RockEvento(models.Model):
 
 
 
-class NotaParcela(models.Model):
+class NotaParcela(ModeloDaOrganizacao):
     """
     Parcelas vinculadas a uma nota fiscal.
     """
@@ -380,29 +473,29 @@ class NotaParcela(models.Model):
         return f"{self.nota.descricao} - Parcela {self.numero}"
 
 
-class DescontoMensal(models.Model):
+class DescontoMensal(ModeloDaOrganizacao):
     mes_referencia = models.DateField()
     valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
-        unique_together = ('mes_referencia',)
+        unique_together = ('organizacao', 'mes_referencia')
 
     def __str__(self):
         return f"Desconto {self.mes_referencia.strftime('%m/%Y')}"
 
 
-class PendenciaMensal(models.Model):
+class PendenciaMensal(ModeloDaOrganizacao):
     mes_referencia = models.DateField()
     valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
-        unique_together = ('mes_referencia',)
+        unique_together = ('organizacao', 'mes_referencia')
 
     def __str__(self):
         return f"Pendencia {self.mes_referencia.strftime('%m/%Y')}"
 
 
-class PendenciaMensalItem(models.Model):
+class PendenciaMensalItem(ModeloDaOrganizacao):
     TIPO_CHOICES = [
         ('extra', 'Extra'),
         ('desconto', 'Desconto'),
@@ -422,7 +515,7 @@ class PendenciaMensalItem(models.Model):
         return f"{descricao} ({self.mes_referencia.strftime('%m/%Y')})"
 
 
-class ParcelaRateioExclusao(models.Model):
+class ParcelaRateioExclusao(ModeloDaOrganizacao):
     parcela = models.ForeignKey(NotaParcela, on_delete=models.CASCADE, related_name='rateio_exclusoes')
     morador = models.ForeignKey(Morador, on_delete=models.CASCADE)
 
@@ -433,7 +526,7 @@ class ParcelaRateioExclusao(models.Model):
         return f"Exclusao de {self.morador.nome} na parcela {self.parcela_id}"
 
 
-class AjusteMorador(models.Model):
+class AjusteMorador(ModeloDaOrganizacao):
     TIPO_CHOICES = [
         ('extra', 'Extra'),
         ('desconto', 'Desconto'),
@@ -449,7 +542,7 @@ class AjusteMorador(models.Model):
         return f"{self.morador.nome} - {self.tipo}"
 
 
-class ComprovantePagamentoMorador(models.Model):
+class ComprovantePagamentoMorador(ModeloDaOrganizacao):
     morador = models.ForeignKey(Morador, on_delete=models.CASCADE, related_name='comprovantes_pagamento')
     mes_referencia = models.DateField()
     arquivo = models.FileField(upload_to='comprovantes_pagamento/%Y/%m/')
@@ -465,7 +558,7 @@ class ComprovantePagamentoMorador(models.Model):
 
 
 
-class CobrancaAluguel(models.Model):
+class CobrancaAluguel(ModeloDaOrganizacao):
     STATUS_CHOICES = [
         ('aguardando_pagamento', 'Aguardando pagamento'),
         ('pago', 'Pago'),
@@ -500,7 +593,7 @@ class CobrancaAluguel(models.Model):
         return f"Aluguel {self.morador.nome} - {self.mes_referencia.strftime('%m/%Y')}"
 
 
-class NotificacaoMorador(models.Model):
+class NotificacaoMorador(ModeloDaOrganizacao):
     TIPO_CHOICES = [
         ('lembrete_aluguel', 'Lembrete de aluguel'),
     ]
@@ -526,7 +619,7 @@ class NotificacaoMorador(models.Model):
 # =====================================================
 
 
-class ConfiguracaoFinanceira(models.Model):
+class ConfiguracaoFinanceira(ModeloDaOrganizacao):
     """
     Configuracao de valores base do financeiro.
     """
@@ -547,7 +640,7 @@ class ConfiguracaoFinanceira(models.Model):
         return f"Aluguel: R$ {self.valor_aluguel} | PIX recebimentos: {self.conta_recebimentos_pix or '-'}"
 
 
-class ContaFixa(models.Model):
+class ContaFixa(ModeloDaOrganizacao):
     nome = models.CharField(max_length=100)
     valor = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     ativo = models.BooleanField(default=True)
@@ -556,7 +649,7 @@ class ContaFixa(models.Model):
         return f"{self.nome} - R$ {self.valor}"
 
 
-class ContaFixaMensal(models.Model):
+class ContaFixaMensal(ModeloDaOrganizacao):
     conta_fixa = models.ForeignKey(
         ContaFixa,
         on_delete=models.SET_NULL,
@@ -580,7 +673,7 @@ class ContaFixaMensal(models.Model):
 
 
 
-class ContaCasa(models.Model):
+class ContaCasa(ModeloDaOrganizacao):
     nome = models.CharField(max_length=100)
     data_vencimento = models.DateField()
     mes_cobranca_aluguel = models.DateField()
@@ -602,8 +695,8 @@ class ContaCasa(models.Model):
         return f"{self.nome} - {self.mes_cobranca_aluguel.strftime('%m/%Y')} - R$ {self.valor}"
 
 
-class RegistroFinanceiroMensal(models.Model):
-    mes_referencia = models.DateField(unique=True)
+class RegistroFinanceiroMensal(ModeloDaOrganizacao):
+    mes_referencia = models.DateField()
     valor_aluguel = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     valor_fixas_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_caixinha_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -618,6 +711,7 @@ class RegistroFinanceiroMensal(models.Model):
 
     class Meta:
         ordering = ['-mes_referencia']
+        unique_together = ('organizacao', 'mes_referencia')
         verbose_name = 'Registro financeiro mensal'
         verbose_name_plural = 'Registros financeiros mensais'
 
@@ -625,7 +719,7 @@ class RegistroFinanceiroMensal(models.Model):
         return f"Registro financeiro {self.mes_referencia.strftime('%m/%Y')}"
 
 
-class RegistroFinanceiroMorador(models.Model):
+class RegistroFinanceiroMorador(ModeloDaOrganizacao):
     registro = models.ForeignKey(RegistroFinanceiroMensal, on_delete=models.CASCADE, related_name='moradores')
     morador = models.ForeignKey(Morador, on_delete=models.SET_NULL, null=True, blank=True)
     morador_nome = models.CharField(max_length=100)
@@ -653,7 +747,7 @@ class RegistroFinanceiroMorador(models.Model):
     def __str__(self):
         return f"{self.morador_label} - {self.registro.mes_referencia.strftime('%m/%Y')}"
 
-class Setor(models.Model):
+class Setor(ModeloDaOrganizacao):
     """
     Representa um setor do sistema (Compras, Manutenção etc).
     """
@@ -664,17 +758,18 @@ class Setor(models.Model):
 
 
 
-class Andar(models.Model):
-    nome = models.CharField(max_length=100, unique=True)
+class Andar(ModeloDaOrganizacao):
+    nome = models.CharField(max_length=100)
 
     class Meta:
         ordering = ['nome']
+        unique_together = ('organizacao', 'nome')
 
     def __str__(self):
         return self.nome
 
 
-class Comodo(models.Model):
+class Comodo(ModeloDaOrganizacao):
     nome = models.CharField(max_length=150, blank=True, default='')
     andar = models.ForeignKey(Andar, on_delete=models.CASCADE, related_name='comodos')
 
@@ -688,7 +783,7 @@ class Comodo(models.Model):
 
 
 
-class LocalArmazenamento(models.Model):
+class LocalArmazenamento(ModeloDaOrganizacao):
     """
     Local físico onde os produtos ficam armazenados.
     """
@@ -700,7 +795,7 @@ class LocalArmazenamento(models.Model):
         return self.nome
 
 
-class RockItem(models.Model):
+class RockItem(ModeloDaOrganizacao):
     rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='itens')
     produto = models.ForeignKey('Produto', on_delete=models.SET_NULL, null=True, blank=True)
     quantidade = models.IntegerField(default=1)
@@ -712,7 +807,7 @@ class RockItem(models.Model):
         return (self.produto.nome if self.produto else 'Item')
 
 
-class IngressoRock(models.Model):
+class IngressoRock(ModeloDaOrganizacao):
     STATUS_CHOICES = [
         ('pendente', 'Pendente'),
         ('pago', 'Pago'),
@@ -735,7 +830,7 @@ class IngressoRock(models.Model):
         return f"{self.nome} - {self.rock_evento.nome}"
 
 
-class LoteIngressoRock(models.Model):
+class LoteIngressoRock(ModeloDaOrganizacao):
     rock_evento = models.ForeignKey(RockEvento, on_delete=models.CASCADE, related_name='lotes')
     nome = models.CharField(max_length=100)
     quantidade_total = models.PositiveIntegerField(default=0)
@@ -751,7 +846,7 @@ class LoteIngressoRock(models.Model):
         return f"{self.rock_evento.nome} - {self.nome}"
 
 
-class PedidoIngressoRock(models.Model):
+class PedidoIngressoRock(ModeloDaOrganizacao):
     STATUS_CHOICES = [
         ('aguardando_pagamento', 'Aguardando pagamento'),
         ('pago', 'Pago'),
@@ -776,7 +871,7 @@ class PedidoIngressoRock(models.Model):
         return f"Pedido {self.id} - {self.nome_comprador}"
 
 
-class FormFieldConfig(models.Model):
+class FormFieldConfig(ModeloDaOrganizacao):
     form_key = models.CharField(max_length=100)
     field_name = models.CharField(max_length=100)
     label = models.CharField(max_length=200, blank=True)
@@ -784,25 +879,26 @@ class FormFieldConfig(models.Model):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = ('form_key', 'field_name')
+        unique_together = ('organizacao', 'form_key', 'field_name')
         ordering = ['form_key', 'order', 'field_name']
 
     def __str__(self):
         return f"{self.form_key}:{self.field_name}"
 
 
-class ChoiceList(models.Model):
-    key = models.CharField(max_length=100, unique=True)
+class ChoiceList(ModeloDaOrganizacao):
+    key = models.CharField(max_length=100)
     label = models.CharField(max_length=200)
 
     class Meta:
         ordering = ['label', 'key']
+        unique_together = ('organizacao', 'key')
 
     def __str__(self):
         return self.label
 
 
-class ChoiceOption(models.Model):
+class ChoiceOption(ModeloDaOrganizacao):
     choice_list = models.ForeignKey(ChoiceList, on_delete=models.CASCADE, related_name='options')
     value = models.CharField(max_length=100)
     label = models.CharField(max_length=200)
@@ -817,7 +913,7 @@ class ChoiceOption(models.Model):
         return f"{self.choice_list.key}:{self.label}"
 
 
-class EventoCalendario(models.Model):
+class EventoCalendario(ModeloDaOrganizacao):
     titulo = models.CharField(max_length=200)
     data = models.DateField()
     cor = models.CharField(max_length=7, default='#ececec')
@@ -839,7 +935,7 @@ class EventoCalendario(models.Model):
         return f"{self.data} - {self.titulo}"
 
 
-class Reuniao(models.Model):
+class Reuniao(ModeloDaOrganizacao):
     TIPO_CHOICES = [
         ('geral', 'Geral'),
         ('setorial', 'Setorial'),
@@ -880,7 +976,7 @@ class Reuniao(models.Model):
         return f"Reunião {self.get_tipo_display()} - {self.data:%d/%m/%Y}"
 
 
-class AtaReuniao(models.Model):
+class AtaReuniao(ModeloDaOrganizacao):
     STATUS_CHOICES = [
         ('rascunho', 'Rascunho'),
         ('registrada', 'Registrada'),
@@ -911,7 +1007,7 @@ class AtaReuniao(models.Model):
 
     class Meta:
         ordering = ['-ano', '-numero_sequencial']
-        unique_together = (('ano', 'escopo_numeracao', 'numero_sequencial'),)
+        unique_together = (('organizacao', 'ano', 'escopo_numeracao', 'numero_sequencial'),)
 
     def _setor_identificador(self):
         if self.reuniao.tipo == 'setorial':
@@ -1052,7 +1148,7 @@ class AtaReuniao(models.Model):
         return quantidade_os
 
 
-class AtaBloqueioEdicaoMixin(models.Model):
+class AtaBloqueioEdicaoMixin(ModeloDaOrganizacao):
     class Meta:
         abstract = True
 
@@ -1121,7 +1217,7 @@ class AtaLinha5W2H(AtaBloqueioEdicaoMixin):
         return bool(self.o_que and self.por_que and self.onde and self.quem and self.como)
 
 
-class Produto(models.Model):
+class Produto(ModeloDaOrganizacao):
     """
     Produto controlado no estoque.
     """
@@ -1153,7 +1249,7 @@ class Produto(models.Model):
         return self.quantidade <= self.estoque_minimo
 
 
-class MovimentacaoEstoque(models.Model):
+class MovimentacaoEstoque(ModeloDaOrganizacao):
     """
     Registra entradas e saídas de produtos.
     """
@@ -1172,7 +1268,7 @@ class MovimentacaoEstoque(models.Model):
         return f"{self.produto.nome} - {self.tipo}"
 
 
-class ConsumoEstoque(models.Model):
+class ConsumoEstoque(ModeloDaOrganizacao):
     """
     Registra consumo de produtos do estoque.
     """
@@ -1199,7 +1295,7 @@ class ConsumoEstoque(models.Model):
 # MÓDULO: MANUTENÇÃO
 # =====================================================
 
-class OrdemServico(models.Model):
+class OrdemServico(ModeloDaOrganizacao):
     """
     Representa uma Ordem de Serviço (OS).
     """
@@ -1285,7 +1381,7 @@ class OrdemServico(models.Model):
         self.save()
 
 
-class MaterialUtilizado(models.Model):
+class MaterialUtilizado(ModeloDaOrganizacao):
     """
     Representa um material utilizado em uma Ordem de Serviço.
     """
@@ -1320,7 +1416,7 @@ class MaterialUtilizado(models.Model):
         return f"{self.nome_material} - OS {self.ordem_servico.numero}"
 
 
-class AuditoriaEvento(models.Model):
+class AuditoriaEvento(ModeloDaOrganizacao):
     TIPO_CHOICES = [
         ('configuracao_financeira_pix', 'Configuracao financeira PIX'),
         ('vinculo_user_morador', 'Vinculo User/Morador'),
@@ -1477,7 +1573,7 @@ def _auditar_status_pedido_ingresso(sender, instance, created, **kwargs):
 # PÁGINA INICIAL: ROLETA DE IMAGENS
 # =====================================================
 
-class SlideInicio(models.Model):
+class SlideInicio(ModeloDaOrganizacao):
     """Imagem da roleta do título da página inicial (gerenciada pelo admin).
 
     Enquanto não houver nenhum slide ativo, a página usa ilustrações padrão.
