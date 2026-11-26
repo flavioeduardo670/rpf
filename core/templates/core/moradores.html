@@ -1,9 +1,9 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Moradores{% endblock %}
-{% block page_title %}Moradores{% endblock %}
-{% block page_subtitle %}Quem mora na casa, em qual quarto e com quais funções.{% endblock %}
+{% block title %}{{ termos.Membros }}{% endblock %}
+{% block page_title %}{{ termos.Membros }}{% endblock %}
+{% block page_subtitle %}Quem faz parte {{ termos.do_local }}, em qual {{ termos.unidade }} e com quais funções.{% endblock %}
 
 {% block content %}
 <div class="wrap">

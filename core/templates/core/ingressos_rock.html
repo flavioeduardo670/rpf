@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Ingressos do Rock{% endblock %}
+{% block title %}Ingressos {{ termos.do_evento }}{% endblock %}
 {% block page_title %}Ingressos - {{ evento.nome }}{% endblock %}
 {% block page_subtitle %}Quem comprou, quanto pagou e quem ainda falta pagar.{% endblock %}
 

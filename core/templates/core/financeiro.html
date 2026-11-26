@@ -2,8 +2,8 @@
 {% load static %}
 
 {% block title %}Financeiro{% endblock %}
-{% block page_title %}Aluguel de {{ mes_referencia|date:'m/Y' }}{% endblock %}
-{% block page_subtitle %}Rateio do mês, contas da casa, extras e descontos.{% endblock %}
+{% block page_title %}{{ termos.Cobranca }} de {{ mes_referencia|date:'m/Y' }}{% endblock %}
+{% block page_subtitle %}Rateio do mês, contas {{ termos.do_local }}, extras e descontos.{% endblock %}
 {% block header_actions %}
 <a href="{% url 'exportar_financeiro_csv' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-light">Exportar planilha</a>
 {% endblock %}
