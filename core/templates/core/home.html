@@ -8,7 +8,7 @@
     <div class="rpf-saudacao__texto">
         <span class="rpf-etiqueta">{% now "l · j \d\e F" %}</span>
         <h1 class="rpf-saudacao__titulo" id="rpf-saudacao-titulo">{{ saudacao }},<br>{{ user.first_name|default:user.username }}.</h1>
-        <p class="rpf-saudacao__sub">Tudo {{ termos.do_local }} num lugar só: contas, compras, {{ termos.eventos }} e reuniões.</p>
+        <p class="rpf-saudacao__sub">Tudo {{ termos.do_local }} num lugar só{% if resumo_areas %}: {{ resumo_areas }}{% endif %}.</p>
         <ul class="rpf-saudacao__avisos">
             {% for aviso in avisos %}<li class="rpf-pilula">{{ aviso }}</li>{% endfor %}
         </ul>

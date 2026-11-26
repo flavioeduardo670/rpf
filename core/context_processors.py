@@ -13,6 +13,7 @@ from django.templatetags.static import static
 from django.urls import reverse
 
 from core.models import Organizacao
+from core.modulos import MODULOS
 from core.views.common import GRUPO_POR_MODULO, get_user_morador
 
 
@@ -22,6 +23,7 @@ def marca(request):
         'organizacao': organizacao,
         'produto_nome': settings.PRODUTO_NOME,
         'termos': organizacao.vocabulario,
+        'modulos_ativos': organizacao.modulos_ativos,
     }
 
 # (prefixo da URL, variante do boneco, rótulo, nome da rota do menu, módulo de permissão)
@@ -109,7 +111,9 @@ def pode_ver_modulo(user, modulo):
 
 
 def navegacao(request):
-    termos = Organizacao.atual().vocabulario
+    organizacao = Organizacao.atual()
+    termos = organizacao.vocabulario
+    ativos = organizacao.modulos_ativos
     secao = secao_por_caminho(request.path)
     secao = dict(secao, rotulo=secao['rotulo'].format_map(termos))
     user = getattr(request, 'user', None)
@@ -118,7 +122,7 @@ def navegacao(request):
         por_variante = {s[1]: s for s in SECOES}
         for variante in ORDEM_MENU:
             _prefixo, _v, rotulo, rota, modulo = por_variante[variante]
-            if pode_ver_modulo(user, modulo):
+            if variante in ativos and pode_ver_modulo(user, modulo):
                 menu.append({
                     'variante': variante,
                     'rotulo': rotulo.format_map(termos),
@@ -131,6 +135,7 @@ def navegacao(request):
             {'prefixo': prefixo, 'variante': variante, 'rotulo': rotulo.format_map(termos),
              'corrida': static(f'core/boneco/corrida-{variante}.svg')}
             for prefixo, variante, rotulo, _rota, _modulo in SECOES
+            if variante not in MODULOS or variante in ativos
         ],
         'inicio': {'variante': 'inicio', 'rotulo': 'Início', 'corrida': static('core/boneco/corrida-inicio.svg')},
         'chegada': static('core/boneco/porta-abrindo.svg'),

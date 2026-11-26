@@ -53,6 +53,10 @@ class Organizacao(models.Model):
             'Termos: membro, local, cobranca, evento, unidade.'
         ),
     )
+    modulos = models.JSONField(
+        'Módulos ligados', default=list, blank=True,
+        help_text='Vazio = pacote padrão do segmento. Ver core/modulos.py.',
+    )
     ativa = models.BooleanField(default=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
@@ -70,6 +74,13 @@ class Organizacao(models.Model):
         erros = validar_termos(self.termos or {})
         if erros:
             raise ValidationError({'termos': erros})
+
+    @property
+    def modulos_ativos(self):
+        """Chaves dos módulos ligados (core/modulos.py)."""
+        from core.modulos import resolver_ativos
+
+        return resolver_ativos(self.segmento, self.modulos)
 
     @property
     def vocabulario(self):

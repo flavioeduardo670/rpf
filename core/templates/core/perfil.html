@@ -83,6 +83,7 @@
                     {% endif %}
                 </p>
             </div>
+            {% if 'financeiro' in modulos_ativos %}
             <div class="item">
                 <p class="label">Acesso financeiro (V/E)</p>
                 <p class="value">
@@ -91,6 +92,8 @@
                     {% if morador.acesso_financeiro_editar %}E{% else %}-{% endif %}
                 </p>
             </div>
+            {% endif %}
+            {% if 'compras' in modulos_ativos %}
             <div class="item">
                 <p class="label">Acesso compras (V/E)</p>
                 <p class="value">
@@ -99,6 +102,8 @@
                     {% if morador.acesso_compras_editar %}E{% else %}-{% endif %}
                 </p>
             </div>
+            {% endif %}
+            {% if 'almoxarifado' in modulos_ativos %}
             <div class="item">
                 <p class="label">Acesso estoque (V/E)</p>
                 <p class="value">
@@ -107,6 +112,8 @@
                     {% if morador.acesso_estoque_editar %}E{% else %}-{% endif %}
                 </p>
             </div>
+            {% endif %}
+            {% if 'manutencao' in modulos_ativos %}
             <div class="item">
                 <p class="label">Acesso manutencao (V/E)</p>
                 <p class="value">
@@ -115,6 +122,8 @@
                     {% if morador.acesso_manutencao_editar %}E{% else %}-{% endif %}
                 </p>
             </div>
+            {% endif %}
+            {% if 'rock' in modulos_ativos %}
             <div class="item">
                 <p class="label">Acesso {{ termos.evento }} (V/E)</p>
                 <p class="value">
@@ -123,6 +132,7 @@
                     {% if morador.acesso_rock_editar %}E{% else %}-{% endif %}
                 </p>
             </div>
+            {% endif %}
         </div>
         {% else %}
         <p class="muted">Seu usuario ainda nao esta vinculado a {{ termos.um_membro }}.</p>
@@ -130,6 +140,7 @@
     </section>
 
     {% if morador %}
+    {% if 'financeiro' in modulos_ativos %}
     <section class="panel">
         <h2>Notificações de {{ termos.cobranca }}</h2>
         {% if notificacoes %}
@@ -168,7 +179,9 @@
         <p class="muted">Sem notificações de {{ termos.cobranca }} no momento.</p>
         {% endif %}
     </section>
+    {% endif %}
 
+    {% if 'manutencao' in modulos_ativos %}
     <section class="panel">
         <h2>Ordens de servico vinculadas</h2>
         {% if novas_ordens %}
@@ -204,6 +217,7 @@
             </table>
         </div>
     </section>
+    {% endif %}
     {% endif %}
 </div>
 {% endblock %}
