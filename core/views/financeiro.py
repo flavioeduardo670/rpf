@@ -27,6 +27,7 @@ from core.forms import (
     PendenciaMensalItemForm,
     apply_form_config,
     get_choice_options,
+    termos_do_cliente,
 )
 from core.models import (
     AjusteMorador,
@@ -126,7 +127,10 @@ class NotaFiscalForm(forms.ModelForm):
         self.fields['local_estoque'].required = False
         self.fields['rock_evento'].queryset = RockEvento.objects.order_by('-data', 'nome')
         self.fields['tipo_item'] = forms.ChoiceField(choices=get_choice_options('nota_tipo_item', [('', '---'), ('Bem de Uso', 'Bem de Uso'), ('Bem Material', 'Bem Material'), ('Bem de Consumo', 'Bem de Consumo'), ('Bem de Troca', 'Bem de Troca')]), required=True)
-        self.fields['categoria_compra'].choices = get_choice_options('categoria_compra', [('geral', 'Geral'), ('rock', 'Rock')])
+        termos = termos_do_cliente()
+        self.fields['rock_evento'].label = termos['Evento']
+        self.fields['cobrar_no_aluguel'].label = 'Cobrar {no_cobranca}'.format_map(termos)
+        self.fields['categoria_compra'].choices = get_choice_options('categoria_compra', [('geral', 'Geral'), ('rock', termos['Evento'])])
         self.fields['quantidade_parcelas'].min_value = 1
         self.fields['quantidade_parcelas'].label = 'Quantidade de parcelas'
         adicionar = self._get_adicionar_estoque_value()
@@ -154,9 +158,10 @@ class NotaFiscalForm(forms.ModelForm):
 
 @setor_required(group_name='Financeiro', morador_view_attr='acesso_financeiro_visualizar', morador_edit_attr='acesso_financeiro_editar')
 def financeiro_home(request):
+    termos = termos_do_cliente()
     modulos = [
         {
-            'titulo': 'Aluguel',
+            'titulo': termos['Cobranca'],
             'descricao': 'Rateio mensal, ajustes individuais, pendências e comprovantes.',
             'url': redirect('financeiro_aluguel').url,
             'status': 'Ativo',
@@ -187,7 +192,7 @@ def financeiro_home(request):
         },
         {
             'titulo': 'Balanço patrimonial',
-            'descricao': 'Resumo patrimonial e posição financeira da casa.',
+            'descricao': 'Resumo patrimonial e posição financeira {do_local}.'.format_map(termos),
             'url': '',
             'status': 'Em breve',
         },
@@ -443,7 +448,7 @@ def _gerar_pdf_extrato_morador(contexto):
     comandos.append('0.96 0.97 0.99 rg 32 454 778 68 re f')
     comandos.append('0.82 0.86 0.92 RG 32 454 778 68 re S')
     resumo = [
-        ('Morador', contexto['morador_label']),
+        (termos_do_cliente()['Membro'], contexto['morador_label']),
         ('Mês de referência', mes_referencia.strftime('%m/%Y')),
         ('Total de débitos', _formatar_moeda_pt_br(contexto['total_debitos'])),
         ('Créditos/descontos', _formatar_moeda_pt_br(contexto['total_creditos'])),
@@ -716,7 +721,7 @@ def _gerar_ou_atualizar_cobranca_aluguel(contexto):
             valor=valor,
             chave_pix=_resolver_chave_pix_aluguel(),
             nome_pagador=contexto['morador_label'],
-            categoria='Aluguel',
+            categoria=termos_do_cliente()['Cobranca'],
             payer_email=morador.email or '',
             data_expiracao=_validade_pix_aluguel(mes_referencia),
         )
@@ -748,19 +753,20 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
     chave_pix = _resolver_chave_pix_aluguel()
     payload = cobranca.qr_code or cobranca.payload_pix or 'PIX indisponível: configure o Mercado Pago.'
     organizacao = Organizacao.atual()
+    termos = organizacao.vocabulario
     comandos = [
         '1 1 1 rg 0 0 595 842 re f',
         '0.10 0.16 0.28 rg 0 778 595 64 re f',
         _comando_texto_pdf(organizacao.beneficiario, margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
-        _comando_texto_pdf('Boleto PIX - Cobrança de Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(f"Boleto PIX - Cobrança de {termos['Cobranca']}", margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
         _comando_texto_direita_pdf(f'Emitido em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
     ]
     comandos.append('0.96 0.98 1 rg 36 682 523 72 re f')
     comandos.append('0.72 0.80 0.92 RG 36 682 523 72 re S')
     resumo = [
-        ('Morador', contexto['morador_label']),
+        (termos['Membro'], contexto['morador_label']),
         ('Referência', contexto['mes_referencia'].strftime('%m/%Y')),
-        ('Classificação', 'Aluguel'),
+        ('Classificação', termos['Cobranca']),
         ('Valor', valor),
     ]
     x = margem + Decimal('14')
@@ -771,7 +777,7 @@ def _gerar_pdf_boleto_aluguel(contexto, cobranca):
 
     comandos.append(_comando_texto_pdf('Beneficiário', margem, Decimal('650'), 9, 'F2'))
     comandos.append(_comando_texto_pdf(organizacao.beneficiario, margem, Decimal('632'), 11, 'F2'))
-    comandos.append(_comando_texto_pdf('Tipo de cobrança: Aluguel', margem, Decimal('615'), 9))
+    comandos.append(_comando_texto_pdf(f"Tipo de cobrança: {termos['Cobranca']}", margem, Decimal('615'), 9))
     comandos.append(_comando_texto_pdf(f'Chave PIX: {chave_pix or "não configurada"}', margem, Decimal('598'), 9))
     comandos.append(_comando_texto_pdf(f'TXID: {cobranca.txid}', margem, Decimal('581'), 8))
     if cobranca.payment_id:
@@ -822,18 +828,19 @@ def _gerar_pdf_comprovante_aluguel(cobranca):
     valor = _formatar_moeda_pt_br(cobranca.valor)
     pago_em = timezone.localtime(cobranca.pago_em or timezone.now())
     organizacao = Organizacao.atual()
+    termos = organizacao.vocabulario
     comandos = [
         '1 1 1 rg 0 0 595 842 re f',
         '0.10 0.16 0.28 rg 0 778 595 64 re f',
         _comando_texto_pdf(organizacao.beneficiario, margem, Decimal('815'), 10, 'F2', '1 1 1 rg'),
-        _comando_texto_pdf('Comprovante de Pagamento - Aluguel', margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(f"Comprovante de Pagamento - {termos['Cobranca']}", margem, Decimal('792'), 18, 'F2', '1 1 1 rg'),
         _comando_texto_direita_pdf(f'Gerado em {timezone.localtime().strftime("%d/%m/%Y às %H:%M")}', largura_pagina - margem, Decimal('815'), 8, 'F1', '1 1 1 rg'),
     ]
     comandos.append('0.90 0.98 0.93 rg 36 682 523 72 re f')
     comandos.append('0.46 0.76 0.55 RG 36 682 523 72 re S')
     resumo = [
         ('Status', 'Pago'),
-        ('Morador', morador_label),
+        (termos['Membro'], morador_label),
         ('Referência', cobranca.mes_referencia.strftime('%m/%Y')),
         ('Valor pago', valor),
     ]
@@ -846,7 +853,7 @@ def _gerar_pdf_comprovante_aluguel(cobranca):
     comandos.append(_comando_texto_pdf('Dados da confirmação', margem, Decimal('650'), 12, 'F2'))
     linhas = [
         ('Beneficiário', organizacao.beneficiario),
-        ('Tipo de cobrança', 'Aluguel'),
+        ('Tipo de cobrança', termos['Cobranca']),
         ('Data do pagamento', pago_em.strftime('%d/%m/%Y às %H:%M')),
         ('TXID', cobranca.txid or '-'),
         ('Status no gateway', cobranca.status_gateway or '-'),
@@ -872,14 +879,16 @@ def enviar_comprovante_aluguel_por_email(cobranca):
     pdf = _gerar_pdf_comprovante_aluguel(cobranca)
     morador_label = cobranca.morador.apelido or cobranca.morador.nome
     mes = cobranca.mes_referencia.strftime('%m/%Y')
-    assunto = f'Comprovante de pagamento do aluguel - {mes}'
+    organizacao = Organizacao.atual()
+    termos = organizacao.vocabulario
+    assunto = f"Comprovante de pagamento {termos['do_cobranca']} - {mes}"
     corpo = (
         f'Olá, {morador_label}!\n\n'
-        f'Recebemos a confirmação do pagamento do aluguel de {mes}. '
+        f"Recebemos a confirmação do pagamento {termos['do_cobranca']} de {mes}. "
         'O comprovante está anexado a este email.\n\n'
         f'TXID: {cobranca.txid}\n'
         f'Valor: {_formatar_moeda_pt_br(cobranca.valor)}\n\n'
-        f'{Organizacao.atual().nome}'
+        f'{organizacao.nome}'
     )
     nome_morador = slugify(morador_label) or f'morador-{cobranca.morador_id}'
     filename = f'comprovante_aluguel_{nome_morador}_{cobranca.mes_referencia.strftime("%Y_%m")}.pdf'
@@ -896,7 +905,7 @@ def _contexto_extrato_morador(request, morador_id):
     resumo = calcular_rateio_financeiro(mes_referencia, incluir_pendencia=True)
     item = next((i for i in resumo['rateio_moradores'] if i['morador'].id == morador_id), None)
     if item is None:
-        raise PermissionDenied('Morador não encontrado no rateio do mês.')
+        raise PermissionDenied('{Membro} não encontrado no rateio do mês.'.format_map(termos_do_cliente()))
 
     morador_label = item['morador'].apelido or item['morador'].nome
     total = item['valor'] or Decimal('0.00')
@@ -953,6 +962,7 @@ def financeiro_fluxo_caixa(request):
     ).select_related('nota').order_by('vencimento', 'nota__descricao', 'id')
 
     lancamentos = []
+    termos = termos_do_cliente()
 
     def adicionar_lancamento(data, descricao, categoria, entrada=Decimal('0.00'), saida=Decimal('0.00'), status='realizado'):
         lancamentos.append({
@@ -968,15 +978,15 @@ def financeiro_fluxo_caixa(request):
         morador_nome = mensalidade.morador.apelido or mensalidade.morador.nome
         adicionar_lancamento(
             mensalidade.data_pagamento,
-            f'Aluguel recebido - {morador_nome}',
-            'Aluguel',
+            f"{termos['Cobranca']} recebido - {morador_nome}",
+            termos['Cobranca'],
             entrada=mensalidade.valor,
         )
 
     for evento in eventos_rock:
         adicionar_lancamento(
             evento.data,
-            f'Receita de rock - {evento.nome}',
+            f"Receita de {termos['evento']} - {evento.nome}",
             'Eventos',
             entrada=evento.valor_arrecadado,
         )
@@ -1060,11 +1070,13 @@ def exportar_rateio_prestacao_contas_pdf(request):
     largura_pagina = Decimal('842')
     altura_pagina = Decimal('595')
     margem = Decimal('28')
+    organizacao = Organizacao.atual()
+    termos = organizacao.vocabulario
     comandos = [
         '1 1 1 rg 0 0 842 595 re f',
         '0.10 0.16 0.28 rg 0 540 842 55 re f',
-        _comando_texto_pdf(f'{Organizacao.atual().nome_curto} - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
-        _comando_texto_pdf(f"Rateio por morador - {mes_referencia.strftime('%m/%Y')}", margem, Decimal('552'), 18, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(f'{organizacao.nome_curto} - Financeiro', margem, Decimal('575'), 10, 'F2', '1 1 1 rg'),
+        _comando_texto_pdf(f"Rateio por {termos['membro']} - {mes_referencia.strftime('%m/%Y')}", margem, Decimal('552'), 18, 'F2', '1 1 1 rg'),
         _comando_texto_direita_pdf(
             f"Gerado em {timezone.localtime().strftime('%d/%m/%Y às %H:%M')}",
             largura_pagina - margem,
@@ -1093,7 +1105,7 @@ def exportar_rateio_prestacao_contas_pdf(request):
         x += largura_card + Decimal('5')
 
     colunas = [
-        ('Morador', Decimal('28'), Decimal('178')),
+        (termos['Membro'], Decimal('28'), Decimal('178')),
         ('Aluguel', Decimal('206'), Decimal('86')),
         ('Fixas', Decimal('292'), Decimal('86')),
         ('Caixinha', Decimal('378'), Decimal('86')),
@@ -1136,7 +1148,7 @@ def exportar_rateio_prestacao_contas_pdf(request):
 
     y_totais = Decimal('32')
     comandos.append('0.10 0.16 0.28 rg 510 22 304 28 re f')
-    comandos.append(_comando_texto_pdf(f"Moradores: {total_moradores}", Decimal('522'), y_totais, 8, 'F2', '1 1 1 rg'))
+    comandos.append(_comando_texto_pdf(f"{termos['Membros']}: {total_moradores}", Decimal('522'), y_totais, 8, 'F2', '1 1 1 rg'))
     comandos.append(_comando_texto_direita_pdf(_formatar_moeda_pt_br(resumo['total_a_arrecadar']), Decimal('802'), y_totais, 10, 'F2', '1 1 1 rg'))
     comandos.append(_comando_texto_pdf('Arquivo em página única, orientação paisagem.', margem, Decimal('32'), 7))
 
@@ -1496,18 +1508,19 @@ def confirmar_pagamento_aluguel_morador(request, morador_id):
         cobranca.txid = f"RPFAL{cobranca.id:020d}"
         cobranca.save(update_fields=['txid', 'atualizado_em'])
 
+    termos = termos_do_cliente()
     if cobranca.status == 'pago':
         confirmar_pagamento_manual(cobranca, usuario=request.user)
-        messages.info(request, f'O aluguel de {morador_label} em {mes_referencia.strftime("%m/%Y")} já estava pago.')
+        messages.info(request, f'{termos["O_cobranca"]} de {morador_label} em {mes_referencia.strftime("%m/%Y")} já estava pago.')
         return redirect(destino)
 
     confirmar_pagamento_manual(cobranca, usuario=request.user)
     cobranca.refresh_from_db()
-    texto = f'Pagamento do aluguel de {morador_label} ({mes_referencia.strftime("%m/%Y")}) confirmado.'
+    texto = f'Pagamento {termos["do_cobranca"]} de {morador_label} ({mes_referencia.strftime("%m/%Y")}) confirmado.'
     if cobranca.comprovante_enviado_em:
         texto += f' Recibo enviado para {morador.email}.'
     elif not (morador.email or '').strip():
-        texto += ' Recibo não enviado: o morador não tem email no cadastro.'
+        texto += f' Recibo não enviado: {termos["o_membro"]} não tem email no cadastro.'
     elif not email_configurado():
         texto += ' Recibo não enviado: o email do sistema não está configurado.'
     else:
@@ -1522,7 +1535,7 @@ def anexar_comprovante_pagamento(request, morador_id):
     morador_logado = get_user_morador(request.user)
     can_edit_financeiro = can_edit(request, 'acesso_financeiro_editar')
     if not can_edit_financeiro and (not morador_logado or morador_logado.id != morador_id):
-        raise PermissionDenied('Você não pode anexar comprovante para este morador.')
+        raise PermissionDenied('Você só pode anexar o seu próprio comprovante.')
 
     morador = get_object_or_404(Morador, id=morador_id, ativo=True)
     arquivo = request.FILES.get('comprovante')

@@ -8,21 +8,22 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from core.forms import EventoCalendarioForm
-from core.models import EventoCalendario, OrdemServico, Reuniao, RockEvento
+from core.models import EventoCalendario, OrdemServico, Organizacao, Reuniao, RockEvento
 
 from .common import can_edit, get_user_morador, setor_required
 
 
 # Atalhos da página inicial: (variante do boneco, rota, título, descrição, módulo de permissão)
+# Textos entre chaves vêm do vocabulário do cliente (core/terminologia.py).
 ATALHOS = [
-    ('financeiro', 'financeiro', 'Financeiro', 'Aluguel, rateio e prestação de contas.', 'financeiro'),
-    ('compras', 'compras', 'Compras', 'Notas fiscais e parcelas da casa.', 'compras'),
+    ('financeiro', 'financeiro', 'Financeiro', '{Cobranca}, rateio e prestação de contas.', 'financeiro'),
+    ('compras', 'compras', 'Compras', 'Notas fiscais e parcelas {do_local}.', 'compras'),
     ('almoxarifado', 'almoxarifado', 'Almoxarifado', 'Estoque e consumo de produtos.', 'estoque'),
     ('manutencao', 'manutencao', 'Ordens de serviço', 'O que precisa de conserto.', 'manutencao'),
-    ('rock', 'rock', 'Rocks', 'Festas, lotes e ingressos.', 'rock'),
+    ('rock', 'rock', '{Eventos}', 'Datas, lotes e ingressos.', 'rock'),
     ('reunioes', 'reunioes', 'Reuniões', 'Pautas e atas registradas.', 'reunioes'),
     ('calendario', 'calendario', 'Calendário', 'Tudo que vai acontecer no mês.', 'reunioes'),
-    ('moradores', 'moradores', 'Moradores', 'Quartos, cursos e funções.', None),
+    ('moradores', 'moradores', '{Membros}', '{Unidades}, cursos e funções.', None),
     ('perfil', 'perfil', 'Meu perfil', 'Seus dados e comprovantes.', None),
 ]
 
@@ -39,13 +40,14 @@ def _saudacao(agora):
     return 'Boa noite'
 
 
-def _avisos_casa():
-    """Próximo rock e próxima reunião, mostrados abaixo da saudação."""
+def _avisos_casa(termos):
+    """Próximo evento (rock) e próxima reunião, mostrados abaixo da saudação."""
     hoje = timezone.localdate()
     rock = RockEvento.objects.filter(data__gte=hoje).order_by('data').first()
     reuniao = Reuniao.objects.filter(data__gte=hoje, status='marcada').order_by('data', 'horario_marcado').first()
     return [
-        f'Próximo rock: {rock.nome}, {rock.data:%d/%m}' if rock else 'Nenhum rock marcado ainda',
+        f'Próximo {termos["evento"]}: {rock.nome}, {rock.data:%d/%m}' if rock
+        else f'Nenhum {termos["evento"]} marcado ainda',
         f'Próxima reunião: {reuniao.data:%d/%m}, às {reuniao.horario_marcado:%H:%M}'
         if reuniao else 'Nenhuma reunião marcada',
     ]
@@ -58,17 +60,19 @@ def home(request):
     from core.context_processors import imagens_boneco, pode_ver_modulo
 
     morador = get_user_morador(request.user)
+    termos = Organizacao.atual().vocabulario
 
     atalhos = []
     for variante, rota, titulo, descricao, modulo in ATALHOS:
         if variante == 'rock' and morador is None and not request.user.is_superuser:
-            # Quem não mora na casa só compra ingressos.
+            # Quem não é membro da organização só compra ingressos.
             atalhos.append({'variante': 'rock', 'url': reverse('comprar_rocks'), 'titulo': 'Ingressos',
-                            'descricao': 'Compre ingressos para os rocks.', 'estilo': ESTILO_ATALHO['rock']})
+                            'descricao': 'Compre ingressos para {os_eventos}.'.format_map(termos),
+                            'estilo': ESTILO_ATALHO['rock']})
             continue
         if pode_ver_modulo(request.user, modulo):
-            atalhos.append({'variante': variante, 'url': reverse(rota), 'titulo': titulo, 'descricao': descricao,
-                            'estilo': ESTILO_ATALHO.get(variante, '')})
+            atalhos.append({'variante': variante, 'url': reverse(rota), 'titulo': titulo.format_map(termos),
+                            'descricao': descricao.format_map(termos), 'estilo': ESTILO_ATALHO.get(variante, '')})
 
     # Botões da saudação: financeiro e calendário, quando a pessoa pode abrir essas seções.
     rotulos_acao = {'financeiro': 'Abrir financeiro', 'calendario': 'Ver calendário'}
@@ -79,7 +83,7 @@ def home(request):
         'atalhos': atalhos,
         'acoes': acoes,
         'saudacao': _saudacao(timezone.localtime()),
-        'avisos': _avisos_casa(),
+        'avisos': _avisos_casa(termos),
         'loop_inicio': imagens_boneco('inicio')['loop'],
     })
 

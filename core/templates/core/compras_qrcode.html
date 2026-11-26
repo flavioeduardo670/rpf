@@ -228,7 +228,7 @@
                 {% else %}desligado (configure <code>NFE_CNPJ</code>, o certificado A1 e o cron <code>importar_nfe_receita</code>).{% endif %}
             </li>
         </ul>
-        <p class="muted">Compras importadas automaticamente entram como pendentes, categoria Geral e cobradas no aluguel; confira em Compras.</p>
+        <p class="muted">Compras importadas automaticamente entram como pendentes, categoria Geral e cobradas {{ termos.no_cobranca }}; confira em Compras.</p>
     </section>
     {% endif %}
 </div>

@@ -174,7 +174,7 @@ def avisos_pagamento_aluguel(cobrancas) -> list[str]:
     locais = [c for c in cobrancas if c.txid and cobranca_usa_pix_local(c)]
     if not mercado_pago_configurado():
         avisos.append(
-            'Mercado Pago não configurado (MERCADOPAGO_ACCESS_TOKEN): os boletos saem com PIX na chave da casa '
+            'Mercado Pago não configurado (MERCADOPAGO_ACCESS_TOKEN): os boletos saem com PIX na chave cadastrada '
             'e o pagamento precisa ser confirmado manualmente no botão "Confirmar pagamento".'
         )
     elif locais:
@@ -183,17 +183,17 @@ def avisos_pagamento_aluguel(cobrancas) -> list[str]:
         if 'live credentials' in (detalhe or '').lower():
             motivo += (
                 ' Isso acontece quando o token é de um usuário de teste: use o Access Token de produção '
-                'da conta real que recebe o aluguel.'
+                'da conta real que recebe os pagamentos.'
             )
         avisos.append(
-            f'{len(locais)} boleto(s) deste mês saíram com PIX na chave da casa porque o Mercado Pago não criou a cobrança.'
+            f'{len(locais)} boleto(s) deste mês saíram com PIX na chave cadastrada porque o Mercado Pago não criou a cobrança.'
             f'{motivo} Esses pagamentos não são reconhecidos sozinhos: confirme no botão "Confirmar pagamento" '
             'ou gere o boleto de novo depois de corrigir o token.'
         )
     if not email_configurado():
         avisos.append(
-            'Email não configurado (BREVO_API_KEY ou DJANGO_EMAIL_HOST): o recibo não é enviado ao morador. '
-            'O recibo em PDF continua disponível no botão "Gerar boleto de aluguel" do mês pago.'
+            'Email não configurado (BREVO_API_KEY ou DJANGO_EMAIL_HOST): o recibo não é enviado por email. '
+            'O recibo em PDF continua disponível no botão "Gerar boleto" do mês pago.'
         )
     return avisos
 

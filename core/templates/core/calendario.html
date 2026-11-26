@@ -2,7 +2,7 @@
 
 {% block title %}Calendário{% endblock %}
 {% block page_title %}Calendário{% endblock %}
-{% block page_subtitle %}Rocks, OS e reuniões entram sozinhos. O resto você anota aqui.{% endblock %}
+{% block page_subtitle %}{{ termos.Eventos }}, OS e reuniões entram sozinhos. O resto você anota aqui.{% endblock %}
 {% block header_actions %}
 <nav class="cal-mes" aria-label="Mês">
     <a class="btn btn-light" href="?mes={{ mes_anterior|date:'Y-m' }}" aria-label="Mês anterior">‹</a>
@@ -89,7 +89,7 @@
                     <a class="btn btn-light" href="?mes={{ current|date:'Y-m' }}">Cancelar edição</a>
                     {% endif %}
                 </form>
-                <p class="note">Aparece junto com o codigo da OS e o nome de cada rock.</p>
+                <p class="note">Aparece junto com o codigo da OS e o nome de cada {{ termos.evento }}.</p>
 
                 <h3>Eventos manuais do mês</h3>
                 <div class="manual-list">

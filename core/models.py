@@ -45,6 +45,14 @@ class Organizacao(models.Model):
     slug = models.SlugField(unique=True, help_text='Identificador na URL (sem espaços nem acentos).')
     segmento = models.CharField(max_length=20, choices=SEGMENTO_CHOICES, default='outro')
     tema = models.CharField('Tema visual', max_length=20, choices=TEMA_CHOICES, default='padrao')
+    termos = models.JSONField(
+        'Ajustes de vocabulário', default=dict, blank=True,
+        help_text=(
+            'Opcional. Por padrão os termos vêm do segmento (república: morador, aluguel, rock, casa, quarto). '
+            'Para trocar algum: {"membro": ["sócio", "sócios", "m"], "evento": ["festa", "festas", "f"]}. '
+            'Termos: membro, local, cobranca, evento, unidade.'
+        ),
+    )
     ativa = models.BooleanField(default=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
@@ -55,6 +63,20 @@ class Organizacao(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def clean(self):
+        from core.terminologia import validar_termos
+
+        erros = validar_termos(self.termos or {})
+        if erros:
+            raise ValidationError({'termos': erros})
+
+    @property
+    def vocabulario(self):
+        """Termos do segmento com os ajustes da organização (ver core/terminologia.py)."""
+        from core.terminologia import Termos
+
+        return Termos(self.segmento, self.termos)
 
     @property
     def beneficiario(self):

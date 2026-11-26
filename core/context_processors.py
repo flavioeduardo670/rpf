@@ -17,22 +17,25 @@ from core.views.common import GRUPO_POR_MODULO, get_user_morador
 
 
 def marca(request):
+    organizacao = Organizacao.atual()
     return {
-        'organizacao': Organizacao.atual(),
+        'organizacao': organizacao,
         'produto_nome': settings.PRODUTO_NOME,
+        'termos': organizacao.vocabulario,
     }
 
 # (prefixo da URL, variante do boneco, rótulo, nome da rota do menu, módulo de permissão)
 # módulo de permissão: None = qualquer usuário logado; 'superuser' = só administradores.
+# Rótulos entre chaves vêm do vocabulário do cliente (core/terminologia.py).
 SECOES = [
     ('/financeiro', 'financeiro', 'Financeiro', 'financeiro', 'financeiro'),
     ('/compras', 'compras', 'Compras', 'compras', 'compras'),
     ('/almoxarifado', 'almoxarifado', 'Almoxarifado', 'almoxarifado', 'estoque'),
     ('/os', 'manutencao', 'Ordens de serviço', 'manutencao', 'manutencao'),
-    ('/rock', 'rock', 'Rocks', 'rock', 'rock'),
+    ('/rock', 'rock', '{Eventos}', 'rock', 'rock'),
     ('/reunioes', 'reunioes', 'Reuniões', 'reunioes', 'reunioes'),
     ('/calendario', 'calendario', 'Calendário', 'calendario', 'reunioes'),
-    ('/moradores', 'moradores', 'Moradores', 'moradores', None),
+    ('/moradores', 'moradores', '{Membros}', 'moradores', None),
     ('/perfil', 'perfil', 'Meu perfil', 'perfil', None),
     ('/acessos', 'acessos', 'Acessos', 'gerenciar_acessos', 'superuser'),
     ('/configuracoes', 'configuracoes', 'Configurações', 'configurar_casa', 'superuser'),
@@ -106,7 +109,9 @@ def pode_ver_modulo(user, modulo):
 
 
 def navegacao(request):
+    termos = Organizacao.atual().vocabulario
     secao = secao_por_caminho(request.path)
+    secao = dict(secao, rotulo=secao['rotulo'].format_map(termos))
     user = getattr(request, 'user', None)
     menu = []
     if user is not None and user.is_authenticated:
@@ -116,14 +121,14 @@ def navegacao(request):
             if pode_ver_modulo(user, modulo):
                 menu.append({
                     'variante': variante,
-                    'rotulo': rotulo,
+                    'rotulo': rotulo.format_map(termos),
                     'url': reverse(rota),
                     'ativo': secao['variante'] == variante,
                     'imagens': imagens_boneco(variante),
                 })
     mapa = {
         'secoes': [
-            {'prefixo': prefixo, 'variante': variante, 'rotulo': rotulo,
+            {'prefixo': prefixo, 'variante': variante, 'rotulo': rotulo.format_map(termos),
              'corrida': static(f'core/boneco/corrida-{variante}.svg')}
             for prefixo, variante, rotulo, _rota, _modulo in SECOES
         ],

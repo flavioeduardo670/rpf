@@ -8,7 +8,7 @@
     <div class="rpf-saudacao__texto">
         <span class="rpf-etiqueta">{% now "l · j \d\e F" %}</span>
         <h1 class="rpf-saudacao__titulo" id="rpf-saudacao-titulo">{{ saudacao }},<br>{{ user.first_name|default:user.username }}.</h1>
-        <p class="rpf-saudacao__sub">Tudo da casa num lugar só: contas, compras, rocks e reuniões.</p>
+        <p class="rpf-saudacao__sub">Tudo {{ termos.do_local }} num lugar só: contas, compras, {{ termos.eventos }} e reuniões.</p>
         <ul class="rpf-saudacao__avisos">
             {% for aviso in avisos %}<li class="rpf-pilula">{{ aviso }}</li>{% endfor %}
         </ul>
@@ -33,7 +33,7 @@
 <section class="rpf-areas" aria-labelledby="rpf-areas-titulo">
     <div class="rpf-areas__topo">
         <div>
-            <span class="rpf-etiqueta">Áreas da casa</span>
+            <span class="rpf-etiqueta">Áreas {{ termos.do_local }}</span>
             <h2 class="rpf-areas__titulo" id="rpf-areas-titulo">Por onde a gente começa?</h2>
         </div>
         <span class="rpf-pilula rpf-pilula--forte">{{ atalhos|length|stringformat:"02d" }} áreas</span>

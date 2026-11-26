@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Lotes do Rock{% endblock %}
+{% block title %}Lotes {{ termos.do_evento }}{% endblock %}
 {% block page_title %}Lotes de ingressos{% endblock %}
 {% block page_subtitle %}Preço e quantidade de cada lote de ingressos.{% endblock %}
 
@@ -11,7 +11,7 @@
             <div>
                 <p class="sub">Evento: <strong>{{ evento.nome }}</strong></p>
             </div>
-            <a href="{% url 'rock' %}" class="btn app-btn">Voltar para Rocks</a>
+            <a href="{% url 'rock' %}" class="btn app-btn">Voltar para {{ termos.Eventos }}</a>
         </header>
 
         <section class="grid">

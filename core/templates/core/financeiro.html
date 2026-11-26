@@ -2,8 +2,8 @@
 {% load static %}
 
 {% block title %}Financeiro{% endblock %}
-{% block page_title %}Aluguel de {{ mes_referencia|date:'m/Y' }}{% endblock %}
-{% block page_subtitle %}Rateio do mês, contas da casa, extras e descontos.{% endblock %}
+{% block page_title %}{{ termos.Cobranca }} de {{ mes_referencia|date:'m/Y' }}{% endblock %}
+{% block page_subtitle %}Rateio do mês, contas {{ termos.do_local }}, extras e descontos.{% endblock %}
 {% block header_actions %}
 <a href="{% url 'exportar_financeiro_csv' %}?mes={{ mes_referencia|date:'Y-m' }}" class="btn btn-light">Exportar planilha</a>
 {% endblock %}
@@ -41,8 +41,8 @@
     </section>
 
     <section class="config-wrap">
-        <h2>Contas da casa</h2>
-        <p style="margin:0 0 12px;color:#555;font-size:.9rem;">Cadastre aluguel, água, luz, internet e outras contas. O mês de cobrança define em qual rateio do aluguel a conta entra; contas recorrentes continuam nos meses futuros.</p>
+        <h2>Contas {{ termos.do_local }}</h2>
+        <p style="margin:0 0 12px;color:#555;font-size:.9rem;">Cadastre aluguel, água, luz, internet e outras contas. O mês de cobrança define em qual rateio {{ termos.do_cobranca }} a conta entra; contas recorrentes continuam nos meses futuros.</p>
         {% if can_edit_financeiro %}
         <form method="post">
             {% csrf_token %}
@@ -53,7 +53,7 @@
                     <tr>
                         <th>Nome</th>
                         <th>Vencimento</th>
-                        <th>Mês cobrado no aluguel</th>
+                        <th>Mês cobrado {{ termos.no_cobranca }}</th>
                         <th>Valor</th>
                         <th>Forma de pagamento</th>
                         <th>Repete</th>
@@ -75,7 +75,7 @@
                     {% endfor %}
                 </table>
             </div>
-            <button type="submit" name="contas_casa_submit" class="btn btn-primary">Salvar contas da casa</button>
+            <button type="submit" name="contas_casa_submit" class="btn btn-primary">Salvar contas {{ termos.do_local }}</button>
         </form>
         {% endif %}
 
@@ -92,7 +92,7 @@
                     <td>{% if conta.repetir_meses_futuros %}Repete nos meses futuros{% else %}Somente este mês{% endif %}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="empty">Nenhuma conta da casa entra neste mês.</td></tr>
+                <tr><td colspan="5" class="empty">Nenhuma conta {{ termos.do_local }} entra neste mês.</td></tr>
                 {% endfor %}
             </table>
         </div>
@@ -105,8 +105,8 @@
         <article class="card"><p class="label">Total da caixinha</p><p class="value">R$&nbsp;{{ total_caixinha_mes|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Total a arrecadar</p><p class="value">R$&nbsp;{{ total_a_arrecadar|floatformat:2 }}</p></article>
         <article class="card"><p class="label">Total para rateio</p><p class="value">R$&nbsp;{{ total_rateio|floatformat:2 }}</p></article>
-        <article class="card"><p class="label">Moradores ativos</p><p class="value">{{ total_moradores_ativos }}</p></article>
-        <article class="card"><p class="label">Valor medio por morador</p><p class="value">R$&nbsp;{{ valor_por_morador|floatformat:2 }}</p></article>
+        <article class="card"><p class="label">{{ termos.Membros }} ativos</p><p class="value">{{ total_moradores_ativos }}</p></article>
+        <article class="card"><p class="label">Valor medio por {{ termos.membro }}</p><p class="value">R$&nbsp;{{ valor_por_morador|floatformat:2 }}</p></article>
     </section>
 
     <section class="config-wrap">
@@ -166,7 +166,7 @@
             <div class="table-wrap">
                 <table>
                     <tr>
-                        <th>Morador</th>
+                        <th>{{ termos.Membro }}</th>
                         <th>Tipo</th>
                         <th>Valor</th>
                         <th>Motivo</th>
@@ -193,7 +193,7 @@
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="btn btn-invert" id="add-ajuste">Adicionar morador</button>
+            <button type="button" class="btn btn-invert" id="add-ajuste">Adicionar {{ termos.membro }}</button>
             <button type="submit" name="ajuste_submit" class="btn btn-primary">Salvar ajustes</button>
         </form>
         {% else %}
@@ -201,7 +201,7 @@
         {% endif %}
     </section>
 
-    <h2 class="section-title">Divisão do aluguel dos moradores — mês {{ mes_referencia|date:"m/Y" }}</h2>
+    <h2 class="section-title">Divisão {{ termos.do_cobranca }} {{ termos.dos_membros }} — mês {{ mes_referencia|date:"m/Y" }}</h2>
     {% if avisos_pagamento and can_edit_financeiro %}
     <ul class="messages" id="avisos-pagamento-aluguel">
         {% for aviso in avisos_pagamento %}
@@ -212,7 +212,7 @@
     <div class="table-wrap">
         <table data-enable-hierarchy-sort="true" data-hierarchy-sort-label="Ordem de hierarquia">
             <tr>
-                <th>Morador</th>
+                <th>{{ termos.Membro }}</th>
                 <th>Aluguel</th>
                 {% for conta in contas_fixas %}
                 <th>{{ conta.nome }}</th>
@@ -241,7 +241,7 @@
                     {% if item.status_pagamento == 'pago' %}Pago{% else %}Pendente{% endif %}
                     {% if can_edit_financeiro and item.status_pagamento != 'pago' %}
                     <form method="post" action="{% url 'confirmar_pagamento_aluguel_morador' item.morador.id %}" style="margin-top:8px;"
-                          onsubmit="return confirm('Confirmar que {{ item.morador.apelido|default:item.morador.nome|escapejs }} pagou o aluguel de {{ mes_referencia|date:'m/Y' }}? O recibo será enviado por email.');">
+                          onsubmit="return confirm('Confirmar que {{ item.morador.apelido|default:item.morador.nome|escapejs }} pagou {{ termos.o_cobranca }} de {{ mes_referencia|date:'m/Y' }}? O recibo será enviado por email.');">
                         {% csrf_token %}
                         <input type="hidden" name="mes_referencia" value="{{ mes_referencia|date:'Y-m' }}">
                         <button type="submit" class="btn">Confirmar pagamento</button>
@@ -267,7 +267,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="{{ rateio_colspan }}" class="empty">Nenhum morador ativo cadastrado.</td></tr>
+            <tr><td colspan="{{ rateio_colspan }}" class="empty">Nenhum {{ termos.membro }} ativo cadastrado.</td></tr>
             {% endfor %}
         </table>
     </div>
